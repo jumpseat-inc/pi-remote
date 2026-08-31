@@ -21,13 +21,13 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Progress
 
-- EV-8 — "Command surface and lifecycle wiring"
-
 ## In Review
 
 ## Needs Human
 
 ## Done
+
+- EV-8 — "Command surface and lifecycle wiring"
 
 - FLLWUP-2 — "Reconcile EV-8 card text with the seven-state footer set"
 

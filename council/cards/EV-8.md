@@ -1,7 +1,7 @@
 ---
 id: EV-8
 title: "Command surface and lifecycle wiring"
-state: In Progress
+state: Done
 owner: owner
 epic: EPIC-1
 goal: The extension registers /rc, /rc:off, and the session_shutdown handler so /rc dials and reaches live status, /rc:off closes the socket and notifies the control plane, teardown runs for every shutdown reason, and both commands are idempotent no-ops when already in the target state.
@@ -138,3 +138,21 @@ Follow-up cards implied (consolidator): transport-error copy rows' localization 
 
 No items deferred to steward.
 ### RULINGS END
+
+---
+
+## Step 8 — Owner implementation (job-33.1, PR #9)
+
+Owner implemented the settled spec in an isolated worktree (`.worktrees/ev-8-command-surface`), pushed branch `ev-8-command-surface` and opened **PR #9** (head `f11d2cd2955ae834f0f538cc9466ed406fb56b71`). Deliverables: root `index.ts` default export → pure `createRemoteController(deps)`; seven-state footer FSM with kind-first order-guarded `mergeTransport`; epoch-bumped idempotent teardown (never clearCredential); rearm closure preserving rich TunnelError.reason and stopping the dial loop on enrollment-class 401/403 (J3); /rc, /rc:off, /rc:login, session_shutdown behaviors incl. J5 refusal; runId per agent_start; occurrence stamp; `src/merge.ts`, `src/replay-adapter.ts` (SessionEntry→JsonlEntry, pure + dedicated test); 10 new loginEnglishFor rows; one-sentence PI-SPEC §8 J2 amendment. Local gates: tsc clean; 146 pass / 0 fail (113 + 33). PR observed OPEN with branch present → In Review per observed artifact.
+
+## Step 9 — Skeptic verify (job-33.2, PR #9 head f11d2cd)
+
+**Clear — no open objections.** Re-ran full gate set at head SHA: `bunx tsc --noEmit` clean; `bun test` 146 pass / 0 fail; gate integrity proven by injected-defect experiment. Every must-satisfy/acceptance item closed-green: J3 rearm-collapse preserves rich reason end-to-end + stops retry; J1/J4 merge (10 unit tests: kind-first, order guard, live-clears-error, sticky dialing-while-error, N=10 injectable, consec independent of transport backoff, first-connect renders dialing, resyncing overlay-only); J5 refusal across all non-idle states; all acceptance criteria (enrolled /rc→live+frames, second /rc ALREADY_LIVE_COPY + runId unchanged, /rc:off one DELETE + second no-op, 5 shutdown reasons credential preserved, unenrolled /rc names /rc:login + zero POST, seven-state footer, /rc:login authorizing→off success+failure); no module-level mutable state; clearCredential never called; SessionEntry→JsonlEntry adapter pure+isolated+tested; occurrence 1→2 resolves; runId fresh per agent_start; PI-SPEC §8 J2 amendment present; teardown/rearm race. Verify cycle 1 of ≤3: green, no fix round.
+
+## Step 10 — Judge verdict (job-33.3, PR #9 head f11d2cd)
+
+**PASS** at the Skeptic-verified SHA. Judge independently re-ran tsc (clean) + bun test (146/0) and confirmed every goal clause: /rc dials to live; /rc:off closes socket + one DELETE; teardown routes all 5 shutdown reasons; /rc & /rc:off idempotent (share in-flight teardown promise). No REJECT basis.
+
+## Step 11-12 — Merge and reconcile
+
+Deterministic merge check (all five criteria): owner gates green (tsc + 146 tests); GitHub Actions `gates` workflow SUCCESS on PR head f11d2cd (`gh pr checks 9`); no blocking Skeptic objection; judge PASS; no Needs Human / outstanding ruling. Merged **PR #9** pinned via `--match-head-commit f11d2cd2955ae834f0f538cc9466ed406fb56b71` → merge commit **55e6a7a9e633ed8dc5412e79dea230fb92941371**; gates SUCCESS on merged SHA. Merged tree verified byte-identical to the verified head (empty diff). Local main reconciled from origin/main and board set to Done below.
