@@ -137,3 +137,117 @@ Preferences, ranked last. I would prefer the §8 table to keep `session_shutdown
 ### Step 3 — round 2 (cross-position exchange)
 
 The central open dispute after round 1: **two grants vs one grant**. owner+principal: PKCE loopback for attended, RFC 8628 device flow for unattended. designer: PKCE loopback only, unattended served by a second *launch context* (print authorize URL + loopback port; user completes elsewhere and replays the redirect via manual paste or headless-driver hook), device flow rejected as a second implementation surface. Re-dispatching all three generators with each other's positions.
+
+**owner** (job-3.4, round 2, verbatim):
+
+---
+
+EV-7's acceptance settles the unattended dispute textually ("relaying a single short value (code or URL)") and names the device grant as the obvious candidate; EV-2's expiration copy presumes a no-refresh world. I have everything I need.
+
+**Approach** — I hold two grants, and EV-7's acceptance is the decisive witness: "unattended … completes by **relaying a single short value**." The Designer's paste path relays a full redirect URL carrying `code`+`state` through a terminal/clipboard — not a short value, and it invents a transport RFC 8252's loopback rule exists to avoid (the code leaves the device). RFC 8628's `user_code` is the standard artifact designed for exactly that relay. On "second implementation surface": it cuts the other way. Device flow is two paragraphs of RFC-mandated semantics (`device_authorization_endpoint`, poll, four error codes); the paste path is a bespoke protocol — paste capture, loopback-listener lifetime racing the code TTL, a headless-driver hook — that EV-1 must specify from scratch with no RFC behind it. The standard grant is the cheaper surface.
+
+**Concessions to Principal (both correct):** yes, retire `PI_REMOTE_HOST_KEY` entirely rather than demote it — env at most `PI_REMOTE_SERVER_URL`, credentials never via env (the refresh token inherits the host key's blast radius; /proc/CI-log hygiene beats a provisioned-host convenience). Yes to the §7.4 *and* §9.1 fix: trust-table row and the "long-lived host enrollment key" line both become access/refresh-token language; README (line 93) flagged as stale, not crept. Adopt EV-7-pinned storage field names and the EV-2 cross-seam: EV-1 must state the refresh decision so EV-2 implements 401→refresh and only falls to "run `/rc:login`" copy when no refresh token exists or refresh fails — its current acceptance line assumes only the latter.
+
+**Endpoint dispute vs Designer** — "exactly three, `/device_authorization` absent" fails twice: with device flow in, `device_authorization_endpoint` must be discoverable, and `POST /refresh` is a nonstandard invention — RFC 6749 §6 sends the refresh grant to the token endpoint. Pin Principal's contract: RFC 8414 discovery (authorization_endpoint, token_endpoint, device_authorization_endpoint), all three grants through token_endpoint, optional revocation_endpoint, Bearer to `POST /tunnels`. Designer's footer states are accepted (`not enrolled` ≠ `off`); they compose with my refuse-to-dial behavior.
+
+**Tradeoffs accepted** — One extra endpoint + poll loop in `tunnel.ts`; that is the declared cost of a headless-first product and EV-7 already prices it in. Losing env-based pre-provisioning trades a static-secret bootstrap for a reproducible `--headless` flow.
+
+**Testable claims (Skeptic runs):**
+1. `grep -nE 'rc-off|PI_REMOTE_HOST_KEY|host enrollment key' docs/PI-SPEC.md` → exit 1; repo-wide, README:93 is the only `PI_REMOTE_HOST_KEY` hit, pre-flagged stale.
+2. `device_authorization_endpoint` appears in the discovery metadata section; a consumer implementing headless from `authorization_endpoint` alone cannot find it (Principal's compile test).
+3. `grep 'POST /refresh'` → zero; `refresh_token` grant is specified against token_endpoint (direct falsifier of Designer's contract).
+4. §7.2 names `authorization_pending|slow_down|expired_token|access_denied` + poll-`interval` semantics — implementable-from-doc.
+5. Behavior at EV-2/EV-7: empty-settings `/rc` issues no `POST /tunnels`; stubbed-endpoint device poll honors `interval`/`slow_down` backoff.
+6. Unattended terminal copy names exactly one short value (`user_code` + `verification_uri_complete`), never a redirect URL (EV-7 "single short value" smoke).
+
+---
+
+**principal** (job-3.5, round 2, verbatim):
+
+---
+
+**Cross-seam reading.** EV-7's acceptance is the decisive text everyone but me quoted sideways: headless login "completes by relaying a single short value (code or URL) through another device." So in this repo "unattended" means *no browser on the host*, not *zero humans*. Owner's device flow and designer's manual-paste both satisfy that acceptance verbatim; the real question is which one is a standard, scriptable contract and which one is a hack.
+
+**Blind spots.** Designer, from the UX seat, sees one surface and calls the second grant redundant — but cannot see that EV-7's *two-mode* acceptance stays live after EV-1 lands, so collapsing to one grant leaves headless mode a bespoke paste protocol that no OAuth server implements, tests against, or issues `interval`/`slow_down`/`expired_token` semantics for. Owner, from the owner seat, defends device flow as "the only standard way" but glosses that *both* grants need a human to consent at the IdP: true CI cannot complete either. My own round-1 blind spot: I claimed `grep PI_REMOTE_HOST_KEY` → zero, overreaching — owner is right that a pre-issued credential override is the only zero-touch CI path, so it may legitimately appear once.
+
+**Reframe.** The dispute is really "what does unattended mean," and EV-7 already answers it. Final position: **device flow for headless (hold mine/owner's), with owner's `PI_REMOTE_HOST_KEY` override documented as the CI path, and designer's manual paste rejected as the spec'd flow.** Manual paste requires a human mid-job by construction — the 127.0.0.1 redirect can't be delivered to the host's listener from another device unless someone copies the full redirect URL back — so it is neither automatable nor standard. A zero-interactive-session host can complete PKCE-only enrollment only with that human relay, which is exactly the thing "unattended" was supposed to avoid. Endpoints: **hold discovery + `device_authorization_endpoint`.** Designer's three hardcoded paths bake the server's URL layout into the client (the cross-seam assumption this seat exists to catch), and `POST /refresh` is wrong — RFC 6749 §6 makes refresh a `grant_type` on `token_endpoint`, not a separate endpoint.
+
+**Testable claims.** (1) `grep -n rc-off` → 0; `PI_REMOTE_HOST_KEY` only in an override subsection. (2) Headless section names `device_authorization_endpoint`. (3) §7.4 Host row says token, not "host enrollment key"; §9.1 too. (4) Skeptic: stub an RFC 8628 server, run `/rc:login --headless` browserless — assert one short value printed and polling completes. (5) Same test against designer's `/authorize`+`/token`-only stub — assert it cannot complete without a human paste, proving it fails the headless acceptance. (6) Unenrolled `/rc` issues no `POST /tunnels` (EV-8).
+
+---
+
+**designer** (job-3.6, round 2, verbatim):
+
+---
+
+**Skill check:** the brainstorming skill applies to *creating* features; this is a position exchange on an existing card, so it does not. Verification-before-completion applies to my falsifiable predictions, which I state as testable seams below.
+
+**Final position**
+
+**(1) Device flow for headless — concede.** Owner and principal are right; my round-1 was wrong. The manual-paste path requires either a human co-located with the CI host (who then needs shell on the box to read the redirect — defeating "headless") or a headless browser driver, which cannot complete interactive IdP login without injected credentials. A headless-driver hook is not a realistic thing for a generic CI bootstrap to ship; it presupposes the IdP supports non-interactive login the CI can already satisfy. RFC 8628 device grant is the only standard way to enroll a host with no interactive user: a human completes consent from any authenticated device, not on the host. PKCE loopback stays for attended; device grant is the unattended mode.
+
+**(2) Discovery — concede to principal.** With device flow in scope, my three-endpoint pin cannot name `device_authorization_endpoint` without config drift. Adopt RFC 8414 discovery. Contract text must enumerate required fields (`authorization_endpoint`, `token_endpoint`, `device_authorization_endpoint`) so an implementation reading only `authorization_endpoint` cannot compile against the contract — principal's testable seam is correct; I endorse it.
+
+**(3) Env override — split the difference.** Principal's prohibition is correctly stated for OAuth access/refresh tokens (process-table exposure). Owner's CI escape hatch is real and is not answered by "don't run unattended in CI." Resolution is semantic: `PI_REMOTE_HOST_KEY` carries a non-OAuth provisioning credential, exchanged server-side at boot for a short-lived access token, never Bearer-passed from env. That preserves owner's operational pattern outside principal's safety boundary. The §7.4 trust-table update principal proposed needs product-owner ratification of the security model before spec final — I escalate the trust model, not the design.
+
+**Gulf closed** — execution, for the CI operator at first `/rc` in a fresh container: the affordance is now a documented device-flow command rather than a paste-back path that won't work where they're running it.
+
+**Falsifiable predictions** (for Skeptic):
+- (1) `pi-remote rc:login --headless` in a no-`DISPLAY`, no-tty child process completes by emitting `user_code` + `verification_uri_complete` to stdout — contract test against an empty-env subprocess.
+- (2) Spec §7 lists `device_authorization_endpoint` as required — grep against the spec sections.
+- (3) No Bearer credential read from `process.env` at runtime — grep for `process.env.*Token|process.env.*Secret` outside the provisioning branch.
+
+**Preferences, ranked last**: keep a one-line "if this fails, see <doc>" footer in the attended loopback flow; no evidence, treat as taste.
+
+---
+
+### Step 3 — round 3 (final exchange, cap reached)
+
+**owner** (job-3.7, round 3, verbatim):
+
+---
+
+**Approach.** (1) PI_REMOTE_HOST_KEY appears exactly once — conceding principal. Retire-entirely fails zero-touch CI: device flow still needs a human approver, PKCE needs a browser, and EV-1's acceptance already allows "at most a documented override." Designer's boot-time exchange is scope creep, not compromise: it adds a non-standard control-plane contract, and §10 keeps the server out of this repo while EV-1 is docs-only. Shape: one §7.2 override subsection — the env var holds a pre-issued long-lived enrollment credential (the refresh credential), consumed through the already-pinned standard `token_endpoint` grant; never a Bearer access token in env, never a new exchange. A rejected/expired override falls through to the `/rc:login` remedy, so EV-2 holds on this path too. (2) Trust sync is converged prose: blast radius is genuinely preserved — the refresh credential carries exactly the host key's power (tunnel creation for locally-visible sessions, tenant-contained) plus control-plane revocation; no §4–§6/§5.3/§7.3 wire moves. I do not dispute the content. The deltas worth product-owner ratification are precisely two: tenancy now derives from token claims (§7.5 row 1) and enrollment depends on RFC 8414 discovery. Endorse the gate, bounded.
+
+**Tradeoffs accepted.** One documented env credential survives my round-2 "never credentials via env" line — same leak exposure as the host key today, but it is the only zero-touch CI path, and revocation now exists on the control plane.
+
+**Testable claims.** Skeptic runs: (1) `grep -n 'rc-off' docs/PI-SPEC.md` → zero; `/rc:off` in §8. (2) `PI_REMOTE_HOST_KEY` occurrence audit: ≤1 hit, inside §7.2 override; none in §4–§6, §5.3, §7.3, §7.4, §9.1. (3) §7.2's settings-based sentence precedes the env-override sentence. (4) `git diff -U0 docs/PI-SPEC.md`: hunks confined to §7.2/§7.4/§9.1/§8. (5) `/rc:login` names the remedy in every rejection path (device-flow `expired_token`/`access_denied`, override rejection); headless flow pins `user_code` + `verification_uri` (EV-7 single-value relay).
+
+---
+
+**principal** (job-3.8, round 3, verbatim):
+
+---
+
+**Cross-seam reading** — §7.2 still pins both env vars as the primary path while EV-2/EV-7/EV-8 already assume OAuth2 settings + `/rc:login` copy; the spec's own §2 says the server stays a dumb relay and §10 limits fixed contract surfaces to §5.3/§7.2–7.3. EV-1 may rewrite §7.2 but must not mint new server behavior.
+
+**Blind spots** — The owner's spec view can miss that EV-2's `tunnel.ts` needs to know the credential is a short-lived Bearer (401→refresh) vs a long-lived key. The designer's UX view can't see that a boot-time provisioning-exchange endpoint is a control-plane contract addition, which §2/§10 rule out — and which EV-2/EV-7 aren't written against.
+
+**Reframe** —
+
+1. **Adopt owner: `PI_REMOTE_HOST_KEY` does not appear.** Keep only `PI_REMOTE_SERVER_URL` as documented override. I withdraw my round-2 override concession. Designer's exchange endpoint is scope creep beyond the dumb relay — the zero-touch CI path is a separate card, not EV-1.
+2. **No dispute; no ratification needed.** Syncing §7.4/§9.1 to access/refresh token is prose-sync inside EV-1's mandate. Blast radius is unchanged: leaked token creates tunnels for locally-visible sessions, tenant-contained.
+3. **Skeptic checks:** `grep -E 'PI_REMOTE_HOST_KEY|rc-off'` → zero; `PI_REMOTE_SERVER_URL` only in override prose; `device_authorization_endpoint` present with no hardcoded `/device_authorization`; `host enrollment key` absent from §7.4/§9.1; no `POST /refresh` — refresh is `grant_type=refresh_token` at `token_endpoint`.
+
+---
+
+**designer** (job-3.9, round 3, verbatim):
+
+---
+
+**1. Provisioning-key variant: out of scope. Concede to owner.**
+The server-side exchange I floated in round 2 is a new control-plane contract — a credential-mint endpoint the relay would answer to. §2's dumb-relay mandate forbids it (token issuance is authoritative, not relay); EV-1's acceptance freezes §4–§7 wire contracts; and EV-2/EV-7 are already satisfied by `/rc:login` + device flow without any host key. CI wanting zero-touch gets device flow driven by a polling script, with the URL relayed through whatever channel CI uses — a follow-up card if "no human ever clicks authorize" becomes a real product need. **Retire `PI_REMOTE_HOST_KEY`.** §7.4 prose syncs to: "`PI_REMOTE_HOST_KEY` is not used; unattended devices authenticate via device flow per §5."
+
+**2. Trust-model ratification: withdraw.**
+No content dispute exists — all three seats converged on the same model: leaked token ≈ old host-key blast radius, tenant-contained, no session access. With the host key retired, §7.4's trust table is a one-row prose sync, not a ratification. I withdraw the escalation. Gulf closed here is evaluation: the spec author reading §7.4 won't mistake the prose for an open security question.
+
+**3. Skeptic runs — confirm with one amendment.**
+(a) `/rc:login --headless` in a subprocess with no `DISPLAY` and no controlling tty writes `user_code` and `verification_uri_complete` to stdout, nothing else. (b) RFC 8414 discovery response contains `device_authorization_endpoint`; the client fails closed if absent — that's the falsifiable behavior; amends my round-2 phrasing, which named spec wording instead. (c) `grep -RIn 'process\.env' src/` returns no host-key, token, or Bearer references.
+
+---
+
+### Step 3 — outcome
+
+Three rounds complete; cap reached. Converged: attended = PKCE loopback (RFC 7636/8252); unattended = RFC 8628 device flow; endpoints = RFC 8414 discovery (authorization_endpoint, token_endpoint, device_authorization_endpoint required), both grants + refresh via token_endpoint grant_type (no separate POST /refresh), optional revocation_endpoint; POST /tunnels Bearer-authenticated with access token; storage = settings (user-only readability; serverUrl/accessToken/refreshToken/tokenExpiry); env at most a documented override; credentials never via env as Bearer; /rc unenrolled refuses and points to /rc:login (never inline OAuth), footer states off/not enrolled/authorizing/dialing/live/error; §7.4/§9.1 "host enrollment key" prose synced to access/refresh-token language (blast radius preserved); designer's provisioning-key boot-time exchange and POST /refresh rejected as out-of-scope/nonstandard; trust-model escalation note withdrawn by designer (no content dispute).
+
+Residual open judgment after cap: **env-var override semantics for PI_REMOTE_HOST_KEY** — owner (round 3): document it exactly once as a pre-issued long-lived enrollment credential, consumed via the standard token_endpoint refresh grant; principal (round 3): retire entirely — only PI_REMOTE_SERVER_URL as env override; designer (round 3): retire entirely. 1v2 split; not settled by any test. Carried to consolidation.
