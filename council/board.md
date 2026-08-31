@@ -7,6 +7,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Backlog
 
 - EPIC-1 — "pi-remote — remote control for a live pi session over AG-UI"
+- FLLWUP-4 — "EV-2 localization seam: second (en→id) message lookup and resolver"
 
 ## Ready
 
