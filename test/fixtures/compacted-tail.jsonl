@@ -1,0 +1,4 @@
+{"kind":"compaction","entryId":"c1","summary":"Earlier conversation summarised."}
+{"kind":"message","entryId":"m1","role":"assistant","content":[{"type":"text","text":"continuing from summary"}]}
+{"kind":"message","entryId":"m2","role":"user","content":[{"type":"text","text":"next turn"}]}
+{"kind":"message","entryId":"m3","role":"assistant","content":[{"type":"text","text":"done"}]}

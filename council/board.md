@@ -11,7 +11,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 
-- EV-5 — "JSONL history replay and resync"
 - EV-6 — "Remote input injection"
 - EV-7 — "/rc:login OAuth2 enrollment command"
 - EV-8 — "Command surface and lifecycle wiring"
@@ -22,6 +21,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
+
+- EV-5 — "JSONL history replay and resync"
 
 ## In Review
 
