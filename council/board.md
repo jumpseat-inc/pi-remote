@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
-- EV-3 — "Outbound wss transport with seq-ack envelope"
-
 ## In Progress
+
+- EV-3 — "Outbound wss transport with seq-ack envelope"
 
 ## In Review
 

@@ -1,7 +1,7 @@
 ---
 id: EV-3
 title: "Outbound wss transport with seq-ack envelope"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: transport.ts dials the relay over wss, wraps every AG-UI event in a {v, seq, ack, frame} envelope with a monotonic extension-owned seq, echoes the highest processed inbound seq, heartbeats, and reconnects with exponential backoff and jitter under a stable session-scoped connection id.
