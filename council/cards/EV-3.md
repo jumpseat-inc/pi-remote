@@ -164,3 +164,25 @@ Phase 1 rulings: NONE (human delegated all open-judgment calls). `product-owner`
 
 
 
+
+---
+
+## Step 6 continuation — product-owner ruling (binding, appended verbatim)
+
+The orchestrator dispatched `product-owner` for the O1 open-judgment item (with R3 as a non-blocking companion); it ruled. The ruling is binding and applied without re-asking. Full ruling document: `vault/raw/2026-08-31-po-ev3-ruling.md`. Binding text as delivered:
+
+> **Sub-question 1 — Retry forever at capped exponential backoff + jitter. The transport never gives up.** §6 names "reconnect with exponential backoff + jitter" with no give-up boundary; §8's "terminal" attaches to the rendering of failure to the user, not to the act of retrying by the transport. The transport is a transducer; it cannot honestly know what "hopeless" means.
+>
+> **Sub-question 2 — Moot.** Sub-question 1 rules out give-up; the closed reason set is, however, decided for transport-internal use under sub-question 3.
+>
+> **Sub-question 3 — Only `reason` metadata on `dialing`, never a terminal `kind:"error"` event.** The typed event stream emits only `kind: "dialing" | "live"`. The closed `reason` taxonomy is five values: `first_connect`, `reconnecting` (payload sub-state of `dialing`, per the converged architecture), `relay_unreachable`, `protocol_violation`, `url_expired`. No `kind:"error"` event exists; the transport has no terminality to report.
+>
+> **Sub-question 4 — `error` is EV-8's policy decision, derived from transport reason metadata + tunnel.ts reason rows via EV-8's merge function.** Transport has no path to a footer write by construction. The transport's retry-forever mechanism and EV-8's "after N consecutive `relay_unreachable` reason events, land on `error`" threshold are two different numbers — that seam is the ruling.
+>
+> **Companion R3 — Defer to FLLWUP-2.** FLLWUP-2 already reconciles EV-8's card text with the seven-state footer set; the §8 prose note belongs there, not on the EV-3 PR. Non-binding preference for FLLWUP-2's runner: Reading (a) — leave §8 prose unchanged, because the architecture already pins `reconnecting` as a payload sub-state of `dialing`.
+>
+> **General rule for EV-5 / EV-6 / EV-7 / EV-8:** The transport's typed event stream is `{kind: "dialing" | "live", …, reason?, severity, order, …}`. There is no `kind:"error"`. The `reason` field is one of the five closed values. `severity` follows the EV-2 tag convention; `order` is a monotonic gap-free ordinal. The transport failure signal is honest metadata, never terminal. Any `error` on the footer is EV-8's call, derived from metadata EV-8 receives; downstream cards that need to surface failure route through EV-8's merge function, not via a transport side-channel.
+
+## Step 6 → Step 7 handoff (facilitator)
+
+O1 is no longer open; it is closed by the ruling. R3 is deferred to FLLWUP-2 (no EV-3 step-9 gate, no §8 prose edit on this PR). O2 remains closure-by-test at step 9 (merge-policy fixture); O3 non-blocking (translate.ts static gate now, history/inject inherited by EV-5/EV-6). EV-3 proceeds to step 7 carrying the four sub-question rulings, the companion deferral, and the ten-point converged architecture as the binding contract.
