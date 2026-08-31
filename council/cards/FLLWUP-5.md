@@ -108,3 +108,27 @@ Objections (verdict: blocks — 3 items):
 - **O4 (closed-red):** index.ts local ExtensionAPI.on is `(event: string, …)` while the real SDK's on is an exhaustive typed interface with no generic overload; the pi.on(event,…) bridge passes a generic string to a typed overloaded on — a compile-time error at real type level. The local type hides this.
 
 Skeptic verdict on the design: the two settled contracts (a)/(b) are implementable, but contract (b)'s runtime reachability, the systemic cast bug (O2), and the AcceptanceAPI type gap (O4) are blocking scope/acceptance decisions that require the card to either expand scope (manual construction everywhere + raise wiring) or explicitly scope acceptance (b) to fixture-green.
+
+### Step 5 — Consolidator synthesis (job-34.11, verbatim buckets)
+
+**Agreed design (settled, not reopened):** (1) Contract (a) — translate.ts adds `ui_prompt_end` PiEvent → CUSTOM `pi.human_input.closed`, value {pi:"ui_prompt_end", data:{kind,title,schemaVersion:1}}; name distinct from pi.human_input.resolved; PiEvent constructed MANUALLY (mirror agent_start), never `ev as PiEvent`; fold carries only kind/title (no ts/deviceId/promptId); purity green. (2) Contract (b) — index.ts onInbound captures InjectResult, emits CUSTOM `pi.human_input.resolved` for InjectResult `resolved` and `steered_fallback`-with-`tracked:true`; NEVER untracked fallback or `stale`; deviceId from result (envelope, never free text); ts from injected `deps.now`. (3) `steered_fallback` gains `tracked: boolean` (Skeptic O3 closed-red confirms absent today) — in-scope prerequisite for contract (b). (4) The raise (`ui_prompt_start`/registerPrompt) is OUT OF SCOPE, a hard runtime precondition (all three seats settled). (5) The latent `ev as PiEvent` type:→event: cast pattern is OUT OF SCOPE, filed as separate follow-up (all three seats settled round 3). (6) §4/§5.4-adjacent spec amendments ride the PR.
+
+**Settled disputes (Skeptic probes all green except noted):** occurrence dropped from InjectResult (green); raise publishes occurrence (green); resolvePendingPrompt () => false (green); ev as PiEvent cast worse than silent drop — ui_prompt_end-shaped payload MISROUTES to translateJsonl via kind collision → wrong pi.session.info_change frame (green+extended); name dispatch no collision (green); purity holds (green); baseline tsc 0/bun 146 (green); raise dead in production — SDK has NO ui.confirm, on() is typed exhaustive, no deps.on("ui_prompt_start") (green, CRITICAL); tracked:boolean absent from steered_fallback (O3 closed-red, planned in-scope work).
+
+**OPEN JUDGMENT (→ product-owner, escalating to steward; no test settles, both sides carried equally):**
+- **J-FIELDSET** resolved-frame wire field set: owner {promptId,deviceId,ts}; principal {promptId,occurrence,deviceId,ts}; designer {promptId,occurrence,kind,deviceId,ts}. Testable facts (probe1/2) don't decide which fields the client sees. Wire-contract ruling.
+- **J-ACCEPT** acceptance (b) fixture-green vs runtime-observable.
+- **J-REPLAY** replay-self-sufficiency of the resolved frame (lifecycle-emitted, no JSONL entry, reconnecting client re-sees raise but not resolved).
+- **J-FUTURE** forward-compat posture on occurrence/kind (future concurrency / live resolve API).
+
+**OPEN OBJECTIONS (Skeptic claims whose settling test hasn't passed / need a ruling to close):**
+- **S-O1 (open-untested)** acceptance (b) dead-on-arrival in production as scoped — needs a product-owner scope ruling: acceptance text scoped to fixture-green, OR include the raise wiring.
+- **S-O2 (closed-red)** systemic `ev as PiEvent` cast affecting seven of ten live subscriptions; filed out-of-scope in round-3 when described as "probable live-path drop," but Skeptic later showed it blocks ANY live path incl. contract (b). Scope ruling needed to confirm or overturn the follow-up call.
+- **S-O3 (closed-red)** steered_fallback lacks tracked:boolean — agreed in-scope implementation, not a scope-ruling item.
+- **S-O4 (closed-red)** index.ts local ExtensionAPI.on is string-generic vs real SDK's typed exhaustive on; pi.on(event,…) bridge is a compile-time error at real type level, hidden by the local type. NO scope ruling exists — in-card fix vs follow-up is product-owner judgment.
+
+**Handoff: NO.** Card cannot move to implementation/ruling until product-owner (escalating to steward) resolves J-FIELDSET, J-ACCEPT, J-REPLAY, J-FUTURE, S-O1, S-O2, S-O4. In-scope and non-blocking: S-O3 (tracked:boolean implementation work must land regardless).
+
+### Step 6 — routing
+
+All open-judgment items (J-FIELDSET, J-ACCEPT, J-REPLAY, J-FUTURE) and open-objection scope rulings (S-O1, S-O2, S-O4) route to product-owner authority. No Phase 1 ruling on EPIC-1 covers any of these (orchestrator: none on record). The consolidation surfaced S-O2 specifically needs the round-3 out-of-scope call re-issued now that the Skeptic showed the cast bug is systemic. Per the escalation contract the facilitator does not dispatch ruling seats. The card remains in Deliberating — NOT Done, NOT retired, NOT returned to Ready — pending the rulings. Returning ESCALATION to the orchestrator for the rulings, then resuming this card on them.
