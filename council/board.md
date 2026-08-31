@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
-- EV-2 — "Control-plane tunnel REST client"
-
 ## In Progress
+
+- EV-2 — "Control-plane tunnel REST client"
 
 ## In Review
 
