@@ -1,8 +1,8 @@
 ---
 id: EV-8
 title: "Command surface and lifecycle wiring"
-state: Deliberating
-owner: null
+state: In Progress
+owner: owner
 epic: EPIC-1
 goal: The extension registers /rc, /rc:off, and the session_shutdown handler so /rc dials and reaches live status, /rc:off closes the socket and notifies the control plane, teardown runs for every shutdown reason, and both commands are idempotent no-ops when already in the target state.
 ---
