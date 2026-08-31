@@ -112,3 +112,30 @@ Full council + surface-touching (user-visible `/rc:login` terminal copy; open de
 **Open-untested (implementation-phase notices):** PKCE ≤43-char guard test; device-endpoint-optional handling; dedicated refreshAccessToken-with-discovery-failure test; invariant regex must be "contains" not "ends-with" for some rows.
 
 **Verdict:** gate integrity fine (bun test catches set expansion; tsc alone does not — a note, not a block). Two blocks to resolve in the spec, then open-untested notices for the owner's implementation.
+
+### Step 5 — Consolidator synthesis (job-26.8; full text in job output)
+**Settled (closed by round-2 convergence or green/clarified Skeptic probes):**
+- Module layout: src/login.ts (pure drivers runAttendedLogin/runHeadlessLogin + createLoginCommand facade; EV-8 imports only facade; tests exercise drivers), src/credential.ts (readEnrollment/saveCredential/clearCredential, 0600 atomic tmp+fsync+rename, write-on-success, full-replace re-run).
+- Persistence: dedicated 0600 file under pi agent config dir, piRemote.* keys.
+- Discovery refactor: exported discoverAuthServer (3 required endpoints, revocation optional, per-serverUrl cache, eviction on rejection); TunnelReason stays closed; refresh folds discovery-failure→control_plane_unreachable; login carries discovery_invalid in own LoginError union.
+- tenantId best-effort JWT sub decode. EV-8 seam (exports, serverUrl env>stored>prompt across both commands, authorizing footer, render). Env = server URL only, never credentials.
+- Copy shape: loginReasonCopy key+English-default + loginEnglishFor; closed set; voice rules; no secrets/wss:///process.env.
+- Attended flow: open + fallback-URL + waiting + success; PKCE S256, 32-byte verifier/state, loopback 127.0.0.1:0, state-checked, form-urlencoded exchange, listener closes in finally. Auto-open AND print URL — SETTLED (all three seats, RFC 8252 §7.1), not open judgment.
+- Headless: RFC 8628, verification_uri_complete+user_code adjacent, expire line, ≤3 progress prints, silent; slow_down +5s; access_denied/expired_token terminal; never re-print user_code.
+- Cancel vs timeout distinct. Success line canonical: "Signed in to <serverUrl> — enrollment credentials saved for this host. Run /rc to start a tunnel."
+- Closed failure set (principal's fine-grained set; collapsing unsafe).
+- Skeptic closings: discovery-constraint real (closed-green), PKCE 43-char minimum (closed-green), device-endpoint-optional (closed-green), gate-integrity note (not a block), 85 tests + tsc green.
+- **§7.2 amendment scope: SETTLED in-scope by EV-4 Q1 / EV-2 O1 governance precedent** (facilitator-authored, evidence-cited, in-scope prose-sync rides the PR; EV-7 depends on correct §7.2 persistence-mechanism prose; pi exposes no settings-write API, cited by owner+principal independently). No ruling needed.
+
+**Open judgment → product-owner (no test settles; both sides at equal weight):**
+- J1 Tenant display in success line: A = append ` (tenant <tenantId>)` only when a tenant-scoped `sub` present, else principal's compact form; rejected: unconditional display (renders ` (tenant )`), never display (loses multi-tenant disambiguation). Reversibility trivial.
+- J2 Re-run while enrolled: confirm with login.replacementPrompt (designer; overwrite is consequential, one Enter trivial, silent clobber on shared host real) vs silent replace (owner r1; reads "replaces existing credential cleanly" as silent; faster, no recovery from misclick/stale script). Micro-decision recorded: no prompt in headless mode.
+- J3 POSIX-0600-only vs Windows ACL for "user-only readability": A = POSIX 0600 + documented Windows caveat (chmod no-op on Windows); B = require Windows ACL work (0600 alone doesn't meet the literal acceptance on Windows). Scope/values.
+
+**Open objections (Skeptic):**
+- Closed-red B1: discoveryCache Map<string,Promise<string>> (src/tunnel.ts:56) incompatible with multi-field discoverAuthServer return — spec must pin (a) change cache type to Map<string,Promise<DiscoveryDocument>>, or (b) second cache; pin DiscoveryDocument shape + eviction rule + refresh control_plane_unreachable preserved (tunnel.test.ts:357-363 stays green).
+- Closed-red B2: copy invariant is three/four-way not two-way — consensus summary contradicts designer's canonical table; adopt designer's canonical 13-row table as single source of truth; drop "ends-with" two-way phrasing; state invariant as CONTAINS rule; correct row count (13 failure rows); enumerate per-row tail (unreachable→"check your network and try again.", discoveryInvalid→"check the URL with your control-plane admin.", invalidTokenResponse→"ask your control-plane admin." with "No credentials were saved" mid-sentence, timedOut mid-sentence + "Run /rc:login to try again.", remaining→terminal "No credentials were saved.").
+- Open-untested (owner implementation-phase tests): PKCE ≥43-char guard; device-endpoint-optional distinction; dedicated refreshAccessToken+discovery-failure test; invariant contains-regex test.
+- Filename singular/plural discrepancy (credential.json vs credentials.json) — trivial drafting detail for spec pin. ALREADY_LOGGING_IN_COPY/REPLACEMENT_PROMPT_COPY constants to fold into closed-set pinning.
+
+**Consolidator sequence:** spec draft (clear B1/B2) → product-owner rulings (J1/J2/J3) → owner implementation with four open-untested tests in plan.
