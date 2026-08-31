@@ -20,7 +20,11 @@ line and footer-adjacent message, once a non-English locale is selected.
 ## Acceptance
 
 - A second lookup table (Bahasa Indonesia first, per the repo owner's
-  locale) keyed by the same stable message keys tunnel.ts already emits.
+  locale) keyed by the same stable message keys tunnel.ts already emits,
+  extended to cover the ten rows EV-8 added (7 `status.*` footer rows + 3
+  `tunnel.error.relayUnreachable`/`protocolViolation`/`urlExpired`
+  transport-error rows) so the EV-8-owned vocabulary is localized in the same
+  pass.
 - A resolver that picks the lookup by a locale setting, defaulting to the
   English table when the requested locale or key is missing (no missing-copy
   crashes).
