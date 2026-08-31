@@ -71,7 +71,10 @@ Module rules:
 - `translate.ts` is a **pure function**: `(pi event or JSONL entry) → AG-UI
   frame(s)`. No I/O, no socket references. Both the live path (§4) and the
   replay path (§5) call it. One mapping, two triggers.
-- `transport.ts` is the only module that touches the network.
+- `transport.ts` is the only module that touches the network over the
+  outbound WebSocket tunnel; `tunnel.ts` is the control-plane REST client
+  and touches the network over HTTPS (tunnel lifecycle + token exchange,
+  §7.2).
 - No background resources started from the factory; the tunnel is created by
   `/rc` and torn down by an idempotent `session_shutdown` handler (§8).
 
