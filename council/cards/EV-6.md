@@ -1,7 +1,7 @@
 ---
 id: EV-6
 title: "Remote input injection"
-state: Ready
+state: Deliberating
 owner: null
 epic: EPIC-1
 goal: inject.ts converts inbound AG-UI user-message frames into pi.sendUserMessage calls with the correct deliverAs mode for idle, mid-stream, and queued input, and resolves pending human-input prompts with the sending deviceId recorded.
