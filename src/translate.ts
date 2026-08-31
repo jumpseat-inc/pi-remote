@@ -37,6 +37,8 @@ export interface TextMessageStartFrame {
   type: "TEXT_MESSAGE_START";
   messageId: string;
   role: "assistant" | "user";
+  /** pi-remote extension convention (PI-SPEC §5.4): delivery-intent "steer" | "followUp"; absent/unknown = idle-decided (mid-stream default steer). */
+  name?: string;
 }
 export interface TextMessageContentFrame {
   type: "TEXT_MESSAGE_CONTENT";
