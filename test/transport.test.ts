@@ -7,6 +7,7 @@
  * All clocks/timers/randomness/ids are injected with short real intervals.
  */
 import { describe, expect, test } from "bun:test";
+import type { ServerWebSocket } from "bun";
 import {
   createTransport,
   envelope,
@@ -30,14 +31,14 @@ interface FakeServerOptions {
   /** If set, the relay force-closes any connection that receives no ping within this many ms. */
   idleTimeout?: number;
   /** Called with every parsed envelope the relay receives from the transport. */
-  onMessage?: (ws: WebSocket, parsed: TransportEnvelope | null) => void;
+  onMessage?: (ws: ServerWebSocket, parsed: TransportEnvelope | null) => void;
 }
 
 interface FakeServer {
   url: string;
   received: TransportEnvelope[];
   pings: number;
-  connections: WebSocket[];
+  connections: ServerWebSocket[];
   /** Simulate a relay death mid-session: the relay closes the connection it holds. */
   kill(code?: number): void;
   broadcast(obj: InboundEnvelope): void;
@@ -46,9 +47,9 @@ interface FakeServer {
 
 function startFakeServer(opts: FakeServerOptions = {}): FakeServer {
   const received: TransportEnvelope[] = [];
-  const connections: WebSocket[] = [];
+  const connections: ServerWebSocket[] = [];
   let pings = 0;
-  const lastPingAt = new Map<WebSocket, number>();
+  const lastPingAt = new Map<ServerWebSocket, number>();
 
   const server = Bun.serve({
     port: 0,
@@ -139,6 +140,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** A valid, minimal AgUiFrame for sends that don't care about the payload. */
+function aFrame(): AgUiFrame {
+  return { type: "STEP_STARTED", stepName: "turn" };
+}
+
 /** Collect transport status events into an array; resolves when N events recorded. */
 function collector() {
   const events: TransportStatusEvent[] = [];
@@ -212,9 +218,9 @@ describe("EV-3 outbound wss transport with seq-ack envelope", () => {
 
     // send 3 frames while live
     const seqs: (number | null)[] = [];
-    seqs.push(transported.send({ type: "TURN_START" } as AgUiFrame));
-    seqs.push(transported.send({ type: "TURN_START" } as AgUiFrame));
-    seqs.push(transported.send({ type: "TURN_START" } as AgUiFrame));
+    seqs.push(transported.send(aFrame()));
+    seqs.push(transported.send(aFrame()));
+    seqs.push(transported.send(aFrame()));
     expect(seqs).toEqual([1, 2, 3]);
 
     await sleep(20);
@@ -227,7 +233,7 @@ describe("EV-3 outbound wss transport with seq-ack envelope", () => {
     // Relay dispatches inbound seq = 7
     f.broadcast({ v: 1, seq: 7, ack: 0, frame: { type: "CUSTOM", name: "pi.x", value: { pi: "x", data: {} } } });
     await sleep(20);
-    transported.send({ type: "TURN_START" } as AgUiFrame);
+    transported.send(aFrame());
     await sleep(20);
     const after = f.received.filter(Boolean);
     const last = after[after.length - 1]!;
@@ -329,8 +335,10 @@ describe("EV-3 outbound wss transport with seq-ack envelope", () => {
       expect(["dialing", "live"]).toContain(e.kind);
       if (e.reason !== undefined) expect(REASONS).toContain(e.reason);
     }
-    // never a kind:"error" event anywhere
-    expect(col.events.some((e) => e.kind === "error")).toBe(false);
+    // never a kind outside the CLOSED {dialing, live} set (i.e. never kind:"error")
+    for (const e of col.events) {
+      expect(["dialing", "live"] as TransportKind[]).toContain(e.kind);
+    }
     // after the kill there is a dialing(reconnecting) and eventually a live again
     const post = col.events.slice(before);
     const dialingReconnect = post.find((e) => e.kind === "dialing" && e.reason === "reconnecting");
@@ -360,8 +368,8 @@ describe("EV-3 outbound wss transport with seq-ack envelope", () => {
     await col.live;
 
     // live frames get a new id each time, distinct
-    transported.send({ type: "TURN_START" } as AgUiFrame);
-    transported.send({ type: "TURN_START" } as AgUiFrame);
+    transported.send(aFrame());
+    transported.send(aFrame());
     await sleep(20);
     const liveIds = f.received.filter(Boolean).map((e) => (e.frame as { id?: string }).id);
     expect(liveIds).toHaveLength(2);
