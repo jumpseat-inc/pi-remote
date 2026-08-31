@@ -1,7 +1,7 @@
 ---
 id: EV-2
 title: "Control-plane tunnel REST client"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: tunnel.ts creates a tunnel via POST /tunnels using the enrollment credential, consumes the returned signed one-time wss URL, and deletes the tunnel via DELETE /tunnels/:id on teardown.
