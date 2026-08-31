@@ -1,7 +1,7 @@
 ---
 id: EV-1
 title: "Sync PI-SPEC with the /rc:login OAuth2 enrollment design and colon command naming"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: docs/PI-SPEC.md specifies the /rc, /rc:login, and /rc:off command surface with OAuth2-based host enrollment replacing env-var-only setup, covering both attended and unattended login.

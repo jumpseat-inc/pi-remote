@@ -20,9 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
-- EV-1 — "Sync PI-SPEC with the /rc:login OAuth2 enrollment design and colon command naming"
-
 ## In Progress
+
+- EV-1 — "Sync PI-SPEC with the /rc:login OAuth2 enrollment design and colon command naming"
 
 ## In Review
 
