@@ -19,9 +19,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
-- EV-6 — "Remote input injection"
-
 ## In Progress
+
+- EV-6 — "Remote input injection"
 
 ## In Review
 

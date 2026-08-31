@@ -1,7 +1,7 @@
 ---
 id: EV-6
 title: "Remote input injection"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: inject.ts converts inbound AG-UI user-message frames into pi.sendUserMessage calls with the correct deliverAs mode for idle, mid-stream, and queued input, and resolves pending human-input prompts with the sending deviceId recorded.
@@ -153,3 +153,13 @@ Handoff: yes to product-owner for R2/R3; no open objections block EV-6.
 ### Step 6 — routing
 
 Open-judgment items R2 and R3 both classified by the consolidator as routing to product-owner (escalating to steward). No Phase 1 ruling on this epic covers either (orchestrator: all judgment delegated to council, none on record). Neither is a settled test result, and I do not decide them. Per the escalation contract the facilitator does not dispatch ruling seats; returning ESCALATION to the orchestrator for the rulings, then resuming this card on them. R3 is explicitly forward-linked to EV-7/EV-8 (host-UI wrapping lives in EV-7/EV-8 surface) but its answer determines how EV-6 writes the design (permanent-fallback vs interim-fallback language), so it is ruled jointly with R2 here. R1 (the (promptId, occurrence) preventive, closed-green by Skeptic) is settled design, not a ruling.
+
+### Step 6 — rulings applied (binding, verbatim from orchestrator)
+
+**R2 — Fallback-to-steer notice loudness (product-owner): Position A.** A single, stated-sentence notice on the first fallback-to-steer occurrence in a session; silent thereafter. "Loud" is defined by EV-2 Item 3's discipline: a sentence, not a glyph, that names the cause class (host mode cannot resolve directly — RPC/print/headless, or the prompt belongs to another extension) and states honestly that the reply was surfaced as a steering message instead of being delivered directly. Subsequent occurrences emit no notice. Grounds: EV-2 Item 3 (stated-refusal sentence over glyph acks); EV-3 (honest metadata, never terminal); EV-5 A (no fabrication / no re-stating what the system already knows). Reversibility: one boolean ("have I announced yet this session") plus a copy string.
+
+**R3 — Host-UI sponsorship (steward): Side B.** The steering fallback is the permanent product behavior. pi-remote does not sponsor or wrap the host UI. The fixture seam (resolvePendingPrompt) stays a test-only seam; EV-6 ships with the fallback as documented in PI-SPEC §5.4 row 4. Grounds: (1) §7.4 security model — sponsorship would add a fourth trust-summary row ("can resolve any pending UI prompt in the session"), expanding blast radius beyond "create tunnels for sessions on this host"; (2) architecture boundary — pi-remote's portfolio identity is "extension that translates and tunnels," it observes, it does not mediate; (3) spec integrity — §4's ui.confirm row defers native interrupt framing "if/when the client implements it" and §5.4 row 4 documents the steering fallback as the spec-mandated path, not a stopgap; plus the Skeptic's finding that a live path would depend on SDK internals (zero public resolve API; activeUIContext private) — fragility no portfolio commitment accepts. Cheapest-to-reverse: Side B; if pi exposes a public cross-component prompt-resolution API later, a dedicated post-epic card can add wrapping — the fixture seam already exists and §4's "if/when" language documents the deferred path. What changes: EV-6's steering fallback confirmed permanent; R2's loud-once notice is the durable user-facing contract; EV-7 scope unchanged (OAuth2 enrollment only); EV-8 scope unchanged (command surface and lifecycle wiring only); no new card.
+
+**General rule for EV-7 / EV-8 (product-owner, binding until/unless steward reopens R3):** any EV-7/EV-8 design contemplating host-UI wrapping must name in its goal or risk section: (1) the §7.4 blast-radius expansion; (2) the disconnect-mid-resolve contract; (3) the resolver-ownership handoff; (4) the impact on EV-6's notice. Under steward's Side B, none of EV-7/EV-8 contemplate it.
+
+**Effect on EV-6 (applied):** the steering fallback (direct resolution via injectable `resolvePendingPrompt` fixture seam) is the PERMANENT product behavior — the design spec writes it as the spec-mandated path per PI-SPEC §5.4 row 4, not an interim stopgap. R2's loud-once notice is EV-6's durable user-facing contract and is implemented in the fallback path. R1 ((promptId, occurrence) scoping) remains settled design from step 4. Step 6 is CLOSED; proceeding to step 7.
