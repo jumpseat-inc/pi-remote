@@ -208,3 +208,7 @@ Verdict **pass; NO open objections — all closed-green**. Own re-runs: tsc clea
 - **O3 closed-green** — static no-socket gate on translate.ts.
 - **R3 closed-green** — `git diff main -- docs/PI-SPEC.md` empty (no §8 edit).
 - **ws:/wss: deviation closed-green** — necessary for in-repo Bun.serve fake (no TLS); confined to URL-validation regex; production wss enforced by EV-2; consistent with binding contract.
+
+## Step 10 — Judge (job-17.3, 1.0m)
+
+Verdict **PASS** at head `57d5632e` (PR #4), evaluated per the standing step-10 rule at the Skeptic-verified SHA, not main. Basis: every goal clause met (dials relay over wss; {v,seq,ack,frame} envelope via send→envelope(); monotonic extension-owned seq, not reset on reconnect; ack echoes highest processed inbound seq; heartbeat via native WS control-frame ping; reconnect with capped exponential + jitter, retry-forever; stable session-scoped connection id, getId() unchanged). Self-verified tsc clean, 49/0 tests, no fetch( in transport.ts, no §8 edit.
