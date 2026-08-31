@@ -171,6 +171,27 @@ extension does **not** filter or transform its own injections (`action:
 "continue"`), so remote messages are indistinguishable from typed ones in the
 session log — which is what makes §5 replay correct by construction.
 
+**Intent field.** The delivery-intent (`steer` / `followUp`) rides the optional
+`name` field on the inbound `TEXT_MESSAGE_START` frame: absent or unknown is
+treated as absent and the decision is idle-decided (mid-stream default is
+`steer`). This is a documented pi-remote extension convention — no fifth
+envelope key and no `CUSTOM` wrapper for the common user-message path.
+
+**Approval response frame.** A pending approval raised as `CUSTOM`
+(`pi.human_input`) is answered from the client with an inbound `CUSTOM`
+`pi.human_input.response`, `value.data: { promptId, occurrence, response }`,
+matched against the extension's `(promptId → occurrence)` pending registry;
+`deviceId` is taken from the envelope and recorded with the resolution.
+
+**Permanent steering fallback (R3).** Direct in-session resolution is **not
+wired** — the extension does not sponsor or wrap the host UI. An approval
+answer is surfaced as a steering message via `sendUserMessage` (the
+spec-mandated path in row 4 above), with a loud-once
+`pi.human_input.fallback_to_steer` notice (R2) — a single stated sentence on
+the first such fallback per session, silent thereafter. Already-resolved
+(stale) answers are surfaced as `pi.human_input.stale`, not delivered. This is
+permanent behavior, not a stopgap.
+
 ## 6. Transport & durability
 
 The pi-side responsibilities, pinned:
