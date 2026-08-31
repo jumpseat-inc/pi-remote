@@ -194,25 +194,64 @@ though the server is not built in this repo.
 
 An alternative design — *host-minted, server-signed* tokens — forces a
 signing key distribution problem before anything works. **Chosen instead: the
-server mints and signs; the host never holds a signing key.**
+server mints and signs; the host never holds a signing key.** The host's
+identity with the control plane is an **OAuth2 enrollment credential**
+obtained via `/rc:login` (§8) and persisted in extension settings — never a
+static key, never an environment variable.
 
-- One-time setup: the user configures a **host enrollment key** — a
-  long-lived credential issued by the control plane and stored in extension
-  settings (`PI_REMOTE_SERVER_URL` + `PI_REMOTE_HOST_KEY` env vars, or the
-  settings block). This key authorizes *creating tunnels*, nothing else.
-  On a multi-tenant server the key is issued **to a tenant** (a user or
-  account); the extension treats it as opaque and the server resolves
-  key → tenant on every request.
+- **Endpoint discovery.** All control-plane endpoints are derived at runtime
+  from RFC 8414 discovery (`GET /.well-known/oauth-authorization-server`
+  against the configured server URL); no endpoint paths are hardcoded. The
+  discovery metadata must include `authorization_endpoint`,
+  `token_endpoint`, and `device_authorization_endpoint` — all three are
+  required contract fields. `revocation_endpoint` (RFC 7009) is optional.
+- **Attended enrollment (browser available) — Authorization Code + PKCE
+  (RFC 7636, native-app pattern per RFC 8252).** `/rc:login` opens the
+  default browser at `{authorization_endpoint}` with `client_id=pi-remote`,
+  `response_type=code`, `code_challenge_method=S256`, a generated
+  `code_challenge`, `redirect_uri=http://127.0.0.1:<ephemeral>/callback`,
+  `scope=pi-remote:host`, and `state`. The extension is a **public client** —
+  no client secret. The loopback redirect is bound to 127.0.0.1 only, and
+  the listener lives for the duration of the `/rc:login` command only
+  (§7.1 — the extension never listens otherwise).
+- **Unattended enrollment (headless host) — Device Authorization Grant
+  (RFC 8628).** `/rc:login --headless` POSTs `{device_authorization_endpoint}`
+  to obtain a device code, prints `user_code` and `verification_uri_complete`
+  — the single short value the user relays to another device — then polls
+  `{token_endpoint}` with
+  `grant_type=urn:ietf:params:oauth:grant-type:device_code`, honoring the
+  RFC 8628 semantics: `interval` between polls, `slow_down`,
+  `authorization_pending` (keep polling), and the terminal conditions
+  `expired_token` and `access_denied` (failure names the `/rc:login` remedy).
+- **Token issuance and refresh.** Both flows exchange at `{token_endpoint}`
+  (`grant_type=authorization_code` with `code_verifier`, or the device-code
+  grant). When the response includes a refresh token, the extension stores it
+  and refreshes silently at tunnel time with
+  `grant_type=refresh_token` at `{token_endpoint}` — there is no separate
+  refresh endpoint.
+- **Credential storage.** The enrollment credential is persisted in
+  **extension settings** with user-only readability: `piRemote.serverUrl`,
+  `piRemote.accessToken` (short-TTL), `piRemote.refreshToken` (long-lived,
+  revocable at the control plane), `piRemote.tokenExpiry`, and
+  `piRemote.tenantId` (cached from the token). A failed flow writes nothing
+  half-written; re-running `/rc:login` replaces the stored credential
+  cleanly. The token authorizes *creating tunnels*, nothing else.
+- **Environment override (documented override only).** The control-plane
+  server URL may be overridden with the `PI_REMOTE_SERVER_URL` environment
+  variable. **Credentials are never carried in environment variables.**
+  Settings-based OAuth2 enrollment above is the documented path; the env
+  override exists for the server URL only.
 - `/rc` flow:
-  1. Extension `POST /tunnels` to the control plane with the host key,
-     payload: session id, session name, cwd, host metadata.
-  2. Server responds with `{ tunnelId, url, tokenTtl }` — a **signed, expiring
-     `wss://` URL with a one-time token** (`wss://server/tunnelId?token=…`).
-     The token is self-describing: it embeds its claims (`tenantId`,
-     `tunnelId`, `sessionId`, `exp`), so the server needs no lookup state to
-     authenticate a dial.
-  3. Extension dials the URL within the token TTL (default 60 s). The token is
-     **single-use**: consumed on successful WS upgrade, then bound to that
+  1. Extension `POST /tunnels` to the control plane with
+     `Authorization: Bearer <access_token>`, payload: session id, session
+     name, cwd, host metadata.
+  2. Server responds with `{ tunnelId, url, tokenTtl }` — a **signed,
+     expiring `wss://` URL with a one-time token**
+     (`wss://server/tunnelId?token=…`). The token is self-describing: it
+     embeds its claims (`tenantId`, `tunnelId`, `sessionId`, `exp`), so the
+     server needs no lookup state to authenticate a dial.
+  3. Extension dials the URL within the token TTL (default 60 s). The token
+     is **single-use**: consumed on successful WS upgrade, then bound to that
      socket. A replayed URL is rejected.
 - The host stores no tunnel secrets after connection: the token is discarded,
   and the connection itself is the capability.
@@ -241,14 +280,15 @@ server mints and signs; the host never holds a signing key.**
 
 | Component | Holds | Can do |
 |---|---|---|
-| Host (extension) | host enrollment key | create tunnels, dial out, translate, inject |
-| Server | enrollment registry, device registry, signing key | mint/revoke tunnel tokens, enforce device grants, relay frames |
+| Host (extension) | OAuth2 access/refresh token (from `/rc:login`) | create tunnels (Bearer-authenticated), dial out, translate, inject |
+| Server | authorization-server (enrollment) registry, device registry, signing key | issue/revoke enrollment credentials, mint/revoke tunnel tokens, enforce device grants, relay frames |
 | Client device | device credential | connect to granted tunnels, ack, resume, send input |
 
-Compromise blast radius: a leaked host key lets an attacker **create tunnels
-for sessions they can already see locally** (i.e., they are on the host) — it
-does not grant session access by itself, and its damage is contained to its
-own tenant. A leaked tunnel token is bounded by its TTL and single-use
+Compromise blast radius: a leaked access or refresh token lets an attacker
+**create tunnels for sessions they can already see locally** (i.e., they are
+on the host) — it does not grant session access by itself, and its damage is
+contained to its own tenant; the refresh token is additionally revocable at
+the control plane. A leaked tunnel token is bounded by its TTL and single-use
 property, and only reaches its own tunnel.
 
 ### 7.5 Multi-tenancy
@@ -259,7 +299,7 @@ points:
 
 | Contract point | Tenant identity | Extension behavior |
 |---|---|---|
-| Enrollment key (§7.2) | key belongs to a tenant | opaque credential, presented as-is |
+| Enrollment credential (§7.2) | token `sub` claim identifies the tenant-scoped account | opaque credential, presented as Bearer at `POST /tunnels` |
 | Tunnel token (§7.2) | `tenantId` claim inside the signed token | opaque, dialed as-is |
 | Device grants (§7.3) | tenant-scoped device membership | never sees credentials; only `deviceId` in the envelope |
 
@@ -274,19 +314,33 @@ requires namespacing on the wire.
 
 | Command | Behavior |
 |---|---|
-| `/rc` | Ensure settings exist (prompt once for server URL / enrollment key if missing), `POST /tunnels`, dial the signed URL, start translating live events. Idempotent: if already connected, notify and no-op. |
-| `/rc-off` | Close the WS, notify the control plane (`DELETE /tunnels/:id`), discard token state. Idempotent. |
-| `session_shutdown` handler | Tear down the tunnel for **every** shutdown reason (`quit`, `reload`, `new`, `resume`, `fork`) — exiting without `/rc-off` must not leave a live tunnel. Idempotent with `/rc-off`. |
+| `/rc` | If no enrollment credential exists, **refuse to dial** and output a line naming the next step (`run /rc:login`); footer state `not enrolled`. If enrolled but the access token is expired, perform **one silent refresh**; if there is no refresh token or the refresh fails, output the same `/rc:login` remedy and do not dial. Otherwise `POST /tunnels` (§7.2), dial the signed URL, and start translating live events. Idempotent: if already connected, notify and no-op. OAuth enrollment is never attempted from `/rc` — that is `/rc:login`'s job. |
+| `/rc:login` | Enroll the host with the control plane's OAuth2 authorization server: the **attended** flow (default) opens the default browser (Authorization Code + PKCE, §7.2); the `--headless` flag runs the RFC 8628 device flow and prints `user_code` + `verification_uri_complete`. Persists the credential in extension settings; on failure, prints what to do next. |
+| `/rc:off` | Close the WS, notify the control plane (`DELETE /tunnels/:id`), discard token state. Idempotent. |
+| `session_shutdown` handler | Tear down the tunnel for **every** shutdown reason (`quit`, `reload`, `new`, `resume`, `fork`) — exiting without `/rc:off` must not leave a live tunnel. Idempotent with `/rc:off`. |
 
 Status surface: footer status via `ctx.ui.setStatus("pi-remote", …)` showing
-tunnel state (`off` / `dialing` / `live` / `resyncing`), so the host user can
-always see that the session is remotely reachable.
+exactly one of seven states, in lifecycle order: `off` → `not enrolled` →
+`authorizing` → `dialing` → `resyncing` → `live` → `error`.
+
+- `off` — no tunnel, no credential action pending.
+- `not enrolled` — no credential; distinct from `off` because it names the
+  next step (`/rc:login`).
+- `authorizing` — OAuth enrollment in progress (browser or device flow).
+- `dialing` — dialing the signed `wss://` URL.
+- `resyncing` — replay in progress (§5); a healthy phase distinct from
+  `dialing` (the connection is already up) and from `live` (no new frames,
+  only replay).
+- `live` — connected; frames flowing.
+- `error` — terminal failure state with the reason shown.
+
+The host user can always see that the session is remotely reachable.
 
 ## 9. Resolved design questions
 
 1. **Where the token is minted and stored.** Answered by §7.2: the *server*
    mints and signs the one-time tunnel token; the host holds only the
-   long-lived host enrollment key used to request tunnels. This avoids the
+   OAuth2 access/refresh credential obtained from `/rc:login`. This avoids the
    alternative of host-minted/server-signed tokens, which would require
    distributing a server signing key to every host, and would erode the
    signing-key trust boundary between host and server.
