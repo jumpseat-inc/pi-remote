@@ -508,6 +508,18 @@ No Phase-1 rulings exist for this epic (the human delegated all open-judgment ca
 
 **Grounding:** EV-1 acceptance protects §4–§6, §5.3, §7.3 — §7.5 is not in the exclusion list; docs/PI-SPEC.md §10 names §7.2 as a contract surface fixed here; round-3 convergence on blast radius (all three seats, designer formally withdrew its trust-model escalation note in r3).
 
-### Step 7 — resume note
+### Step 8 — resume note (instance 4, post-anti-stall-cancel)
+
+Recovering from instance 3's anti-stall cancel at the step-7→8 boundary. Verified on main before any further dispatch:
+
+- Step 7 spec committed: `70bbf82 docs(spec): EV-1 design spec — OAuth2 enrollment, seven-state footer, colon command surface` (only `docs/superpowers/specs/2026-08-31-EV-1-design.md`, 321 lines). Read in full — matches the settled design and binding rulings: Q1 (PI_REMOTE_HOST_KEY retired, §1.4), Q2 (seven footer states in lifecycle order, §1.7), Q3 (prose-sync mandate, §1.8), grants (PKCE attended / RFC 8628 unattended, §1.1), RFC 8414 discovery contract (§1.2), settings storage (§1.3), `/rc` behavior (§1.5), command surface (§1.6). Verbatim replacement blocks in §2 (2.1 §7.2, 2.2 §7.4, 2.3 §7.5 row 1, 2.4 §8, 2.5 §9.1 clause) and the post-change gate table G-1…G-13 in §3 match the deliberation's O-1…O-13 gates. No ambiguity found; the owner handoff is the spec itself.
+- Card state `In Progress` on both frontmatter and board (commit `8429003`). 
+- `docs/PI-SPEC.md` on main is still the pre-change text (`/rc-off` at lines 278–279, `PI_REMOTE_HOST_KEY` at 201, `host enrollment key` at 199/244/289) — the implementation (the actual rewrite) is NOT done. Step 8 is the owner's work.
+- **Repo state finding:** local `main` (8429003) is 8 commits ahead of `origin/main` (f45d98d) — the council-record, spec, and In-Progress commits were never pushed. This is expected: those commits reach origin when the owner's PR merges. The stale local branch `ev-1-spec-sync` (8 behind main, never pushed) is leftover from a prior instance; the owner must NOT use it — fresh branch from local main.
+- Environment: gh authenticated (tistaharahap), origin `git@github.com:jumpseat-inc/pi-remote.git` reachable. Seats owner/skeptic/judge resolve from the packaged pi-council agents dir (`/home/tista/codes/pi-council/council/agents/`); no repo-local overrides.
+
+Proceeding to step 8: dispatch owner (45-min ceiling) with the committed spec.
+
+### Step 7 — resume note (instance 3, pre-step-7)
 
 Rulings applied. Q1 fixes O-2's post-change gate form (zero hits for PI_REMOTE_HOST_KEY); Q2 fixes O-7's form (all seven states present in §8: off, not enrolled, authorizing, dialing, resyncing, live, error); Q3 clears §7.5 row 1 + RFC 8414 dependency as in-mandate prose-sync. Proceeding to step 7 (write and commit the design spec), then steps 8–10, then the features-deliver.md deterministic merge check.
