@@ -54,7 +54,18 @@ export interface TunnelHttpDeps {
   /** Clock returning epoch ms (injected for testability). */
   now?: () => number;
   /** Shared per-serverUrl RFC 8414 discovery cache (injected; never module-level). */
-  discoveryCache?: Map<string, Promise<string>>;
+  discoveryCache?: Map<string, Promise<DiscoveryDocument>>;
+}
+
+/**
+ * RFC 8414 discovery document (subset this repo consumes).
+ * `authorizationEndpoint` and `tokenEndpoint` are required contract fields;
+ * `deviceAuthorizationEndpoint` is optional per RFC 8414/8628.
+ */
+export interface DiscoveryDocument {
+  authorizationEndpoint: string;
+  tokenEndpoint: string;
+  deviceAuthorizationEndpoint?: string;
 }
 
 export interface CreateTunnelInput {
@@ -189,17 +200,28 @@ export function isTunnelError(e: unknown): e is TunnelError {
 // RFC 8414 discovery (shared, cached per serverUrl inside injected scope)
 // ---------------------------------------------------------------------------
 
-async function tokenEndpointFor(deps: TunnelHttpDeps): Promise<string> {
-  const cache = deps.discoveryCache ?? new Map<string, Promise<string>>();
+function discoveryUrlFor(serverUrl: string): string {
+  return `${serverUrl}/.well-known/oauth-authorization-server`;
+}
+
+/**
+ * Fetch + cache the RFC 8414 discovery document for the server URL.
+ * Transport/HTTP/parse failures throw `TunnelError("unreachable",
+ * "control_plane_unreachable", …)` and evict the cached entry; a 200 doc is
+ * returned as-is (field-level validity is the caller's job — tunnel keeps
+ * its unreachable mapping, login decides `discovery_invalid`). Shared with
+ * `login.ts` via the injected cache.
+ */
+export async function discoverAuthServer(deps: TunnelHttpDeps): Promise<DiscoveryDocument> {
+  const cache =
+    deps.discoveryCache ?? new Map<string, Promise<DiscoveryDocument>>();
   const existing = cache.get(deps.serverUrl);
   if (existing !== undefined) return existing;
 
   const p = (async () => {
     let res: Response;
     try {
-      res = await deps.fetch(
-        `${deps.serverUrl}/.well-known/oauth-authorization-server`
-      );
+      res = await deps.fetch(discoveryUrlFor(deps.serverUrl));
     } catch {
       throw new TunnelError("unreachable", "control_plane_unreachable", deps.serverUrl);
     }
@@ -207,13 +229,25 @@ async function tokenEndpointFor(deps: TunnelHttpDeps): Promise<string> {
       throw new TunnelError("unreachable", "control_plane_unreachable", deps.serverUrl);
     }
     const doc = (await res.json().catch(() => null)) as {
+      authorization_endpoint?: unknown;
       token_endpoint?: unknown;
+      device_authorization_endpoint?: unknown;
     } | null;
-    const te = doc?.token_endpoint;
-    if (typeof te !== "string") {
+    if (doc === null) {
       throw new TunnelError("unreachable", "control_plane_unreachable", deps.serverUrl);
     }
-    return te;
+    const result: DiscoveryDocument = {
+      authorizationEndpoint:
+        typeof doc.authorization_endpoint === "string"
+          ? doc.authorization_endpoint
+          : "",
+      tokenEndpoint:
+        typeof doc.token_endpoint === "string" ? doc.token_endpoint : "",
+    };
+    if (typeof doc.device_authorization_endpoint === "string") {
+      result.deviceAuthorizationEndpoint = doc.device_authorization_endpoint;
+    }
+    return result;
   })();
 
   cache.set(deps.serverUrl, p);
@@ -320,7 +354,12 @@ export async function refreshAccessToken(
   deps: TunnelHttpDeps
 ): Promise<RefreshTokenResult> {
   const now = deps.now ?? Date.now;
-  const tokenEndpoint = await tokenEndpointFor(deps); // discovery failure → unreachable
+  // Discovery failure always maps to control_plane_unreachable (closed set).
+  const doc = await discoverAuthServer(deps);
+  const tokenEndpoint = doc.tokenEndpoint;
+  if (!tokenEndpoint) {
+    throw new TunnelError("unreachable", "control_plane_unreachable", deps.serverUrl);
+  }
 
   let res: Response;
   try {
