@@ -1,0 +1,15 @@
+node_modules/
+
+# macOS
+.DS_Store
+
+# pi harness + transient state (pi-council, pi-remote)
+.pi/git/
+.pi/council/.pids.json
+.pi/remote/
+# Smoke test run artifacts (dot-dir so bun test never discovers them)
+smoke/.artifacts/*
+!smoke/.artifacts/.gitkeep
+
+# git worktrees (superpowers isolation)
+.worktrees/
