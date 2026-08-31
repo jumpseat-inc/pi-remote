@@ -1,7 +1,7 @@
 ---
 id: EV-1
 title: "Sync PI-SPEC with the /rc:login OAuth2 enrollment design and colon command naming"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: docs/PI-SPEC.md specifies the /rc, /rc:login, and /rc:off command surface with OAuth2-based host enrollment replacing env-var-only setup, covering both attended and unattended login.
@@ -519,6 +519,22 @@ Recovering from instance 3's anti-stall cancel at the step-7→8 boundary. Verif
 - Environment: gh authenticated (tistaharahap), origin `git@github.com:jumpseat-inc/pi-remote.git` reachable. Seats owner/skeptic/judge resolve from the packaged pi-council agents dir (`/home/tista/codes/pi-council/council/agents/`); no repo-local overrides.
 
 Proceeding to step 8: dispatch owner (45-min ceiling) with the committed spec.
+
+### Step 8 — owner implementation (instance 4, job-6.1, summary below)
+
+Owner settled `done` after 44.4 min / 39 turns / $0.099. Worktree
+`.worktrees/ev-1-oauth2-enrollment`, branch `ev-1-oauth2-enrollment`, PR
+**jumpseat-inc/pi-remote#1** OPEN (base `main`, head `ev-1-oauth2-enrollment` at
+`c6ac1c8`). Implementation spliced spec §2.1–§2.5 blocks verbatim into
+`docs/PI-SPEC.md` with character-exact diff checks; plan file
+(2026-08-31-EV-1-implementation.md) rides in the PR. Owner ran G-1…G-13 all
+green (outputs in its report), `bunx tsc --noEmit` exit 0, `bun test` exit 1
+"No tests found!" — recorded as baseline-identical (repo has zero test files;
+`.github/workflows/gates.yml` runs the Test step only when test files exist, so
+CI skips it by design). Facilitator verification of gates and CI status is the
+next action, then skeptic (step 9, 30-min ceiling), judge (step 10), and the
+features-deliver.md deterministic merge check. Card moved `In Review` per step
+8's observed-artifact rule (branch + open PR).
 
 ### Step 7 — resume note (instance 3, pre-step-7)
 
