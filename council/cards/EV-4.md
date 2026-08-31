@@ -1,7 +1,7 @@
 ---
 id: EV-4
 title: "Pure pi-to-AG-UI translation mapper"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: translate.ts maps each documented pi event and JSONL entry kind to the AG-UI frames of spec §4 with no I/O and no socket references, emitting CUSTOM events with pi-prefixed payloads for anything AG-UI cannot express.
