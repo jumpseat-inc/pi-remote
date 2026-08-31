@@ -86,3 +86,25 @@ Exchange hit the ≤3-round cap without full convergence on the resolved-frame W
 Also settled across all three: the latent `forward(ev as PiEvent)` type:/event: cast drop (index.ts:565-569) is a probable live-path bug affecting existing message translation — OUT OF SCOPE for FLLWUP-5, filed as a separate follow-up; the ui_prompt_end wiring must construct the PiEvent manually.
 
 Additional open-judgment-items agreed by all/seats (to be carried by the consolidator): (O1) runtime-observability vs fixture-green for acceptance (b) (raise precondition); (O2) replay-self-sufficiency of the resolved frame (lifecycle-emitted, no JSONL entry, reconnecting client re-sees raise but not resolved); (O3) the resolved-frame wire field set (narrowest item above); (O4) whether future non-singular concurrency / a live resolve API will ever need occurrence/kind on the wire (forward-compat posture).
+
+### Step 4 — Skeptic attacks and runs tests (job-34.10)
+
+Grounded PI-SPEC §4/§5.4/§7.3, translate.ts, inject.ts, index.ts, transport.ts, SDK types.d.ts, test harnesses. Baseline gates closed-green: tsc exit 0; bun test 146 pass / 0 fail.
+
+Probes (all run, real output):
+1. **Occurrence dropped from InjectResult** — closed-green. handleApprovalResponse reads d.occurrence as a lookup key only; returned InjectResult variants carry no occurrence (fact behind the O3 field-set dispute).
+2. **Raise publishes occurrence** — closed-green. index.ts:391-398 stamps f.value.data={...data, occurrence}; EV-8 occurrence-stamp test proves occurrence 1 and 2 on wire frames.
+3. **resolvePendingPrompt is () => false in production** — closed-green. index.ts:608 + inject.ts TEST-ONLY SEAM (R3 Side B); kind "resolved" only fixture-reachable.
+4. **`ev as PiEvent` cast drop** — closed-green AND EXTENDED. Worse than silent: SDK `{type:"ui_prompt_end", kind:"confirm"}` MISROUTES to translateJsonl because JS `"kind" in input` is true, colliding with JsonlEntry's discriminator → produces a WRONG `pi.session.info_change` frame. SDK `{type:"ui.confirm"}` → translateLive default → 0 frames (silent drop).
+5. **Name dispatch collision** — closed-green. §4 name = sole dispatch key; pi.human_input.closed/.resolved distinct names, no collision.
+6. **Purity guard** — closed-green. G-11 static guard; CUSTOM mapping adds no clock/entropy.
+7. **Baseline gates** — closed-green. tsc 0; bun test 146 green.
+8. **Raise premise** — closed-green, CRITICAL. Installed SDK has NO "ui.confirm" event anywhere; ExtensionAPI.on is an exhaustive TYPED interface with no string-generic overload; pi.on("ui.confirm", …) would be a type error at real SDK levels. No deps.on("ui_prompt_start") exists. **The entire raise path is dead in production — registerPrompt is never called live.**
+
+Objections (verdict: blocks — 3 items):
+- **O1 (open-untested):** acceptance (b) is dead-on-arrival in production as scoped. Settling test: the raise precondition was ruled out-of-scope; with no deps.on("ui_prompt_start") + manual construction + registerPrompt wiring, the resolved frame fires in fixtures but can NEVER fire live (registerPrompt never called → every live answer untracked → no resolved). The acceptance's user-visible claim implies runtime-observable; the deliberation ruled the raise out-of-scope. The acceptance criterion must explicitly scope "fixture-green only" or include the raise wiring.
+- **O2 (closed-red):** the `ev as PiEvent` cast is a SYSTEMIC bug affecting ALL event subscriptions (seven of ten), not just ui_prompt_end (probe 4). SDK events keyed type: vs PiEvent event:; structurally incompatible; ALL forward(ev as PiEvent) subscriptions dead-on-arrival in production (only agent_start/agent_settled work, which construct inline). Filed out-of-scope by the council, but it is a precondition for ANY live path including contract (b). Blocking until either (a) all casts replaced with manual construction, or (b) the card acknowledges acceptance (b) is fixture-only and updates the acceptance text.
+- **O3 (closed-red, planned requirement not a design defect):** steered_fallback InjectResult must gain a `tracked: boolean` field before contract (b) can distinguish tracked from untracked fallbacks (probes 1+3). Blocking implementation dependency.
+- **O4 (closed-red):** index.ts local ExtensionAPI.on is `(event: string, …)` while the real SDK's on is an exhaustive typed interface with no generic overload; the pi.on(event,…) bridge passes a generic string to a typed overloaded on — a compile-time error at real type level. The local type hides this.
+
+Skeptic verdict on the design: the two settled contracts (a)/(b) are implementable, but contract (b)'s runtime reachability, the systemic cast bug (O2), and the AcceptanceAPI type gap (O4) are blocking scope/acceptance decisions that require the card to either expand scope (manual construction everywhere + raise wiring) or explicitly scope acceptance (b) to fixture-green.
