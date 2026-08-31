@@ -22,13 +22,13 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Progress
 
-- EV-5 — "JSONL history replay and resync"
-
 ## In Review
 
 ## Needs Human
 
 ## Done
+
+- EV-5 — "JSONL history replay and resync"
 
 - EV-3 — "Outbound wss transport with seq-ack envelope"
 - EV-2 — "Control-plane tunnel REST client"

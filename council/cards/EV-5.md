@@ -1,7 +1,7 @@
 ---
 id: EV-5
 title: "JSONL history replay and resync"
-state: In Progress
+state: Done
 owner: null
 epic: EPIC-1
 goal: history.ts replays the active JSONL branch through translate.ts on connect and on resync, framing the batch with replay true and deterministic event ids derived from entry id plus content hash, then answers with resync_done up to the highest replayed seq.
@@ -173,3 +173,49 @@ delivered:
 > threat model) are portfolio changes and route to steward — they do not ride
 > the implementing card's PR. None of EV-6/EV-7/EV-8/FLLWUP-2 re-litigate A,
 > B1, or B2.
+
+## Step 9 — Skeptic verification (job-20.2, PASS)
+
+Verified at PR #5 head `ab193af8cc0af4c9337f0c3e03ca47559b9bcd04` (worktree
+`.worktrees/ev-5-history`, base `origin/main`). Full gate set re-run:
+`bunx tsc --noEmit` exit 0; `bun test` 62 pass / 0 fail / 425 expect (49 existing
+kept green). Gate integrity verified: injected a broken export → tsc exit 1;
+injected a failing assertion → bun test exit 1; both restored green. All seven
+objection targets closed-green: U1/O1 (one init MESSAGES_SNAPSHOT, zero
+in-stream, CUSTOM compaction only, active-branch-only, replay-twice
+identical); O8/B1 (terminator is CUSTOM `pi.resync.done` with `uptoSeq`, not a
+literal `{type:"resync_done"}`; §1.6 honesty verified); O6/B2/U2 (parseInbound
+4-member union, non-members → protocol_violation, resume watermark-not-onInbound,
+resync fires onResync exactly once); O3/U3 (replay?:boolean frame-level,
+envelope 4 keys, live unaffected); U4 (non-user first-kept-entry doesn't crash,
+runId stable); spec amendments (exactly three, §5.2/§5.3 only, evidence-cited);
+file-touch scope (only the allowed surface).
+
+**Verdict: PASS.** No open objections. No step-9 verify→fix cycles were needed
+(0 of 3 used).
+
+## Step 10 — Judge verdict (job-20.3, PASS)
+
+Framed per the standing step-10 general rule: judge evaluated the PR branch at
+the Skeptic-verified SHA (PR #5 head `ab193af8cc0af4c9337f0c3e03ca47559b9bcd04`,
+not main), with only the card's goal and the Skeptic's step-9 evidence. Verdict
+**PASS**: `history.ts::replayActiveBranch` folds active-branch `JsonlEntry`
+entries through `translate.ts`, framing every frame with `replay:true` and a
+deterministic fnv1a id (entryId+contentHash+ordinal); `onResync` seam fires
+exactly once per inbound `{type:"resync"}`; terminator is CUSTOM
+`pi.resync.done` with uptoSeq = max replayed seq; tsc 0, 62 tests pass; spec
+amendments present. No blocking objection.
+
+## Step 11-12 — Merge gate and reconciliation
+
+Deterministic merge check, all five criteria: (1) owner gates green in full
+(tsc 0, 62 tests); (2) GitHub Actions `gates` workflow **SUCCESS** on PR head
+SHA (already verified pre-merge and re-confirmed); (3) no blocking Skeptic
+objection (PASS); (4) judge verdict PASS; (5) no `Needs Human`/outstanding
+ruling. Merged via `gh pr merge 5 --merge --match-head-commit
+ab193af8cc0af4c9337f0c3e03ca47559b9bcd04` — pinned to the criteria SHA; success.
+Merge commit `14681da`; CI `gates` **success** on the merged SHA
+(`147`-numbered check-run, conclusion success). Local `main` reconciled to the
+merged `origin/main` (the PR carried the doc work through step 6-7 since the
+owner branched from local `main` holding those facilitator commits; the
+step-9/10 records were re-applied here).
