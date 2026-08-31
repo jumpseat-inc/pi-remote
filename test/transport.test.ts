@@ -23,6 +23,7 @@ import {
 } from "../src/transport";
 import type { AgUiFrame } from "../src/translate";
 import type { CreateTunnelResult } from "../src/tunnel";
+import { replayActiveBranch, resyncDoneFrame } from "../src/history";
 
 // ---------------------------------------------------------------------------
 // Fake WS relay (Bun native WebSocket server-side).
@@ -648,5 +649,54 @@ describe("EV-3 outbound wss transport with seq-ack envelope", () => {
 
     f.stop();
     await t.disconnect();
+  });
+
+  test("EV-5 §1.6: no pi.resync.done on the wire when a mid-replay send is dropped (honesty)", async () => {
+    const text = await Bun.file(new URL("./fixtures/two-runs.jsonl", import.meta.url)).text();
+    const entries = text
+      .split("\n")
+      .filter((l) => l.trim() !== "")
+      .map((l) => JSON.parse(l));
+    const { frames, resyncDone } = replayActiveBranch({ sessionId: "sess-X", entries });
+    const term = resyncDoneFrame({ sessionId: "sess-X", uptoSeq: resyncDone.uptoSeq });
+
+    // Happy path: all sends succeed → terminator reaches the wire with uptoSeq == max replayed seq
+    const f1 = startFakeServer();
+    const c1 = collector();
+    const t1 = createTransport(
+      noopDeps({ rearm: async () => ({ tunnelId: "t", url: f1.url, expiresAt: Number.MAX_SAFE_INTEGER }), onEvent: c1.onEvent })
+    );
+    await t1.connect({ url: f1.url, expiresAt: Number.MAX_SAFE_INTEGER });
+    await c1.live;
+    for (const fr of frames) {
+      expect(t1.send(fr as never)).not.toBeNull();
+    }
+    t1.send(term as never);
+    await sleep(20);
+    const sent1 = f1.received.filter(Boolean);
+    const done1 = sent1.filter((e) => (e.frame as { name?: string })?.name === "pi.resync.done");
+    expect(done1).toHaveLength(1);
+    expect((done1[0]!.frame as unknown as { value: { uptoSeq: number } }).value.uptoSeq).toBe(frames.length);
+    f1.stop();
+    await t1.disconnect();
+
+    // Drop path: a mid-replay send drops (not live) → honest loop stops; NO terminator on the wire
+    const f2 = startFakeServer();
+    const c2 = collector();
+    const t2 = createTransport(
+      noopDeps({ rearm: async () => ({ tunnelId: "t", url: f2.url, expiresAt: Number.MAX_SAFE_INTEGER }), onEvent: c2.onEvent })
+    );
+    await t2.connect({ url: f2.url, expiresAt: Number.MAX_SAFE_INTEGER });
+    await c2.live;
+    t2.send(frames[0]! as never); // delivered
+    await t2.disconnect(); // local close → not live → next send drops with a null signal
+    const dropped = t2.send(frames[1]! as never);
+    expect(dropped).toBeNull();
+    // honest loop does not emit the lying resync_done after a mid-replay drop
+    await sleep(10);
+    const sent2 = f2.received.filter(Boolean);
+    expect(sent2.filter((e) => (e.frame as { name?: string })?.name === "pi.resync.done")).toHaveLength(0);
+    f2.stop();
+    await t2.disconnect();
   });
 });

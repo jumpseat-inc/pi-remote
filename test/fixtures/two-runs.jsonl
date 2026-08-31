@@ -1,0 +1,4 @@
+{"kind":"message","entryId":"m1","role":"user","content":[{"type":"text","text":"hello"}]}
+{"kind":"message","entryId":"m2","role":"assistant","content":[{"type":"thought","text":"think"},{"type":"text","text":"hi back"}]}
+{"kind":"message","entryId":"m3","role":"user","content":[{"type":"text","text":"again"}]}
+{"kind":"message","entryId":"m4","role":"assistant","content":[{"type":"text","text":"ok"}]}
