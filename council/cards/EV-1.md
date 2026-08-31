@@ -536,6 +536,51 @@ next action, then skeptic (step 9, 30-min ceiling), judge (step 10), and the
 features-deliver.md deterministic merge check. Card moved `In Review` per step
 8's observed-artifact rule (branch + open PR).
 
+### Step 9 — Skeptic verification at the branch (instance 4, job-6.2)
+
+Skeptic settled `done` in 3.8 min / 14 turns / $0.019. Verdict: **pass — no open
+objections**. Every card-record objection O-1…O-13 closed-green; every design-spec
+gate G-1…G-13 closed-green (actual outputs recorded); `bunx tsc --noEmit` exit 0;
+`bun test` exit 1 "No tests found!" proven byte-identical to pre-change baseline
+(repo has zero test files; CI Test step is conditional) — not a regression. Gate
+integrity verified by injection tests (appending `/rc-off` or
+`PI_REMOTE_HOST_KEY` flips the greps to found; injecting a type error fails tsc) —
+the gates are demonstrably capable of failing. Q2's seven-state set confirmed in
+§8 in exact lifecycle order, resolving O-7/O-11. Diff confined to
+§7.2/§7.4/§7.5(row 1)/§8/§9.1. Full report recorded in the job output.
+
+### Step 10 — Judge verdict (instance 4, job-6.3) + pending ruling
+
+Judge settled `done` in 1.1 min / 10 turns / $0.028. Verdict: **REJECT**, on the
+sole basis that the goal "docs/PI-SPEC.md specifies…" was evaluated against the
+file on `main`, where the PR (#1) is still open and unmerged — not against the
+verified branch. Judge's own words (verbatim): "I've now independently verified
+the card against the evidence… the file as it exists in the repo does not meet
+the goal. … Judging against the actual deployed file (docs/PI-SPEC.md on main),
+the acceptance criteria fail". Judge also confirmed: "The PR #1 at c6ac1c8 does
+implement the goal correctly (Skeptic's core claim is valid for that commit)".
+
+Disposition of this REJECT is an open-judgment dispute, NOT a work defect,
+carried to the orchestrator via the escalation contract:
+- The REJECT's stated basis is the run's own pre-merge sequencing (council.md:
+  step 9 verifies at the branch → step 10 judge → step 11 merge gate → step 12
+  Done on the merged SHA). The change reaches `main` only via the merge gate,
+  which follows the judge by construction in both the attended loop and the
+  features-deliver.md deterministic check (criterion 4 requires judge PASS
+  before merge; `Done` per step 12 requires the merged SHA).
+- The basis is not addressable by the owner: the owner never merges, the
+  delimiter between implementation and merge is the deterministic check, and no
+  owner work product changes the fact that the PR is pre-merge at step 10.
+  Mechanical step-10 handling (return to In Progress, hand basis to owner)
+  would deadlock the card: nothing to fix, judge would REJECT again on the same
+  merge-state grounds, and the step-9 verify cycle cap (3 per card) would burn
+  on a non-defect.
+- No Phase 1 ruling covers the question "what object does the judge's stop
+  condition measure — the verified branch or current main". Q1/Q2/Q3 ruled on
+  design content only.
+- Card left `In Review` pending the ruling; the record is the durable state.
+  One Skeptic step-9 verification used so far (cycle 1/3).
+
 ### Step 7 — resume note (instance 3, pre-step-7)
 
 Rulings applied. Q1 fixes O-2's post-change gate form (zero hits for PI_REMOTE_HOST_KEY); Q2 fixes O-7's form (all seven states present in §8: off, not enrolled, authorizing, dialing, resyncing, live, error); Q3 clears §7.5 row 1 + RFC 8414 dependency as in-mandate prose-sync. Proceeding to step 7 (write and commit the design spec), then steps 8–10, then the features-deliver.md deterministic merge check.
