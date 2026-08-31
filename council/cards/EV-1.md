@@ -251,3 +251,171 @@ No content dispute exists — all three seats converged on the same model: leake
 Three rounds complete; cap reached. Converged: attended = PKCE loopback (RFC 7636/8252); unattended = RFC 8628 device flow; endpoints = RFC 8414 discovery (authorization_endpoint, token_endpoint, device_authorization_endpoint required), both grants + refresh via token_endpoint grant_type (no separate POST /refresh), optional revocation_endpoint; POST /tunnels Bearer-authenticated with access token; storage = settings (user-only readability; serverUrl/accessToken/refreshToken/tokenExpiry); env at most a documented override; credentials never via env as Bearer; /rc unenrolled refuses and points to /rc:login (never inline OAuth), footer states off/not enrolled/authorizing/dialing/live/error; §7.4/§9.1 "host enrollment key" prose synced to access/refresh-token language (blast radius preserved); designer's provisioning-key boot-time exchange and POST /refresh rejected as out-of-scope/nonstandard; trust-model escalation note withdrawn by designer (no content dispute).
 
 Residual open judgment after cap: **env-var override semantics for PI_REMOTE_HOST_KEY** — owner (round 3): document it exactly once as a pre-issued long-lived enrollment credential, consumed via the standard token_endpoint refresh grant; principal (round 3): retire entirely — only PI_REMOTE_SERVER_URL as env override; designer (round 3): retire entirely. 1v2 split; not settled by any test. Carried to consolidation.
+
+### Step 4 — Skeptic attacks and runs tests (job-3.10, verbatim report)
+
+---
+
+Here is the Skeptic report.
+
+## Objections
+
+### O-1: `/rc-off` has not been removed from the spec
+
+- **Claim (owner/principal/designer, every round):** Post-change, `grep -n 'rc-off' docs/PI-SPEC.md` returns zero matches.
+- **Settling test:** `grep -n 'rc-off' /home/tista/codes/pi-remote/docs/PI-SPEC.md`
+- **Run output:**
+```
+PI-SPEC.md:278: | `/rc-off` | Close the WS, notify the control plane (`DELETE /tunnels/:id`), discard token state. Idempotent. |
+PI-SPEC.md:279: | `session_shutdown` handler | Tear down the tunnel for **every** shutdown reason (`quit`, `reload`, `new`, `resume`, `fork`) — exiting without `/rc-off` must not leave a live tunnel. Idempotent with `/rc-off`. |
+```
+- **Status:** `closed-red` — the current spec has 2 occurrences including the command table and the session_shutdown prose. Acceptance criterion §1 ("§8 command table lists `/rc`, `/rc:login`, and `/rc:off` with no `/rc-off` anywhere in the doc") fails on the current text.
+- **Gate check available:** inject `rc-off` into the final doc, run the same grep, confirm it goes red → remove it, confirm green. This check is runnable at step 9.
+
+### O-2: `PI_REMOTE_HOST_KEY` is the primary path, not an override
+
+- **Claim (owner):** `PI_REMOTE_HOST_KEY` ≤1 hit, inside §7.2 override, settings-based sentence precedes env-override sentence. (Principal/designer: retire entirely.)
+- **Settling test:** `grep -n 'PI_REMOTE_HOST_KEY' /home/tista/codes/pi-remote/docs/PI-SPEC.md`
+- **Run output:**
+```
+PI-SPEC.md:201:   settings (`PI_REMOTE_SERVER_URL` + `PI_REMOTE_HOST_KEY` env vars, or the
+```
+  Additionally, `grep -n 'host enrollment key'` yields:
+```
+PI-SPEC.md:199: - One-time setup: the user configures a **host enrollment key** — a
+PI-SPEC.md:244: | Host (extension) | host enrollment key | create tunnels, dial out, translate, inject |
+PI-SPEC.md:289:    long-lived host enrollment key used to request tunnels. This avoids the
+```
+- **Status:** `closed-red` — the current §7.2 prose *opens* with "the user configures a host enrollment key" and env vars are the *first* option. This is the opposite of "settings-based sentence precedes env-override sentence". The trust table (§7.4) and design rationale (§9.1) also use "host enrollment key" — both must be synced to access/refresh-token language.
+- **Gate check:** After rewrite, (1) `grep -n 'PI_REMOTE_HOST_KEY' docs/PI-SPEC.md` must return ≤1 hit and that hit must be inside §7.2 override subsection. (2) `sed -n '/^### 7\.2/,/^###/{ /^|.*host enrollment key/ p }'` must yield zero. (3) The line containing `PI_REMOTE_HOST_KEY` must be *after* the settings-based enrollment sentence. If principal/designer's "retire entirely" position is adopted, `PI_REMOTE_HOST_KEY` has zero hits and `PI_REMOTE_SERVER_URL` is the only env override. Run all three at step 9.
+
+### O-3: `Bearer` token auth for `POST /tunnels` is absent from the current spec
+
+- **Claim (every seat):** `POST /tunnels` is authenticated with `Authorization: Bearer <access_token>` (not the raw host key).
+- **Settling test:** `grep -n 'Bearer' /home/tista/codes/pi-remote/docs/PI-SPEC.md`
+- **Run output:**
+```
+(no matches)
+```
+- **Status:** `closed-red` — current §7.2 says "POST /tunnels to the control plane with the host key". The token is the host key itself, not a Bearer access token. This is the pre-change state the card exists to fix.
+- **Post-change gate:** `grep -n 'Bearer' docs/PI-SPEC.md` returns ≥1 hit inside §7.2 describing `Authorization: Bearer <access_token>` for `POST /tunnels`. `grep -n 'host key' docs/PI-SPEC.md` returns zero inside §7.2 tunnel-create description.
+
+### O-4: Protocol fact-check — RFC 6749 §6 refresh endpoint
+
+- **Claim (principal, correct; designer round-1, incorrect):** Refresh is `grant_type=refresh_token` at `token_endpoint`, NOT a separate `POST /refresh` endpoint.
+- **Settling test:** Read RFC 6749 §6. I failed to reach `datatracker.ietf.org` due to Tavily country validation errors, but I can ground this from my training data: RFC 6749 §6 says *"The client makes a refresh request to the **token endpoint**..."* with parameters `grant_type=refresh_token` and `refresh_token`. No separate endpoint.
+- **Status:** `closed-green` — the settled design correctly pins `grant_type=refresh_token` at `token_endpoint`. Designer's round-1 claim of a separate `/refresh` endpoint was nonstandard and was correctly conceded in round 2. The post-change spec must NOT contain `POST /refresh`.
+- **Gate:** `grep -in 'post.*/refresh' docs/PI-SPEC.md` → exit 1 post-change. If it returns a hit, the spec contains a nonstandard endpoint contract.
+
+### O-5: Protocol fact-check — RFC 8414 `device_authorization_endpoint` REQUIRED vs OPTIONAL
+
+- **Claim (principal round 1):** The spec contract must list `device_authorization_endpoint` as REQUIRED; "an implementation reading only `authorization_endpoint` cannot compile against the contract."
+- **Settling test:** Read RFC 8414 §2 / §3. I know from training data that `device_authorization_endpoint` is an **OPTIONAL** field in RFC 8414 (it was introduced by RFC 8628 §4 as an extension). The REQUIRED fields per RFC 8414 are: `issuer`, `authorization_endpoint`, `token_endpoint`, `jwks_uri`, `scopes_supported`, `response_types_supported`, `response_modes_supported`, `grant_types_supported`, `token_endpoint_auth_methods_supported`.
+- **Status:** `closed-green` with a qualifier — the principal's claim about RFC 8414's own REQUIRED/OPTIONAL classification is technically imprecise (the field is OPTIONAL in the RFC). HOWEVER, the **settled design** correctly resolved this by specifying in the spec's contract that `device_authorization_endpoint` is REQUIRED **in the spec's contract**, extending RFC 8414. This is a valid design choice (stricter requirements than the RFC baseline). The post-change spec must state this as a required contract field.
+- **Gate:** `grep -n 'device_authorization_endpoint' docs/PI-SPEC.md` returns ≥1 hit, in the control-plane endpoints contract, stating it as REQUIRED.
+
+### O-6: OAuth2/ PKCE / device-code terminology absent from current spec
+
+- **Claim (all seats):** The post-change spec defines PKCE loopback (attended) and RFC 8628 device flow (unattended) with the full endpoint contract.
+- **Settling test:** `grep -inE 'authorization_code|PKCE|device_code|S256|code_challenge|authorization_endpoint|token_endpoint|device_authorization_endpoint|grant_type|urn:ietf' /home/tista/codes/pi-remote/docs/PI-SPEC.md`
+- **Run output:**
+```
+(no matches)
+```
+- **Status:** `closed-red` — zero OAuth2 terminology exists in the current spec. The entire §7.2 host enrollment section must be rewritten to pin PKCE, device flow, RFC 8414 discovery, and the endpoint contract.
+- **Post-change gate:** At minimum 3 of the following terms found in §7.2: `authorization_code`, `PKCE`, `code_challenge`, `device_authorization_endpoint`, `device_code`, `grant_type=refresh_token`, `RFC 8414`, `token_endpoint`. Run at step 9.
+
+### O-7: Footer state machine is incomplete in current spec vs settled design
+
+- **Claim (designer, accepted in outcome):** Six states: `off`, `not enrolled` (distinct from off), `authorizing`, `dialing`, `live`, `error`.
+- **Settling test:** `grep -n 'not enrolled\|authorizing\|error' /home/tista/codes/pi-remote/docs/PI-SPEC.md`
+- **Run output:**
+```
+(no matches)
+```
+- **Status:** `closed-red` — current §8 footer states are `off` / `dialing` / `live` / `resyncing`. Missing: `not enrolled`, `authorizing`, `error`. Also: EV-8.md (downstream card written before EV-1 lands) still lists `off` / `dialing` / `live` / `resyncing` — this is a cross-seam gap EV-8 must resolve, but EV-1 must first define the correct set. EV-1 also needs to decide: is `resyncing` a state (current spec), or is it absent from the settled design (not listed in EV-1.md outcome states)? The outcome lists six states without `resyncing` — this is a SECOND cross-seam gap: either `resyncing` belongs (EV-8's current text) or the outcome merged it into "error+"* or it's a seventh state that both missed. **I flag this as an unresolved inconsistency in the settled design: six states from deliberation's outcome vs four states from EV-8's current text, no resolution recorded.**
+- **Gate:** Post-change, the six states listed in §8 footer description must be exactly: `off`, `not enrolled`, `authorizing`, `dialing`, `live`, `error`. If `resyncing` is to be retained, it must be an explicit seventh state. Run `grep -nE 'not enrolled|authorizing|error' docs/PI-SPEC.md` at step 9 and confirm ≥1 instance each.
+
+### O-8: `rc:login` command name absent from current spec
+
+- **Claim (every seat):** `/rc:login` is the enrollment command, named as remedy in every rejection path.
+- **Settling test:** `grep -n 'rc:login' /home/tista/codes/pi-remote/docs/PI-SPEC.md`
+- **Run output:**
+```
+(no matches)
+```
+- **Status:** `closed-red` — `/rc:login` does not exist in the current spec's command surface at all. The only commands are `/rc` and `/rc-off`. Post-change, §8 must list `/rc`, `/rc:login`, `/rc:off`.
+- **Gate:** `grep -n '/rc:login' docs/PI-SPEC.md` → ≥1 hit. Also: `grep -n '/rc-off' docs/PI-SPEC.md` → 0 hits.
+
+### O-9: `POST /tunnels` currently uses the host key, not a Bearer token
+
+- **Claim (owner/principal/designer, all rounds):** Post-change, `POST /tunnels` is authenticated with `Authorization: Bearer <access_token>`.
+- **Settling test:** `grep -n 'POST /tunnels' -A3 /home/tista/codes/pi-remote/docs/PI-SPEC.md`
+- **Run output:**
+```
+PI-SPEC.md:207:   1. Extension `POST /tunnels` to the control plane with the host key,
+```
+- **Status:** `closed-red` — current spec says "with the host key". Post-change must say "with Authorization: Bearer <access_token>".
+- **Gate:** After rewrite, `sed -n '/^1.*POST \/tunnels/,/^2/p' docs/PI-SPEC.md` must contain "Bearer" and must NOT contain "host key" in the context of tunnel-create authentication.
+
+### O-10: Unenrolled `/rc` behavior is not defined in current spec
+
+- **Claim (every seat):** `/rc` with no credential refuses to dial, outputs "run `/rc:login`", footer shows "not enrolled".
+- **Settling test:** Read §8 current behavior for `/rc`:
+  > "Ensure settings exist (prompt once for server URL / enrollment key if missing)"
+- **Status:** `closed-red` — current spec says `"prompt once for server URL / enrollment key if missing"`, which is inline prompting (conflating enrollment with tunnel creation). The settled design requires refusal + pointer to `/rc:login`, no inline prompt. Post-change, the `/rc` row must read something like: "Refuse to dial if not enrolled; output names run `/rc:login`; footer state `not enrolled`. Idempotent."
+- **Gate:** `grep -n 'inline\|prompt.*once\|enrollment key if missing' docs/PI-SPEC.md` → zero mentions of inline setup in `/rc` behavior post-change.
+
+### O-11: Downstream card EV-8.md has pre-settlement footer state inconsistency
+
+- **Claim (cross-seam, my finding):** EV-8.md's footer status set (`off` / `dialing` / `live` / `resyncing`) is missing `not enrolled`, `authorizing`, `error` relative to the settled design's six-state set. EV-8.md also says `/rc` "prompts once for a control-plane URL if unset" — potentially conflating config-with no-credential prompts — which EV-1 must resolve by defining `/rc`'s precise behavior with unset server URL vs missing credential.
+- **Settling test:** `grep -c 'not enrolled\|authorizing\|error' /home/tista/codes/pi-remote/council/cards/EV-8.md`
+- **Run output:**
+```
+0
+```
+- **Status:** `open-untested` — this is a cross-seam finding, not a claim from any seat. EV-1 does not need to fix EV-8.md, but EV-1 must define the footer state set unambiguously so EV-8 can be updated. I flag this as a **gap in the settled design record**: the six-state set (`off`, `not enrolled`, `authorizing`, `dialing`, `live`, `error`) was adopted by the deliberation, but the outcome text does not explicitly reconcile it with EV-8's existing four-state set (`off`, `dialing`, `live`, `resyncing`). EV-1's post-change spec must be the authoritative source that resolves this.
+
+### O-12: `src/` directory does not exist; claims about implementation are untestable
+
+- **Claim (owner round 1):** "token exchange lands in `tunnel.ts`; `grep -n 'fetch(' src/transport.ts` stays empty". (Designer round 3: `grep -RIn 'process.env' src/` returns no host-key/token/Bearer references.)
+- **Settling test:** `ls /home/tista/codes/pi-remote/src/`
+- **Run output:**
+```
+ls: cannot access '/home/tista/codes/pi-remote/src/': No such file or directory
+```
+- **Status:** `closed-red` — no `src/` directory exists. These claims cannot be tested because the code doesn't exist yet. This is not a failure of EV-1 (which is docs-only) — it just means these claims are **premature**. They become testable after EV-2/EV-3/EV-7 are implemented. I note that the settled design correctly keeps EV-1 as "docs only" — the seat claims about implementation are out-of-scope for this card and should not be treated as EV-1 acceptance criteria.
+
+### O-13: `PI_REMOTE_HOST_KEY` also exists outside `docs/PI-SPEC.md` — README.md line 93
+
+- **Claim (owner round 2, correct):** `README.md:93` is the only repo-wide `PI_REMOTE_HOST_KEY` hit outside `docs/` and is "pre-flagged stale".
+- **Settling test:** `grep -n 'PI_REMOTE_HOST_KEY' /home/tista/codes/pi-remote/README.md`
+- **Run output:**
+```
+README.md:93: key (`PI_REMOTE_SERVER_URL`, `PI_REMOTE_HOST_KEY`).
+```
+- **Status:** `closed-green` — only one hit in README, correctly flagged as out-of-scope for EV-1. Not a block. The EV-1.md deliberation record correctly states this is a candidate follow-up, not scope creep.
+
+---
+
+## What I ran
+
+(Commands table: greps on docs/PI-SPEC.md, README.md, council/cards/EV-2.md, EV-7.md, EV-8.md; `ls src/`; reads of EV-2/EV-7/EV-8 fully and README lines 68–100.)
+
+## Verdict
+
+**No open objections** that the card is documentable — the deliberation produced a coherent design. However, **I block on the following items that are NOT yet resolved in the settled design record**:
+
+1. **O-7 / O-11 — Footer state set is unresolved between the deliberation's six-state set (`off`, `not enrolled`, `authorizing`, `dialing`, `live`, `error`) and EV-8's current four-state set (`off`, `dialing`, `live`, `resyncing`).** The EV-1.md outcome did not explicitly resolve whether `resyncing` is a seventh state or the settled design merged it into the `error`+ states. EV-1 must define the definitive footer state set unambiguously in §8 so EV-8 can sync.
+
+2. **O-2 — Residual open judgment on `PI_REMOTE_HOST_KEY` is not a block for EV-1 (it's carried to consolidation per the outcome),** BUT the post-change spec must clearly state whichever position is adopted. If owner's position (present ≤1 as override, consumed via refresh grant at token_endpoint) is adopted, the spec must define that contract surface. If principal/designer's position (retired entirely) is adopted, `PI_REMOTE_HOST_KEY` has zero hits. Either way, the `grep` gates in O-2 will decide which path was taken.
+
+3. **All pre-change tests are `closed-red`** as expected — the current spec is the old design. All post-change gates are `open-untested` and must be run against the rewritten spec at step 9. The settling commands are stated in each objection's gate clause.
+
+**Final verdict:** `blocks` — unresolved footer-state inconsistency between EV-1 settled outcome (six states) and EV-8 existing text (four states, including `resyncing` which is absent from the outcome). EV-1's §8 must explicitly enumerate the exact state set and force EV-8 to reconcile. Without this, EV-1 is coherent in isolation but leaves a downstream card referencing a contradictory state set.
+
+---
+
+### Step 4 outcome
+
+Skeptic verdict: **blocks**. Block reason: footer state set — settled six states (off, not enrolled, authorizing, dialing, live, error) vs EV-8/current-§8 four states (off, dialing, live, resyncing); `resyncing` never discussed by any seat; EV-1 must define the authoritative state set. All pre-change greps closed-red as expected (current spec = old design); all post-change gates (per-objection) open-untested, to run at step 9. O-4 (refresh at token_endpoint) and O-5 (RFC 8414 device_authorization_endpoint OPTIONAL in RFC, spec may require it — stricter contract valid) closed-green. O-12: implementation claims premature (no src/), out of EV-1 scope. O-13: README:93 single stale hit, follow-up candidate.
