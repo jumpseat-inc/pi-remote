@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-2
 title: "Reconcile EV-8 card text with the seven-state footer set"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: council/cards/EV-8.md carries the authoritative seven-state footer set from spec §8 (off, not enrolled, authorizing, dialing, resyncing, live, error) before the EV-8 runner deliberates.
