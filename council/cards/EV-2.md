@@ -149,3 +149,21 @@ Objections:
 **Confirmations:** PI_REMOTE_HOST_KEY zero matches in docs confirmed; seven footer states confirmed at §8.326–327; no separate /refresh confirmed at §7.2.233.
 
 Follow-up candidate surfaced: none new beyond the §3 line fix (folds into EV-2's PR as an amendment, not a separate card).
+
+## Step 5 — Synthesis (consolidator, job-12.8, verbatim)
+
+**SETTLED** — stateless REST client (createTunnel/refreshAccessToken/deleteTunnel + TunnelError kind + pure reason→{footerState,userLine,severity} map); fetch-only in tunnel.ts / WebSocket-only in transport.ts; setStatus call in EV-8, vocabulary map in tunnel.ts; idempotency guard in EV-8 keyed on "live" (not "ever created"); one-silent-refresh split mechanism(tunnel.ts)/policy-cap(EV-8), no auto-refresh inside create, terminal 401; token-discard boundary (enrollment credential survives); best-effort DELETE; English copy; single-use re-arm = EV-3/EV-8 follow-up not EV-2 blocker; discovery per serverUrl. Settled disputes: O4 closed-green (token-discard), O5 closed-green (pre-emptive refresh), protocol facts via MCP; **O1 closed-red classified as in-scope prose-sync for EV-2** — §3 line 74 fix rides the EV-2 PR per EV-4 Q1 precedent (EV-2 implements tunnel.ts and depends on a correct §3 module rule), no ruling needed.
+
+**OPEN JUDGMENT (for product-owner, escalating to steward; no test settles):**
+1. **403 remedy line + "rejected credential" reading** (BLOCKER — gates O3): does "rejected credential" literally include 403 (valid-but-insufficient-scope)? All three seats agree 403 = distinct `forbidden` kind, not collapsed with 401. Reading A (principal): 403 names /rc:login ONLY. Reading B (owner+designer): /rc:login AND a distinct "ask control-plane admin to grant scope" line. RFC 6750 §3: 401 invalid/revoked vs 403 valid-but-insufficient-scope.
+2. **i18n seam**: literal English strings now (owner) vs key-based reason→message table for future en→id (designer). User-visible copy-language shape.
+3. **already_live ack density**: sentence line vs single-char ack (brand/feedback, not mechanism).
+4. **Footer-merge policy**: highest-severity vs most-recent wins — EV-8's policy; tunnel.ts only tags severity.
+
+**OPEN OBJECTIONS (post-change gates, step 9):** O2 tokenExpiry absolute timestamp (`now + expires_in*1000`, not raw relative); O3 403 copy per the ruling (BLOCKED by open judgment #1); O6 refresh-rotation persistence seam (return-then-persist vs callback); O7 discovery cache not module-level state in tunnel.ts.
+
+**Recommendation:** route all four open-judgment items to product-owner; #1 is the blocker for full closure (gates O3); the §3 amendment is settled in-scope prose-sync, no ruling needed.
+
+## Step 6 — routing (facilitator)
+
+No Phase 1 rulings exist (human delegated all open-judgment calls). Per the escalation contract, `product-owner`/`steward` are ruling seats dispatched by the orchestrator, not this container. Open-judgment items 1–4 above carry forward to the orchestrator via ESCALATION with facts only. Card remains `Deliberating` awaiting the ruling before steps 7–14 can proceed.
