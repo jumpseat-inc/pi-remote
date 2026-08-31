@@ -10,7 +10,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 
-- EV-1 — "Sync PI-SPEC with the /rc:login OAuth2 enrollment design and colon command naming"
 - EV-2 — "Control-plane tunnel REST client"
 - EV-3 — "Outbound wss transport with seq-ack envelope"
 - EV-4 — "Pure pi-to-AG-UI translation mapper"
@@ -20,6 +19,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - EV-8 — "Command surface and lifecycle wiring"
 
 ## Deliberating
+
+- EV-1 — "Sync PI-SPEC with the /rc:login OAuth2 enrollment design and colon command naming"
 
 ## In Progress
 
