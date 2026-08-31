@@ -1,7 +1,7 @@
 ---
 id: EV-7
 title: "/rc:login OAuth2 enrollment command"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: Running /rc:login provisions working enrollment credentials for the configured control plane without env vars, in both an attended mode with a browser present and an unattended headless mode, and /rc thereafter creates tunnels with no further setup.
@@ -150,5 +150,9 @@ The orchestrator dispatched `product-owner`; it ruled on all three escalated ite
 - **General rule for EV-8 / FLLWUP-2 (binding):** (1) no glyph acks — every state change resolved via `loginEnglishFor`; missing line → escalate, never raw strings; (2) no bypass of `loginEnglishFor`; (3) replacement-prompt gate at the driver, not the command handler (EV-8 passes mode into the driver); (4) EV-8 emits authorizing on driver begin → off on terminal; success→idle is FLLWUP-2's reconciliation; (5) no second copy vocabulary for /rc:login. FLLWUP-2 reconciles EV-8 card text to the seven-state set per EV-1 Q2; do not re-litigate EV-1 Q2.
 
 Following the rulings, the spec at `docs/superpowers/specs/2026-08-31-EV-7-design.md` reconciles B1 (discoveryCache type → `Map<string, Promise<DiscoveryDocument>>`, single cache) and B2 (designer's canonical 28-row table as single source of truth; 13-row failure set; per-row tail invariant) and applies J1/J2/J3 (§1.1–§1.3).
+
+### Step 9 — Skeptic verification (job-28.2; PR #7, head f2a249ad; real probes run)
+
+All 13 probes **closed-green**, no open objections, no red: tsc exit 0; `bun test` 113 pass / 0 fail (730 expect) — 85 original + 28 new; static greps clean; import smoke clean; PI-SPEC diff confined to §7.2/§8 (2 hunks); TunnelReason closed set intact. Binding ruling-gates all green: **J3** mode-0600 gate, **J2** pre-request prompt gate (attended prompt before any endpoint request via request log; headless exempt; Ctrl-C once + zero POST after signal), **J1** tenant display conditional. Open-untested notices closed: PKCE ≥43-char, device-endpoint-optional, dedicated refresh discovery-failure. Gate integrity confirmed by injected-defect probe. **Verdict: PASSES (no blocks).**
 
 ---

@@ -22,9 +22,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Progress
 
-- EV-7 — "/rc:login OAuth2 enrollment command"
-
 ## In Review
+
+- EV-7 — "/rc:login OAuth2 enrollment command"
 
 ## Needs Human
 
