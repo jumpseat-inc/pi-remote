@@ -12,7 +12,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 
-- EV-8 — "Command surface and lifecycle wiring"
 - FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
 - FLLWUP-5 — "Emit pi.human_input.resolved host-side completion event"
 - FLLWUP-6 — "Remove or document the dead user_input PiEvent in translate.ts"
@@ -20,6 +19,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
+- EV-8 — "Command surface and lifecycle wiring"
 ## In Progress
 
 ## In Review
