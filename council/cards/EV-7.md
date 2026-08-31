@@ -97,3 +97,18 @@ Full council + surface-touching (user-visible `/rc:login` terminal copy; open de
 2. **Tenant display in success line** (designer + owner, product-shape, open-judgment).
 3. **Re-run while enrolled: confirm vs silent replace** (designer + owner, open-judgment).
 4. **POSIX-0600-only vs Windows ACL for "user-only readability"** (principal, open-judgment).
+
+### Step 4 — Skeptic attack (job-26.7; real probes run, 85 tests + tsc green)
+
+**Settled/clarified (closed-green or clarified):**
+- Discovery-refactor constraint is REAL: refreshAccessToken→tokenEndpointFor maps all discovery-failure modes (network, 404, missing token_endpoint) → `control_plane_unreachable`. The closed-set test at tunnel.test.ts:357-363 is a real gate (injecting `discovery_invalid` → 1 test red). The two-vocabulary plan (TunnelReason closed, login carries `discovery_invalid`) is necessary. **BUT the record's locus claim was imprecise**: tunnel.test.ts:223 is `createTunnel`'s network-failure test, NOT a discovery test; discovery failure currently has NO dedicated test (should be added).
+- PKCE: 32 bytes of random → 43 base64url chars = RFC 7636 §4.1 minimum; 31 bytes → 42 chars = violation. Implementer must guarantee ≥43 chars.
+- `device_authorization_endpoint` is OPTIONAL per RFC 8414/8628 — design handles by failing headless with `discovery_invalid`; must distinguish "missing optional field" from "discovery unreachable".
+
+**BLOCKING objections (closed-red, internal inconsistency) — must reconcile in the spec before owner implements:**
+- **Objection 3: `discoveryCache` type is incompatible with the refactor.** Current `Map<string, Promise<string>>` at src/tunnel.ts:56 cannot hold the multi-field `discoverAuthServer` result. Design must specify the cache type change or a second cache before implementation.
+- **Objection 2: copy invariant is three/four-way, not two-way.** The consensus summary's "every failure ends 'no credentials were saved.' or 'run /rc:login'" does not match the designer's canonical table: `unreachable` ends "check your network and try again.", `discoveryInvalid` ends "check the URL with your control-plane admin.", `invalidTokenResponse` ends "ask your control-plane admin." and has "No credentials were saved" mid-sentence; `timedOut` has it mid-sentence too. Consensus summary and canonical table must be reconciled; the invariant test must match the actual table (contains, not ends-with).
+
+**Open-untested (implementation-phase notices):** PKCE ≤43-char guard test; device-endpoint-optional handling; dedicated refreshAccessToken-with-discovery-failure test; invariant regex must be "contains" not "ends-with" for some rows.
+
+**Verdict:** gate integrity fine (bun test catches set expansion; tsc alone does not — a note, not a block). Two blocks to resolve in the spec, then open-untested notices for the owner's implementation.
