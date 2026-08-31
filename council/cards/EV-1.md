@@ -584,3 +584,21 @@ carried to the orchestrator via the escalation contract:
 ### Step 7 — resume note (instance 3, pre-step-7)
 
 Rulings applied. Q1 fixes O-2's post-change gate form (zero hits for PI_REMOTE_HOST_KEY); Q2 fixes O-7's form (all seven states present in §8: off, not enrolled, authorizing, dialing, resyncing, live, error); Q3 clears §7.5 row 1 + RFC 8414 dependency as in-mandate prose-sync. Proceeding to step 7 (write and commit the design spec), then steps 8–10, then the features-deliver.md deterministic merge check.
+
+### Step 10 — resume note (instance 5): judge re-dispatch per product-owner ruling
+
+Judge REJECT (job-6.3) escalated to the orchestrator. Product-owner ruled on the step-10 stop-condition object; the ruling is binding and appended verbatim:
+
+---
+
+# Ruling — step-10 judge object (product-owner, binding)
+
+**Ruling** — The judge at step 10 evaluates the implementation on the PR branch at the SHA the Skeptic verified, not main. EV-1's REJECT (job-6.3) is vacated as a procedural misapplication of the stop condition. Re-dispatch the judge with explicit framing naming PR jumpseat-inc/pi-remote#1, head SHA c6ac1c87d40f086d6eabdd0b47e33e87b7004ee4, and the object (\"the implementation on the PR branch at that SHA, not main\"). The card stays In Review; it does not return to In Progress; the step-9 verify-cycle counter is not consumed; no owner work cycle is owed. Once the re-judging returns a verdict on the correct object, the features-deliver.md deterministic merge check proceeds — criteria 1, 2, 3 already hold; criterion 4 becomes decidable; criterion 5 is satisfied by this ruling. Full ruling document at vault/raw/2026-08-31-po-ev1-step10-judge-object.md.
+
+**General rule for the remainder of this run** — Every card reaching step 10 with its change on an unmerged branch faces the same shape. Applied uniformly: (1) the judge's stop condition is the PR branch at the Skeptic-verified SHA, not main; (2) a REJECT whose stated basis is the pre-merge state of the target file on main is vacated and re-dispatched against the correct object — the card does not return to In Progress, the verify-cycle counter does not increment, no owner work cycle is owed; (3) the re-dispatch input explicitly names PR number, head SHA, and the object (\"the implementation on the PR branch at <SHA>, not main\") — cheap insurance against the same misframing recurring on the next card, since judge dispatches are stateless; (4) a REJECT that survives correct-object re-framing is a real REJECT and follows council.md step 10's normal branch (return to In Progress, basis to owner, verify-cycle counter increments on the next step-9 cycle). This rule is not card-specific and does not require a separate ruling per card; cite vault/raw/2026-08-31-po-ev1-step10-judge-object.md in step-10 dispatches when needed.
+
+---
+
+**Execution per the ruling:** judge re-dispatched (job-8.1) against the correct object — PR jumpseat-inc/pi-remote#1 at head SHA c6ac1c87d40f086d6eabdd0b47e33e87b7004ee4, with the card goal, the Skeptic step-9 evidence, and the explicit object statement \"the implementation on the PR branch at that SHA, not main\". Card stays `In Review`; no step-9 counter consumption; no owner work cycle.
+
+Judge job-8.1 settled `done` in 1.1 min / 19 turns / $0.0419. Verdict: **PASS** on the correct object. Judge's own verification: §8 command table lists exactly `/rc`, `/rc:login`, `/rc:off`; injection tests confirm `grep '/rc-off'` and `grep 'PI_REMOTE_HOST_KEY'` return 0; §7.2 settings-based OAuth2 enrollment („never a static key, never an environment variable“), `PI_REMOTE_SERVER_URL` the sole documented env override; attended PKCE + unattended RFC 8628 device flow both specified with `authorization_endpoint`/`token_endpoint`/`device_authorization_endpoint` as required contract fields; §7.3 byte-identical between main and branch, §4–§6 outside the diff hunks; diff confined to §7.2/§7.4/§7.5(row 1)/§8/§9.1; `bunx tsc --noEmit` exit 0. Deterministic merge check: criteria 1 (owner gates green, recorded), 2 (`gates` workflow SUCCESS on head SHA — facilitator-verified via `gh pr checks 1 --json name,state,workflow`), 3 (no blocking Skeptic objection), 4 (judge PASS), 5 (no Needs Human / no outstanding ruling) all hold. Proceeding to the merge pinned to the criteria SHA c6ac1c87d40f086d6eabdd0b47e33e87b7004ee4."}]
