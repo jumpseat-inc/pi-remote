@@ -111,3 +111,21 @@ Designer round 2: stands on round-1 with 2 corrections + 1 clarification. ACCEPT
 ### Round outcome (facilitator record)
 
 Exchange stopped after 2 rounds; positions stabilized (≤3 cap not reached by design — no 3rd round run because the two residuals are not closable by further persuasion). CONVERGED across all three: CUSTOM shape {type:"CUSTOM", name:"pi.<category>", value:{pi:<raw event>, data:<semantic>}} with name the sole dispatch key; stepName="turn" constant; runId fresh-UUID-live / EV-5-derived-replay, never minted by translate; parentMessageId on TOOL_CALL_START; TOOL_CALL_ARGS.delta = JSON.stringify(args) never partialResult; per-content-block thinking messageId; pure fold signature with no I/O + lint/grep guard; TOOL_CALL_RESULT from toolResult message in assistant source order. TWO residuals routed forward: (A) tool-call source event — 2v1, owner+designer = generation lane toolcall_delta→TOOL_CALL_* with tool_execution_*→CUSTOM pi.tool.*; principal = §4 literal tool_execution_*→TOOL_CALL_* with fold-state parentMessageId threading. This is a TESTABLE capability/semantics dispute → Skeptic step 4. (B) replay RUN framing (one pair per past run vs one outer pair) — designer explicitly escalated as product-owner judgment (remote user perception); no test settles it → step 6 routing.
+
+### Step 4 — Skeptic attacks and runs tests (job-9.7)
+
+Skeptic probed the real pi SDK source, pi docs (session-format.jsonl), and the AG-UI spec. Results:
+
+1. THINKING_TEXT_MESSAGE_* DEPRECATED → use REASONING_MESSAGE_* (role field on START). **closed-red**. Grounded: AG-UI repo docs/concepts/reasoning.mdx, TS EventType enum, Dart migration. §4 literally names THINKING_TEXT_MESSAGE_* → §4's row names a deprecated family.
+2. tool_execution_*→TOOL_CALL_* ordering INVALID: tool_execution_* fires in a SEPARATE execution lane AFTER message_end; mapping it to TOOL_CALL_* would place tool calls after the message ended (false temporal order). Generation lane (message_update.assistantMessageEvent toolcall_start/delta/end) is the correct source for TOOL_CALL_START/ARGS/END. tool_execution_update carries a STATIC args snapshot + partialResult (output), not an args delta. **closed-red for §4-literal Side 2** (Side 1 owner+designer confirmed).
+3. STEP_STARTED/FINISHED carry only stepName (no threadId/runId) → stepName:"turn" valid. **closed-green**.
+4. AG-UI BaseEvent has NO id field → dedupe event id must live in §6 envelope. **closed-green**.
+5. ValidateSequence: duplicate RUN_FINISHED or RUN_FINISHED w/o RUN_STARTED violates; agent_settled fires once per prompt → agent_settled→RUN_FINISHED is safe. **closed-green**.
+6. TOOL_CALL_ARGS.delta is z.string(); pi toolcall_delta.delta is string; type-compatible. Live passes raw fragment, replay JSON.stringify(args). **closed-green**.
+7. CUSTOM={type,name,value}, name string = sole dispatch key; nested value OK. **closed-green**.
+8. TOOL_CALL_RESULT.content is z.string() but pi ToolResultMessage.content is (TextContent|ImageContent)[] → mapper MUST flatten blocks to string (concatenate text, represent/skip images). **closed-red** (implementable correction, field shape imprecise).
+9. JSONL has NO turn/run entries (session/message/model_change/thinking_level_change/compaction/branch_summary/custom/custom_message/label/session_info) → replay infers turn/run boundaries via fold state; stepName "turn" valid. **closed-green**.
+10. agent_settled is AgentSession-synthesized (not in core AgentEvent union) but IS available via pi.on("agent_settled"). **closed-green**.
+11. Single TOOL_CALL_ARGS snapshot between START and END is AG-UI-valid (no min/max). **closed-green**.
+
+Verdict: blocks. Two red findings requiring design correction: (#1) emit REASONING_MESSAGE_* not THINKING_TEXT_MESSAGE_*; (#8) flatten ToolResultMessage.content blocks to string for TOOL_CALL_RESULT.content. Residual B (replay RUN framing) not settled by tests — remains open judgment.
