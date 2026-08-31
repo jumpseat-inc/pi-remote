@@ -18,8 +18,11 @@ deletes the tunnel; the `session_shutdown` handler tears down for **every**
 shutdown reason (`quit`, `reload`, `new`, `resume`, `fork`) so exiting without
 `/rc:off` never leaves a live tunnel. User-visible surface — the `/rc`,
 `/rc:login`, `/rc:off` command palette entries with their output copy, and the
-footer status via `ctx.ui.setStatus("pi-remote", …)` showing `off` / `dialing`
-/ `live` / `resyncing`.
+footer status via `ctx.ui.setStatus("pi-remote", …)` showing exactly one of
+seven states in lifecycle order — `off`, `not enrolled`, `authorizing`,
+`dialing`, `resyncing`, `live`, `error` (spec §8 authoritative; product-owner
+ruling EV-1 Q2 as source). Every state change is a stated sentence resolved
+through `loginEnglishFor` (EV-7), never a glyph ack or a raw string.
 
 ## Acceptance
 
@@ -31,6 +34,12 @@ footer status via `ctx.ui.setStatus("pi-remote", …)` showing `off` / `dialing`
   with the tunnel live and without calling `/rc:off` — all leave the tunnel
   deleted and the WS closed (one test per reason).
 - With no credential configured, `/rc` fails gracefully and its output tells
-  the user to run `/rc:login`; footer status returns to `off`.
-- Footer status transitions through `dialing` and shows `resyncing` during a
-  replay (EV-5) — a remote observer can correlate status with behavior.
+  the user to run `/rc:login`; footer status is `not enrolled`.
+- Footer status is exactly one of seven states in lifecycle order — `off`,
+  `not enrolled`, `authorizing`, `dialing`, `resyncing`, `live`, `error`
+  (spec §8 / EV-1 Q2); `error` derives only from the typed transport stream
+  (EV-3/EV-7), and `resyncing` is shown during a replay (EV-5). A remote
+  observer can correlate status with behavior.
+- `/rc:login` sets the footer to `authorizing` when the login driver begins
+  and returns it to `off` on terminal; the seven-state set has no `idle`
+  state (EV-7's success→idle is reconciled to `off` per spec §8).
