@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "context7": {
+      "url": "https://mcp.context7.com/mcp/oauth",
+      "auth": "oauth",
+      "enabled": true
+    },
+    "tavily": {
+      "url": "https://mcp.tavily.com/mcp",
+      "auth": "oauth",
+      "enabled": true
+    }
+  }
+}

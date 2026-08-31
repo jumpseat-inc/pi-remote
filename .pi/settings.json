@@ -1,0 +1,7 @@
+{
+  "packages": [
+    "git:github.com/tistaharahap/pi-council",
+    "git:github.com/obra/superpowers",
+    "npm:@juicesharp/rpiv-ask-user-question"
+  ]
+}
