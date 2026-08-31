@@ -1,0 +1,30 @@
+# Council Board
+
+State columns. Each card appears exactly once, on one line under the column
+matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
+(U+2014). `python3 council/validate.py` enforces this.
+
+## Backlog
+
+- EPIC-1 — "pi-remote — remote control for a live pi session over AG-UI"
+
+## Ready
+
+- EV-1 — "Sync PI-SPEC with the /rc:login OAuth2 enrollment design and colon command naming"
+- EV-2 — "Control-plane tunnel REST client"
+- EV-3 — "Outbound wss transport with seq-ack envelope"
+- EV-4 — "Pure pi-to-AG-UI translation mapper"
+- EV-5 — "JSONL history replay and resync"
+- EV-6 — "Remote input injection"
+- EV-7 — "/rc:login OAuth2 enrollment command"
+- EV-8 — "Command surface and lifecycle wiring"
+
+## Deliberating
+
+## In Progress
+
+## In Review
+
+## Needs Human
+
+## Done
