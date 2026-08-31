@@ -204,8 +204,45 @@ const NON_FAILURE_ROWS: Record<string, string> = {
 export const WINDOWS_STORAGE_NOTICE =
   " Note: this platform does not enforce user-only file permissions for the saved credential (READ the README caveat).";
 
+// ---------------------------------------------------------------------------
+// EV-8 footer + command copy (spec §8 — single resolved vocabulary).
+// The seven status.* rows and the three transport-error rows are the ten
+// rows this card adds; the command-output rows are added "as needed" in the
+// same table. The tunnel-side reasons (enrollment/control-plane/server/
+// teardown/validation) are already covered by tunnelReasonCopy (spec §8 note)
+// and are resolved from there — never re-listed here.
+// ---------------------------------------------------------------------------
+
+/** The ten EV-8 rows plus EV-8 command-output lines (English defaults). */
+export const FOOTER_ROWS: Record<string, string> = {
+  // status.* — the exact seven footer states, each a stated sentence.
+  "status.off": "Off",
+  "status.notEnrolled": "Not enrolled — run /rc:login",
+  "status.authorizing": "Authorizing with the control plane…",
+  "status.dialing": "Dialing the remote tunnel…",
+  "status.resyncing": "Resyncing with the remote session…",
+  "status.live": "Live — remote session connected",
+  "status.error": "Error",
+  // tunnel.error.* — the three transport-side reasons with no row anywhere today.
+  "tunnel.error.relayUnreachable":
+    "Could not reach the relay — the tunnel is reconnecting",
+  "tunnel.error.protocolViolation":
+    "The relay violated the protocol — the tunnel is reconnecting",
+  "tunnel.error.urlExpired": "The tunnel URL expired — re-dial",
+  // command-output lines (spec §8 "add rows as needed").
+  "rc.unenrolled": "No enrollment credential found — run /rc:login",
+  "rc.serverUrlRequired":
+    "No control-plane URL is configured — run /rc:login",
+  "rc.dialingInProgress":
+    "A tunnel dial is already in progress — wait for it to finish",
+  "rc.offLifecycle": "Remote tunnel closed",
+  "shutdown.closed": "Remote tunnel closed",
+  "rc:login.refusal": "close the tunnel first with /rc:off",
+};
+
 const englishDefaults: Record<string, string> = {
   ...NON_FAILURE_ROWS,
+  ...FOOTER_ROWS,
   ...Object.fromEntries(
     Object.entries(FAILURE_ROWS).map(([, row]) => [row.userLineKey, row.userLine])
   ),
