@@ -331,6 +331,41 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
     expect(a).toEqual(b);
   });
 
+  test("JsonlEntry tool_result kind → TOOL_CALL_RESULT with flattened content (§1.3)", () => {
+    const frames = runSequence(
+      [{ kind: "tool_result", entryId: "e1", messageId: "msg-1", toolCallId: "call_1", content: [{ type: "text", text: "out" }] }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toEqual([
+      { type: "TOOL_CALL_RESULT", messageId: "msg-1", toolCallId: "call_1", content: "out", role: "tool" },
+    ]);
+  });
+
+  test("JsonlEntry bash_execution kind → CUSTOM passthrough (§1.3, FLLWUP-3 deferred)", () => {
+    const frames = runSequence([{ kind: "bash_execution", entryId: "e1", data: { cmd: "ls" } }], {
+      sessionId: "s1",
+      runId: "r1",
+    });
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as { type: "CUSTOM"; name: string; value: { pi: string } };
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.tool.bash_execution");
+    expect(f.value.pi).toBe("bash_execution");
+  });
+
+  test("JsonlEntry custom/custom_message kinds → CUSTOM escape-hatch (§1.3)", () => {
+    const a = runSequence([{ kind: "custom", entryId: "e1", name: "n", data: { a: 1 } }], { sessionId: "s1", runId: "r1" });
+    const b = runSequence([{ kind: "custom_message", entryId: "e2", name: "n2", data: { b: 2 } }], { sessionId: "s1", runId: "r1" });
+    const fa = a[0] as { type: "CUSTOM"; name: string; value: { pi: string } };
+    const fb = b[0] as { type: "CUSTOM"; name: string; value: { pi: string } };
+    expect(fa.type).toBe("CUSTOM");
+    expect(fa.name).toBe("pi.custom");
+    expect(fa.value.pi).toBe("custom");
+    expect(fb.type).toBe("CUSTOM");
+    expect(fb.name).toBe("pi.custom_message");
+    expect(fb.value.pi).toBe("custom_message");
+  });
+
   test("translate returns a new state and advances eventOrdinal per frame", () => {
     let state = createState({ sessionId: "s1", runId: "r1" });
     const r1 = translate({ event: "agent_start" }, state);

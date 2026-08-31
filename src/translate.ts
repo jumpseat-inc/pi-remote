@@ -155,10 +155,14 @@ export type JsonlEntry =
       role: "assistant" | "user";
       content: JsonlContentBlock[];
     }
+  | { kind: "tool_result"; entryId: string; messageId: string; toolCallId: string; content: ToolResultContentBlock[] }
   | { kind: "compaction"; entryId: string; summary?: string }
   | { kind: "model_change"; entryId: string; model: string }
   | { kind: "thinking_level_change"; entryId: string; level: string }
-  | { kind: "session_info"; entryId: string; info: unknown };
+  | { kind: "session_info"; entryId: string; info: unknown }
+  | { kind: "bash_execution"; entryId: string; data: unknown }
+  | { kind: "custom"; entryId: string; name: string; data: unknown }
+  | { kind: "custom_message"; entryId: string; name: string; data: unknown };
 
 export type Input = PiEvent | JsonlEntry;
 
@@ -297,6 +301,28 @@ function translateJsonl(input: JsonlEntry, state: TranslateState): FoldResult {
     return nextState(state, frames, new Map(state.openMessages));
   }
 
+  if (input.kind === "tool_result") {
+    frames.push({
+      type: "TOOL_CALL_RESULT",
+      messageId: input.messageId,
+      toolCallId: input.toolCallId,
+      content: flattenToolResultContent(input.content),
+      role: "tool",
+    });
+    return nextState(state, frames, state.openMessages);
+  }
+  if (input.kind === "bash_execution") {
+    frames.push({ type: "CUSTOM", name: "pi.tool.bash_execution", value: { pi: "bash_execution", data: input.data } });
+    return nextState(state, frames, state.openMessages);
+  }
+  if (input.kind === "custom" || input.kind === "custom_message") {
+    frames.push({
+      type: "CUSTOM",
+      name: input.kind === "custom" ? "pi.custom" : "pi.custom_message",
+      value: { pi: input.kind, data: { name: input.name, data: input.data } },
+    });
+    return nextState(state, frames, state.openMessages);
+  }
   if (input.kind === "compaction") {
     frames.push({
       type: "CUSTOM",
