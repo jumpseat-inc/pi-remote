@@ -419,3 +419,64 @@ README.md:93: key (`PI_REMOTE_SERVER_URL`, `PI_REMOTE_HOST_KEY`).
 ### Step 4 outcome
 
 Skeptic verdict: **blocks**. Block reason: footer state set — settled six states (off, not enrolled, authorizing, dialing, live, error) vs EV-8/current-§8 four states (off, dialing, live, resyncing); `resyncing` never discussed by any seat; EV-1 must define the authoritative state set. All pre-change greps closed-red as expected (current spec = old design); all post-change gates (per-objection) open-untested, to run at step 9. O-4 (refresh at token_endpoint) and O-5 (RFC 8414 device_authorization_endpoint OPTIONAL in RFC, spec may require it — stricter contract valid) closed-green. O-12: implementation claims premature (no src/), out of EV-1 scope. O-13: README:93 single stale hit, follow-up candidate.
+
+### Step 5 — Synthesis (consolidator, job-3.11, verbatim)
+
+---
+
+## Settled
+
+**Settled-by-convergence (no test ran on the new text; all three seats converged and held through round 3):**
+
+- **Attended grant** = Authorization Code + PKCE (RFC 7636/8252), public client `pi-remote`, no secret, S256 challenge, loopback redirect `http://127.0.0.1:<ephemeral>/callback` bound to 127.0.0.1, `scope=pi-remote:host`. Loopback listener is command-time only (preserves §3 no-factory-backgrounds, §7.1 outbound-only).
+- **Unattended grant** = RFC 8628 device authorization grant. `/rc:login --headless` (or `PI_REMOTE_HEADLESS=1`) POSTs `device_authorization_endpoint`, prints `user_code` + `verification_uri_complete` (the single short value EV-7 pins), polls `token_endpoint` with `grant_type=urn:ietf:params:oauth:grant-type:device_code`, honoring `interval`/`slow_down`/`authorization_pending`/`expired_token`/`access_denied`. Designer conceded round 2; manual-paste rejected as bespoke/non-automatable.
+- **Endpoint contract** = RFC 8414 discovery `GET /.well-known/oauth-authorization-server`; spec contract **requires** `authorization_endpoint`, `token_endpoint`, `device_authorization_endpoint` (stricter than RFC baseline — see O-5); both grants + refresh through `token_endpoint`; optional `revocation_endpoint`; `POST /tunnels` authenticated `Authorization: Bearer <access_token>`. No hardcoded `/authorize`/`/token`/`/device_authorization` paths; no separate `POST /refresh`.
+- **Storage** = extension settings, user-only readability: `piRemote.serverUrl`, `piRemote.accessToken` (short-TTL), `piRemote.refreshToken` (long-lived, revocable), `piRemote.tokenExpiry`, `piRemote.tenantId` (cached). Credentials never Bearer-read from env. Failed flow writes nothing half-written; re-run replaces cleanly.
+- **`/rc` behavior** = unenrolled → refuse to dial, footer `not enrolled`, output names `/rc:login`; expired access token → one silent refresh; refresh failure/no refresh token → `/rc:login` remedy. Never inline OAuth; `/rc` stays idempotent (EV-8 dependency).
+- **Command surface** = `/rc`, `/rc:login`, `/rc:off`; no `/rc-off` anywhere.
+- **§7.4 trust table + §9.1 prose** sync from "host enrollment key" → access/refresh-token language; blast radius preserved (leaked token ≈ old host-key power: tunnel creation for locally-visible sessions, tenant-contained, no session access); revocation now exists at control plane. No §4–§6/§5.3/§7.3 wire moves.
+
+**Settled-by-test (green):**
+- **O-4** — RFC 6749 §6: refresh is `grant_type=refresh_token` at `token_endpoint`, not a separate `POST /refresh`. Designer's round-1 `/refresh` was nonstandard, conceded round 2. Gate: `grep -in 'post.*/refresh'` → exit 1 post-change.
+- **O-5** — `device_authorization_endpoint` is OPTIONAL in RFC 8414 (introduced by RFC 8628 §4); the spec may validly require it as a stricter contract. The settled design does so. Gate: `grep 'device_authorization_endpoint'` ≥1 hit, stated REQUIRED.
+- **O-13** — `README.md:93` is the single repo-wide stale `PI_REMOTE_HOST_KEY` hit outside `docs/`; flagged out-of-scope follow-up, not a block.
+
+The pre-change red greps (O-1/O-2/O-3/O-6/O-8/O-9/O-10) are `closed-red` confirming the current spec is the old design — they motivate the rewrite, not settle it. The **six footer states** (`off`, `not enrolled`, `authorizing`, `dialing`, `live`, `error`) are settled-by-convergence — all three seats adopted them undisputed.
+
+## Open judgment — for `product-owner`, escalating to `steward`
+
+1. **`PI_REMOTE_HOST_KEY` env override (1v2, cap reached, no test settles).** Owner (r3): document exactly once — a pre-issued long-lived enrollment credential consumed via the standard `token_endpoint` refresh grant; never a Bearer access token in env; rejected/expired override falls through to `/rc:login`. Principal (r3) + designer (r3): retire entirely; only `PI_REMOTE_SERVER_URL` as documented override; credentials never via env (process-table/CI-log exposure). Values tradeoff: zero-touch CI convenience vs env-var credential hygiene. The O-2 post-change gate's exact form depends on which side is chosen (≤1 hit vs zero).
+2. **`resyncing` footer state (Skeptic block; no seat discussed it).** The six-state set is converged; `resyncing` exists in current §8 and EV-8 but was never raised in any round. Open: is `resyncing` a 7th state, dropped, or merged into `error`+? User-visible state-set decision no test settles. EV-1's §8 must enumerate the authoritative set so EV-8 can reconcile.
+3. **Designer's withdrawn trust-model escalation vs owner's "two deltas worth ratification."** All three seats agree the §7.4/§9.1 prose content (blast radius preserved) and that it is prose, not wire. Principal + designer: prose-sync within EV-1's mandate, no ratification. Owner (r3): endorses the prose but flags two deltas for product-owner ratification — (a) §7.5 row 1 tenancy now derives from token claims (`sub` tenant-scoped), (b) enrollment depends on RFC 8414 discovery. Open: are §7.5 row 1 + RFC 8414 dependency within mandate (converged prose-sync) or do they require ratification? Note §7.5 is not in the acceptance's "no other wire contract" exclusion list (§4–§6, §5.3, §7.3).
+
+## Open objections
+
+All post-change gates are `open-untested`, to run at step 9 against the rewritten spec:
+
+- **O-1** — `grep 'rc-off' docs/PI-SPEC.md` → zero; `/rc:off` in §8.
+- **O-2** — `PI_REMOTE_HOST_KEY` ≤1 (owner) or zero (principal/designer) inside §7.2 override; settings sentence precedes env-override; "host enrollment key" absent from §7.4. **Form depends on open-judgment item 1.**
+- **O-3** — `Bearer` ≥1 in §7.2 for `POST /tunnels`; "host key" absent from tunnel-create context.
+- **O-6** — ≥3 of `authorization_code`/`PKCE`/`code_challenge`/`device_authorization_endpoint`/`device_code`/`grant_type=refresh_token`/`RFC 8414`/`token_endpoint` in §7.2.
+- **O-7** — six footer states present; reconciliation of `resyncing`. **Blocked on open-judgment item 2.**
+- **O-8** — `/rc:login` ≥1 hit; `/rc-off` zero.
+- **O-9** — `POST /tunnels` prose says Bearer, not host key.
+- **O-10** — no `inline`/`prompt once`/`enrollment key if missing` in `/rc` behavior.
+- **O-11** — EV-8 cross-seam: EV-8's current four-state set (`off`/`dialing`/`live`/`resyncing`) lacks `not enrolled`/`authorizing`/`error`; EV-1 doesn't fix EV-8 but must define the authoritative set so EV-8 can sync. Overlaps open-judgment 2; not run.
+- **O-12** — implementation claims premature (`src/` does not exist); out of EV-1 scope (docs-only). Becomes testable after EV-2/EV-3/EV-7. Not an EV-1 acceptance criterion; fold into those cards.
+
+## Closing note — follow-up cards at step 13
+
+- **README.md:93** stale `PI_REMOTE_HOST_KEY` reference (O-13) — doc-sync follow-up.
+- **EV-8 footer-state sync** — EV-8 must reconcile to EV-1's authoritative set once open-judgment 2 is ruled; file/update when resyncing is decided.
+- **Zero-touch CI without any human authorizer** (designer r3) — device flow still needs a human consent at the IdP; a follow-up card only if "no human ever clicks authorize" becomes a real product need.
+- **§7.5 row 1 + RFC 8414 discovery dependency** — if open-judgment 3 is ruled "needs ratification," that ratification is the product-owner/steward path, not a code card.
+
+**Settled-by-test:** O-4, O-5, O-13 (green Skeptic results). **Settled-by-convergence:** attended grant, unattended grant, endpoint contract, storage, `/rc` unenrolled behavior, command surface, §7.4/§9.1 prose content, six footer states, Bearer-to-`POST /tunnels`. Convergence is not evidence; the post-change greps (O-1/2/3/6/8/9/10) remain open-untested and must pass at step 9 to convert convergence into evidence.
+
+**Ready to hand off?** No. Blocked on open-judgment 1 (`PI_REMOTE_HOST_KEY`), 2 (`resyncing`), and 3 (ratification scope of §7.5 row 1 / RFC 8414) — all route to `product-owner`, escalating to `steward`; and on open objections O-1/O-2/O-3/O-6/O-7/O-8/O-9/O-10/O-11 (post-change gates open-untested, O-2 and O-7 gated by the open-judgment calls).
+
+---
+
+### Step 6 — routing
+
+No Phase-1 rulings exist for this epic (the human delegated all open-judgment calls). Open-judgment items 1–3 above have no ruling available inside this container — `product-owner`/`steward` are ruling seats dispatched by the orchestrator, not by this runner. Card remains `Deliberating`; awaiting ruling before steps 7–14 can start.
