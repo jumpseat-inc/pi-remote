@@ -11,7 +11,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 
-- EV-7 — "/rc:login OAuth2 enrollment command"
 - EV-8 — "Command surface and lifecycle wiring"
 - FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
 - FLLWUP-2 — "Reconcile EV-8 card text with the seven-state footer set"
@@ -20,6 +19,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-3 — "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
 
 ## Deliberating
+
+- EV-7 — "/rc:login OAuth2 enrollment command"
 
 ## In Progress
 
