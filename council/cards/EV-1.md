@@ -480,3 +480,34 @@ All post-change gates are `open-untested`, to run at step 9 against the rewritte
 ### Step 6 — routing
 
 No Phase-1 rulings exist for this epic (the human delegated all open-judgment calls). Open-judgment items 1–3 above have no ruling available inside this container — `product-owner`/`steward` are ruling seats dispatched by the orchestrator, not by this runner. Card remains `Deliberating`; awaiting ruling before steps 7–14 can start.
+
+### Rulings — EV-1 open-judgment items (product-owner, binding — appended verbatim per escalation contract, no steward deferral)
+
+## Q1 — PI_REMOTE_HOST_KEY env override
+
+**Ruling:** Retire PI_REMOTE_HOST_KEY entirely. Only PI_REMOTE_SERVER_URL survives as a documented env override. Credentials are never carried in env vars, not even as a documented override. EV-1's §7.2 must not mention PI_REMOTE_HOST_KEY at all. O-2's post-change gate runs with `grep -n 'PI_REMOTE_HOST_KEY' docs/PI-SPEC.md` → 0.
+
+**Options rejected:**
+- Document PI_REMOTE_HOST_KEY once as a pre-issued long-lived enrollment credential consumed via the standard token_endpoint refresh grant (owner r3): this is a second credential type the relay must accept at token_endpoint alongside the authorization-code and device-code flows. EV-2 and EV-7 are not written against it, §2's dumb-relay mandate and §10's contract-surfaces list do not permit minting new server contracts in a docs-only card, and the runner packet's own round-3 logic that correctly rejected designer's boot-time exchange endpoint applies symmetrically here.
+
+**Grounding:** docs/PI-SPEC.md §2 (dumb-relay mandate), §10 (contract surfaces fixed here are §5.3, §7.2, §7.3 only); EV-1 acceptance line "env vars are at most a documented override" (the word "at most" permits zero overrides); round-3 vote is 2v1 (principal + designer retire, owner document once) with both sides crossing positions during deliberation.
+
+## Q2 — resyncing in the authoritative §8 footer state set
+
+**Ruling:** Yes — resyncing is a seventh state. The full set, in lifecycle order: off, not enrolled, authorizing, dialing, resyncing, live, error. EV-1's §8 must enumerate exactly these seven states. O-7's post-change gate runs with `grep -nE 'off|not enrolled|authorizing|dialing|resyncing|live|error' docs/PI-SPEC.md` and confirms each state appears in §8.
+
+**Options rejected:**
+- Drop resyncing entirely: overturns council/cards/EV-8.md's recorded acceptance — "Footer status transitions through dialing and shows resyncing during a replay (EV-5) — a remote observer can correlate status with behavior." That is a recorded decision on a downstream card; overturning it is a portfolio change, not a §8 wording call.
+- Merge resyncing into error+: semantically wrong. Replay is a healthy, expected phase distinct from both dialing (no fresh connection) and live (no new frames, only replay).
+
+**Grounding:** docs/PI-SPEC.md §8 current text pins off/dialing/live/resyncing; council/cards/EV-8.md acceptance explicitly commits to resyncing during replay; the deliberation's omission of resyncing is a missing-seat gap, not an intentional exclusion.
+
+## Q3 — §7.5 row-1 tenancy + RFC 8414 discovery: ratification or prose-sync
+
+**Ruling:** No ratification required. The §7.4/§9.1 prose sync, the §7.5 row-1 tenancy update, and the RFC 8414 discovery dependency are all prose-sync within EV-1's mandate. EV-1 may rewrite these sections. The blast radius — the only thing worth preserving — is documented in §7.4 and unchanged.
+
+**Grounding:** EV-1 acceptance protects §4–§6, §5.3, §7.3 — §7.5 is not in the exclusion list; docs/PI-SPEC.md §10 names §7.2 as a contract surface fixed here; round-3 convergence on blast radius (all three seats, designer formally withdrew its trust-model escalation note in r3).
+
+### Step 7 — resume note
+
+Rulings applied. Q1 fixes O-2's post-change gate form (zero hits for PI_REMOTE_HOST_KEY); Q2 fixes O-7's form (all seven states present in §8: off, not enrolled, authorizing, dialing, resyncing, live, error); Q3 clears §7.5 row 1 + RFC 8414 dependency as in-mandate prose-sync. Proceeding to step 7 (write and commit the design spec), then steps 8–10, then the features-deliver.md deterministic merge check.
