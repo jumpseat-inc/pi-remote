@@ -10,7 +10,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 
-- EV-2 — "Control-plane tunnel REST client"
 - EV-3 — "Outbound wss transport with seq-ack envelope"
 - EV-5 — "JSONL history replay and resync"
 - EV-6 — "Remote input injection"
@@ -21,6 +20,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-3 — "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
 
 ## Deliberating
+
+- EV-2 — "Control-plane tunnel REST client"
 
 ## In Progress
 

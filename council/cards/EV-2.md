@@ -1,7 +1,7 @@
 ---
 id: EV-2
 title: "Control-plane tunnel REST client"
-state: Ready
+state: Deliberating
 owner: null
 epic: EPIC-1
 goal: tunnel.ts creates a tunnel via POST /tunnels using the enrollment credential, consumes the returned signed one-time wss URL, and deletes the tunnel via DELETE /tunnels/:id on teardown.
@@ -30,3 +30,16 @@ command output and footer status, and those messages should name the fix (run
   token state; the token is never persisted.
 - An expired or rejected enrollment credential produces an error that names
   `/rc:login` as the remedy, not a raw HTTP trace.
+
+---
+
+## Step 1 — gate (facilitator)
+
+State `Ready`. **Full council** (cross-seam: `src/tunnel.ts` is one of the two
+network modules; it consumes the EV-7-provisioned enrollment credential and
+hands the signed `wss://` URL + TTL to EV-3 transport; its failure copy
+surfaces in EV-8's `/rc`/footer output; where the one-silent-refresh of spec §8
+lives is un-pinned and genuinely ambiguous; 401 vs 403 vs expired vs
+unreachable handling, idempotency mechanism, and token-discard timing are
+design judgments). **Surface-touching** (failure and status copy name the fix
+`run /rc:login`) — designer seated alongside owner and principal in steps 2–3.
