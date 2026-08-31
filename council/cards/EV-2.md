@@ -107,3 +107,31 @@ Divergences to resolve in round 2:
 5. **Single-use URL vs reconnect re-arm** (principal) — who re-arms the dead URL on EV-3 reconnect; likely a seam for EV-3/EV-8 or a follow-up, not EV-2 scope.
 6. **`already_live` line vs single-char ack** copy (designer→product-owner, scope).
 
+
+## Step 3 — round 2 (jobs 12.4 owner, 12.5 principal, 12.6 designer)
+
+All three settled in ~3.5m. Positions converged on architecture; remaining splits are open-judgment. Recorded verbatim above (full text in this file); the decisive outcomes:
+
+**Converged (all three, round 2):**
+- **tunnel.ts = pure, STATELESS REST client.** Exposes three stateless request functions `createTunnel`, `refreshAccessToken`, `deleteTunnel`, plus a `TunnelError` discriminated by `kind` and a pure reason→`{footerState, userLine, severity}` copy map (`describeTunnelError`/`tunnelReason`). NO module-level mutable state; no `ctx`; no `setStatus`; no `process.env`; no `WebSocket`. (owner conceded module-level flag; designer conceded setStatus call; principal held statelessness.)
+- **Fetch only in tunnel.ts; WebSocket only in transport.ts** (§3 contradiction settled). tunnel.ts "consumes" = validates + hands off `{url, expiresAt, tunnelId}`; never dials.
+- **setStatus CALL lives in EV-8**; the reason→copy vocabulary map lives in tunnel.ts (pure data, unit-testable without index.ts).
+- **Idempotency guard lives in EV-8** as `activeTunnel: {tunnelId,url,expiresAt}|null`, checked BEFORE createTunnel; a second `/rc` while connected emits `already_live` line, zero POSTs. Guard is keyed on **"live", not "ever created"** — so EV-3 reconnect re-arm (a deliberate re-create) is not blocked.
+- **Refresh**: separate stateless `refreshAccessToken` → `{accessToken, refreshToken?, expiresAt}` (grant_type=refresh_token at token_endpoint). The ≤1-per-/rc cap is EV-8 policy. NO auto-refresh inside createTunnel; principal withdrew the 401-on-create retry (spec §8 authorizes one PRE-EMPTIVE refresh on tokenExpiry only; a 401 from create is a terminal rejection). Rotated refresh tokens returned for EV-8 to persist via EV-7-owned keys.
+- **Token discard boundary**: tunnel grant (tunnelId + signed URL) is discarded; the enrollment credential survives teardown and is EV-7's to persist. Do NOT clear settings on `/rc:off`.
+- **DELETE best-effort**; teardown never blocks; 404/410 treated as success.
+- **Copy language = English** (all three; PI-SPEC/card/README English; no Bahasa requirement; designer withdrew its ungrounded Bahasa).
+- **Single-use-URL reconnect re-arm** = EV-3/EV-8 scope or a follow-up, NOT an EV-2 blocker; EV-2's obligation is just that `createTunnel` is stateless/re-callable.
+
+**Split (1v2) — 403 copy / card-acceptance reading "rejected credential":**
+- principal: 403 = distinct `forbidden` kind, names `/rc:login` ONLY, no "admin" line (control plane out of repo scope §10; only re-consent is client-reachable).
+- owner + designer: 403 = distinct kind (not collapsed with 401 string), names `/rc:login` AND adds a distinct "ask control-plane admin to grant scope / contact admin" line. Designer frames it as a **card-acceptance reading** ("does 'rejected credential' literally include 403?") routed to product-owner; Reading B = 403 gets its own line because a 403 a driver cannot fix by re-consent alone should not be silently patched to "run /rc:login."
+- **Open for product-owner.**
+
+**Genuinely open (routed, not settled by any test):**
+1. **403 remedy line**: /rc:login only (principal) vs + admin/scope line (owner+designer); and the card-acceptance reading of "rejected credential" (does it include 403?). Design judgment + acceptance reading.
+2. **i18n seam**: literal English strings now vs key-based reason→message table for future en→id (owner: English default, localization separate card later; designer: offers key seam, says English strings not the blocker). Copy-language shape, user-visible.
+3. **`already_live` ack density**: sentence line vs single-char ack (designer→product-owner; brand/feedback, not design).
+4. **Footer-merge policy** (highest-severity vs most-recent wins) — EV-8's policy; tunnel.ts only tags `severity`. EV-8 concern, noted.
+
+No testable dispute remains unsettled at the architecture level; the remaining items are judgment/acceptance-readings.
