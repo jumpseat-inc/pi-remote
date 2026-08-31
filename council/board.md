@@ -8,6 +8,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 - EPIC-1 — "pi-remote — remote control for a live pi session over AG-UI"
 - FLLWUP-4 — "EV-2 localization seam: second (en→id) message lookup and resolver"
+- FLLWUP-7 — "EV-7 Windows ACL for credential-file user-only readability"
 
 ## Ready
 
