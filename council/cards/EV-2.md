@@ -135,3 +135,17 @@ All three settled in ~3.5m. Positions converged on architecture; remaining split
 4. **Footer-merge policy** (highest-severity vs most-recent wins) — EV-8's policy; tunnel.ts only tags `severity`. EV-8 concern, noted.
 
 No testable dispute remains unsettled at the architecture level; the remaining items are judgment/acceptance-readings.
+
+## Step 4 — Skeptic attacks and runs tests (job-12.7)
+
+Verdict: **no open objections block the design.** All protocol facts verified via MCP (context7) confirm the design: refresh at token_endpoint (RFC 6749 §6 / OAuth 2.1 §4.3, no separate /refresh); device_authorization_endpoint OPTIONAL in RFC 8414 but the spec may require it as its own contract (valid, ambiguous phrasing); RFC 8628 device-flow polling semantics correct; OAuth 2.1 §4.3.2 refresh rotation required for public clients (design accounts for it); POST /tunnels → {tunnelId,url,tokenTtl} Bearer + DELETE /tunnels/:id contract present and self-consistent.
+
+Objections:
+- **O1 closed-red (non-blocking residual):** docs/PI-SPEC.md §3 line 74 "`transport.ts` is the only module that touches the network" coexists with line 66 listing tunnel.ts as REST client — a genuine §3 self-contradiction, residual spec-sync from the EV-1 docs rewrite. One-line fix; does NOT block design. **To be carried as a §3 amendment on the EV-2 PR** (facilitator-authored, evidence-cited per EV-4 Q1 precedent).
+- **O4 closed-green:** token-discard boundary (enrollment credential survives teardown; tunnel token discarded) — spec §7.2.259 + §8.322 fully consistent with the convergence reading.
+- **O5 closed-green:** pre-emptive refresh before create, terminal 401 (no auto-refresh inside create) matches spec §8 step order.
+- **O2/O3/O6/O7 open-untested (post-change gates):** (O2) `tokenExpiry` must be an absolute timestamp (now + expires_in*1000), not raw relative expires_in — storage line must show conversion; (O3) 403 copy is a product-owner/acceptance-reading judgment (RFC 6750 §3: 401 invalid/revoked token vs 403 valid-but-insufficient-scope) — settle at implementation per the ruling; (O6) refresh-rotation persistence seam (return-then-persist vs callback) unresolved at impl level; (O7) discovery cache must not be module-level state in tunnel.ts.
+
+**Confirmations:** PI_REMOTE_HOST_KEY zero matches in docs confirmed; seven footer states confirmed at §8.326–327; no separate /refresh confirmed at §7.2.233.
+
+Follow-up candidate surfaced: none new beyond the §3 line fix (folds into EV-2's PR as an amendment, not a separate card).
