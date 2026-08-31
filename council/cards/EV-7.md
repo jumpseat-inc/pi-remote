@@ -1,7 +1,7 @@
 ---
 id: EV-7
 title: "/rc:login OAuth2 enrollment command"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-1
 goal: Running /rc:login provisions working enrollment credentials for the configured control plane without env vars, in both an attended mode with a browser present and an unattended headless mode, and /rc thereafter creates tunnels with no further setup.
@@ -154,5 +154,17 @@ Following the rulings, the spec at `docs/superpowers/specs/2026-08-31-EV-7-desig
 ### Step 9 — Skeptic verification (job-28.2; PR #7, head f2a249ad; real probes run)
 
 All 13 probes **closed-green**, no open objections, no red: tsc exit 0; `bun test` 113 pass / 0 fail (730 expect) — 85 original + 28 new; static greps clean; import smoke clean; PI-SPEC diff confined to §7.2/§8 (2 hunks); TunnelReason closed set intact. Binding ruling-gates all green: **J3** mode-0600 gate, **J2** pre-request prompt gate (attended prompt before any endpoint request via request log; headless exempt; Ctrl-C once + zero POST after signal), **J1** tenant display conditional. Open-untested notices closed: PKCE ≥43-char, device-endpoint-optional, dedicated refresh discovery-failure. Gate integrity confirmed by injected-defect probe. **Verdict: PASSES (no blocks).**
+
+### Step 10 — Judge verdict (PASS)
+Judge PASS on the card's goal with the Skeptic's step-9 evidence. No REJECT; card proceeds to the merge gate.
+
+### Step 11 — Merge landed, CI green
+PR #7 merged at **023f850a** (merge of head f2a249ad, base 237b328) with `--match-head-commit f2a249ad` (the SHA the deterministic merge check's five criteria were read against). GitHub Actions `gates` workflow **SUCCESS** on the merged SHA 023f850a — the deterministic merge check's criterion 2 verified against the merged SHA. All five criteria satisfied: (1) owner gates green in full, (2) GA green on merged SHA, (3) no blocking Skeptic objection, (4) judge PASS, (5) no Needs-Human/outstanding ruling.
+
+### Step 12 — Reconcile + Done
+Step-12 reconciliation per the orchestrator's binding ruling: origin/main re-fetched and verified at the pinned merge 023f850a; local-only council-record commits (428aab0, 4ed4044) discarded via `git reset --hard origin/main` after confirming a clean working tree; the durable record re-applied additively as new commits on top of origin/main — (a) this card's In Review board/card state + Step-9 Skeptic verification record exactly as recorded (committed 4bdc773), validate.py clean; (b) the Done transition (this commit), validate.py clean. Pushed to origin/main with a normal push (no force). No forced non-clean fast-forward was performed; the diverged history was surfaced, ruled on, and reconciled additively with the record preserved.
+
+### Step 13 — Follow-ups drafted (awaiting orchestrator confirmation)
+- **FLLWUP-7 — EV-7 Windows ACL for credential file user-only readability** (per binding ruling J3): on Windows, `chmod` is a no-op, so POSIX 0600 does not enforce user-only readability on NTFS; the security goal is not relaxed but is unmet on Windows today. J3 requires the runner to flag Windows ACL as a known follow-up at EV-7 close. Draft scope: implement/harden NTFS ACL on the credential file (or otherwise restore user-only readability on Windows) + README caveat + stateful notice in storage-failed copy when `process.platform === "win32"`. **Draft only — not filed, not committed; awaiting orchestrator confirmation.**
 
 ---

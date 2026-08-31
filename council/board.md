@@ -24,11 +24,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-- EV-7 — "/rc:login OAuth2 enrollment command"
-
 ## Needs Human
 
 ## Done
+
+- EV-7 — "/rc:login OAuth2 enrollment command"
 
 - EV-6 — "Remote input injection"
 
