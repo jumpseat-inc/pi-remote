@@ -163,3 +163,30 @@ Open-judgment items R2 and R3 both classified by the consolidator as routing to 
 **General rule for EV-7 / EV-8 (product-owner, binding until/unless steward reopens R3):** any EV-7/EV-8 design contemplating host-UI wrapping must name in its goal or risk section: (1) the §7.4 blast-radius expansion; (2) the disconnect-mid-resolve contract; (3) the resolver-ownership handoff; (4) the impact on EV-6's notice. Under steward's Side B, none of EV-7/EV-8 contemplate it.
 
 **Effect on EV-6 (applied):** the steering fallback (direct resolution via injectable `resolvePendingPrompt` fixture seam) is the PERMANENT product behavior — the design spec writes it as the spec-mandated path per PI-SPEC §5.4 row 4, not an interim stopgap. R2's loud-once notice is EV-6's durable user-facing contract and is implemented in the fallback path. R1 ((promptId, occurrence) scoping) remains settled design from step 4. Step 6 is CLOSED; proceeding to step 7.
+
+### Step 7–9 — design spec, owner implementation, Skeptic verification
+
+- **Step 7 (full-council path):** written up the settled design (not derived) as
+  `docs/superpowers/specs/2026-08-31-EV-6-design.md` — refused to reopen anything
+  steps 2–6 closed, including R1/R2/R3. Self-reviewed (no placeholders/TODOs, scope
+  confined to inject.ts + one-line translate widening + §5.4 sync + plan; no index.ts).
+  Committed; card → `In Progress` (validate.py clean).
+- **Step 8 (owner, job-25.1):** planned at
+  `docs/superpowers/plans/2026-08-31-EV-6-implementation.md`, implemented TDD in
+  worktree `.worktrees/ev-6-inject` on branch `ev-6-inject`, cleared gates, pushed,
+  opened **PR #6** (head SHA `b77f5763b3d54fada5983538eb6c5ff82a89bb10`, state OPEN —
+  observed via `gh pr view 6`). Reported: tsc exit 0; `bun test` 85/85 pass (62 existing
+  + 23 new); negative invariant clean; §5.4-only sync; `src/index.ts` untouched;
+  `user_input` dead code NOT removed (FLLWUP-candidate). Card → `In Review` (validate clean).
+- **Step 9 (Skeptic, job-25.2), at head SHA `b77f576`:** re-ran all 4 gates with gate
+  integrity confirmed (mutation checks threw/red then restored). tsc exit 0; `bun test`
+  85/85, 0 fail, 500 expect() calls; negative invariant zero matches; scope confined (only
+  inject.ts new, translate.ts additive, inject.test.ts, §5.4 sync, plan; index.ts untouched;
+  user_input NOT removed). All 10 load-bearing property probes GREEN: never-throw truth table
+  + end-to-end SDK-mirroring fixture; R1 (promptId,occurrence) registry isolation (resolving
+  occurrence 2 does not resolve occurrence 1); R2 loud-once sentence notice once per session,
+  stale never triggers it; R3 permanent fallback with resolvePendingPrompt test-only seam
+  (resolved branch reachable only via fixture); stale-not-delivered (`pi.human_input.stale`
+  surfaced, no sendUserMessage); unknown promptId → fallback, never dropped; deviceId from
+  envelope structural never in text; malformed/non-user ignored without throw. **Result: no
+  open objections.** Proceeding to step 10.
