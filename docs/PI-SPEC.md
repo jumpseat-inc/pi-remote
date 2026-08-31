@@ -126,7 +126,8 @@ the JSONL through the same `translate.ts` mapper** used for live events.
    replayed history is what the session actually means, not raw file noise.
 3. For each entry, emit AG-UI events through `translate.ts`:
    - `message` entries → the message/step/tool-call events of §4
-   - `compaction` → `MESSAGES_SNAPSHOT` + `CUSTOM` (`pi.context.compaction`)
+   - `compaction` → `CUSTOM` (`pi.context.compaction`); `MESSAGES_SNAPSHOT` emitted at
+     init, carrying the active branch (ruling A — cited O9, O10)
    - `model_change` / `thinking_level_change` / `session_info` → `CUSTOM`
    - `custom` / `custom_message` / `bashExecution` → mapped per §4 rules
 4. Frame the batch with `replay: true` and a deterministic **event id derived
@@ -140,11 +141,17 @@ the JSONL through the same `translate.ts` mapper** used for live events.
 client → server : { type: "resume", deviceId, lastAckedSeq }
 server → ext    : served from ring buffer if possible,
                   else { type: "resync", fromSeq }   ← relayed as-is
-ext → client    : replay batch (§5.2), then { type: "resync_done", uptoSeq }
+ext → client    : replay batch (§5.2), then { type: "CUSTOM", name: "pi.resync.done", value: { uptoSeq } } (ruling B1 — cited O8: no RESYNC_DONE in the AG-UI enum)
 ```
 
 The extension treats `resync` requests as replay triggers and answers from the
 JSONL — it never assumes the server has anything.
+
+Inbound resume and resync control frames are runtime-validated by
+`transport.ts`'s `parseInbound` against a discriminated union (resume, resync,
+AG-UI event, ack-only); control frames do not surface to the `onInbound` AG-UI
+consumer. The relay server's role is unchanged: it relays these frames opaquely
+per §5.3 and §7.3. (ruling B2 — cited O6)
 
 ## 5.4 Input injection (client → pi)
 
