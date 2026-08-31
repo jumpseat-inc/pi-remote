@@ -57,6 +57,24 @@ Round 2 (cross-disclosure) and round 3 (final, at the ≤3 cap) went to owner/pr
 - Payload: owner/principal hold single-pane `{role:"assistant", content: summary}` (data-integrity — pi's compaction carries one summary string; a fabricated multi-message list would invent content not in the JSONL); designer holds multi-message role-tagged `{messages:[{role, content:string}]}` (a stock AG-UI MessagesSnapshotEventSchema expects MessageSchema[]; renders real panes). Principal additionally flagged that AG-UI's MESSAGES_SNAPSHOT is a state-reset event, so a reconstruction mid-replay could duplicate/reset already-streamed panes.
 - This is the consolidator-carry-forward item for step 5 → route to product-owner at step 6.
 
+### Step 5 — Consolidator synthesis (job-18.11, verbatim)
+
+Note: the vault wiki is empty; the consolidator worked from docs/PI-SPEC.md directly.
+
+SETTLED: deterministic frame id = fnv1a(entryId+"\0"+contentHash+"\0"+frameOrdinal), frame-granularity; runId = run-<fnv1a(sessionId+"\0"+firstUserEntryId)> with fresh createState per past run and one RUN_STARTED/RUN_FINISHED pair per past run; past-run boundary = user entry through last assistant/toolResult before next user entry (EV-5 publishes it); replay:true frame-level optional field via widening AgUiFrameLike with replay?:boolean, envelope stays exactly {v,seq,ack,frame} (O2 green); STEP_* frames OMITTED in replay (O7 green); resync_done = CUSTOM {type:"CUSTOM",name:"pi.resync.done",value:{uptoSeq}} (O8 green — no RESYNC_DONE in AG-UI enum); EV-5 touches translate.ts additively for per-entry kinds §5.2 names (tool_result, custom/custom_message, bashExecution); translateJsonl is entry-level, emits no RUN_* itself (O5 green); JsonlEntry union gaps acknowledged (O4 green); AG-UI facts grounded (no RESYNC_DONE; MESSAGES_SNAPSHOT destructive all-or-nothing reset O9; pi compaction carries a single summary string O10).
+
+OPEN JUDGMENT (for product-owner, escalating to steward):
+1. MESSAGES_SNAPSHOT presentation — binding acceptance vs grounded semantics. Side A (literal acceptance): card acceptance line 4 ("compaction surfaces as MESSAGES_SNAPSHOT + CUSTOM") and §5.2 step 3 are binding; a compaction entry must surface as MESSAGES_SNAPSHOT + CUSTOM in-stream. Side B (Skeptic corrective, grounded): O1 closed-red both proposed forms; MESSAGES_SNAPSHOT is a destructive all-or-nothing state-reset and pi compaction is a single summary string, so neither in-stream form is semantically valid; emit MESSAGES_SNAPSHOT only as init and keep compaction CUSTOM-only in-stream. Not reconcilable by test — a ruling must choose whether acceptance 4 / §5.2 step 3 stays literal (and a valid snapshot payload is defined for a summary-only compaction) or is amended to init-only + CUSTOM-in-stream.
+2. SPEC-AMENDMENT governance — (a) whether the §5.3 resync_done {type:"resync_done",uptoSeq} correction to CUSTOM rides EV-5's PR under the EV-4 Q1 precedent, or needs its own spec card first; (b) whether §2's "AG-UI and nothing else" lock admits a discriminated inbound resume/resync control union (Skeptic O6 cast-hole fix target) or must be amended. Steward ruling.
+
+OPEN OBJECTIONS (settling test not passed; closeable by implementation+test on EV-5's PR, no human ruling): O3/U3 replay?:boolean widening (test: replay frame round-trips with replay:true, envelope still 4 keys); O6/U2 parseInbound cast-hole (test: parseInbound rejects/branches non-event inbound control frames, tied to open judgment 2b); U1 MESSAGES_SNAPSHOT final resolution (depends on open judgment 1); U4 runId derivation when a past run's first kept entry is not a user message (must not crash, stay stable).
+
+Verbatim consolidator verdict: "No." Two rulings must precede finalization and hand-off to the owner: open judgment 1 (MESSAGES_SNAPSHOT presentation) and open judgment 2 (SPEC-AMENDMENT governance). Once ruled, the four open objections close by implementation + passing Skeptic run.
+
+### Step 6 — routing
+
+Both open-judgment items route to ruling seats per council.md step 6 (product-owner, escalating to steward for the governance/spec items). No Phase 1 ruling on this epic covers either question (orchestrator confirmed: all judgment delegated to council, none on record). Per the escalation contract the facilitator does not dispatch ruling seats; returning ESCALATION to the orchestrator for the rulings, then resuming this card on the rulings.
+
 ### Step 4 — Skeptic attack and tests (job-18.10, BLOCKS)
 
 The Skeptic grounded AG-UI and pi sources via context7/web and ran tests against current translate.ts/transport.ts (49 suite green).
