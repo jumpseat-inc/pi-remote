@@ -57,6 +57,28 @@ Round 2 (cross-disclosure) and round 3 (final, at the ≤3 cap) went to owner/pr
 - Payload: owner/principal hold single-pane `{role:"assistant", content: summary}` (data-integrity — pi's compaction carries one summary string; a fabricated multi-message list would invent content not in the JSONL); designer holds multi-message role-tagged `{messages:[{role, content:string}]}` (a stock AG-UI MessagesSnapshotEventSchema expects MessageSchema[]; renders real panes). Principal additionally flagged that AG-UI's MESSAGES_SNAPSHOT is a state-reset event, so a reconstruction mid-replay could duplicate/reset already-streamed panes.
 - This is the consolidator-carry-forward item for step 5 → route to product-owner at step 6.
 
+### Step 4 — Skeptic attack and tests (job-18.10, BLOCKS)
+
+The Skeptic grounded AG-UI and pi sources via context7/web and ran tests against current translate.ts/transport.ts (49 suite green).
+
+Grounding (citations): AG-UI EventType enum has TEXT_MESSAGE_/TOOL_CALL_/STATE_SNAPSHOT+DELTA/MESSAGES_SNAPSHOT/ACTIVITY_/RAW/CUSTOM/RUN_/STEP_/REASONING_/THINKING_* families — **NO RESYNC_DONE**. MESSAGES_SNAPSHOT schema = `MessagesSnapshotEventSchema = BaseEventSchema.extend({type: z.literal(EventType.MESSAGES_SNAPSHOT), messages: z.array(MessageSchema)})`; core `MessageSchema.content?: string` (optional plain string); semantics: destructive state-reset — "Replaces the conversation history with a new list of messages", "all-or-nothing update", Dart `messages.clear(); addAll()`. Pi JSONL compaction entry: `appendCompaction(summary, firstKeptEntryId, tokensBefore, ...)` carries a **single summary string**; `buildContextEntries()` returns `[compaction_entry, ...entries_after_firstKeptEntryId, ...entries_after_compaction]`.
+
+Objections & results (as run):
+- **O1 closed-red** — both MESSAGES_SNAPSHOT proposals fail. Current `translateJsonl` compaction emits only CUSTOM (`[{type:"CUSTOM",name:"pi.context.compaction"}]`), no MESSAGES_SNAPSHOT. Neither owner+principal's single-pane-in-translate nor designer's multi-message-in-history is semantically valid: AG-UI MESSAGES_SNAPSHOT is destructive reset (would clobber already-streamed panes mid-replay), and pi's compaction carries only a summary string (a fabricated message list invents content not in the JSONL). Skeptic's corrective: emit MESSAGES_SNAPSHOT as initialization (before replay starts / for new-client reconstruction), and keep the compaction path CUSTOM-only in the replay stream; or MESSAGES_SNAPSHOT for first-connect + CUSTOM during walk.
+- **O2 closed-green** — envelope stays exactly {v,seq,ack,frame} (4 keys).
+- **O3 closed-red** — `AgUiFrameLike` currently `AgUiFrame & { id?: string }`; must gain `replay?: boolean` for EV-5.
+- **O4 closed-green** — JsonlEntry union lacks tool_result/custom_message/bashExecution kinds (acknowledged, to be added).
+- **O5 closed-green** — translateJsonl is entry-level, emits no RUN_* per entry; history.ts owns RUN framing.
+- **O6 closed-red** — parseInbound validates only `typeof frame.type === "string"`; inbound resume/resync control frames pass silently as AgUiFrame (no structural/EventType check) — must be hardened before the resync handshake works safely.
+- **O7 closed-green** — STEP frames correctly absent from the JSONL path.
+- **O8 closed-green** — no RESYNC_DONE in AG-UI enum → CUSTOM pi.resync.done confirmed.
+- **O9 closed-green** — MESSAGES_SNAPSHOT is destructive all-or-nothing state-reset.
+- **O10 closed-green** — pi compaction entry carries a single summary string, not a message list.
+
+Open (open-untested until implementation): U1 MESSAGES_SNAPSHOT final resolution (emit as initialization before replay, not interleaved); U2 parseInbound cast-hole fix (discriminated inbound control union); U3 replay?:boolean widening; U4 runId derivation when a past run's first kept entry is not a user message (must not crash; fallback needed).
+
+**Verdict: BLOCKS.** Three closed-red corrections (O1 MESSAGES_SNAPSHOT presentation, O3 replay-field widening, O6 parseInbound hardening) + U4 (runId edge) must be resolved before the design is ready for synthesis. The MESSAGES_SNAPSHOT presentation — how a compaction should surface to a remote client, given AG-UI's destructive-reset semantics and pi's summary-only data, and given the card's binding acceptance "compaction surfaces as MESSAGES_SNAPSHOT + CUSTOM" and §5.2's literal "compaction → MESSAGES_SNAPSHOT + CUSTOM" — is an open design judgment for step 6 routing.
+
 
 - Replay frames carry `replay: true` and deterministic ids; delivering the
   same replay batch twice yields identical ids, so client-side dedupe by
