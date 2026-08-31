@@ -23,9 +23,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Progress
 
-- EV-4 — "Pure pi-to-AG-UI translation mapper"
-
 ## In Review
+
+- EV-4 — "Pure pi-to-AG-UI translation mapper"
 
 ## Needs Human
 

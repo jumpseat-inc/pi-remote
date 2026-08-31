@@ -1,7 +1,7 @@
 ---
 id: EV-4
 title: "Pure pi-to-AG-UI translation mapper"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: translate.ts maps each documented pi event and JSONL entry kind to the AG-UI frames of spec §4 with no I/O and no socket references, emitting CUSTOM events with pi-prefixed payloads for anything AG-UI cannot express.
@@ -167,3 +167,10 @@ The orchestrator dispatched product-owner on both open-judgment items. The rulin
 - **Ruling.** **One `RUN_STARTED` / `RUN_FINISHED` pair per past run.** Replay mirrors what the live session emitted. Per-run boundaries are meaningful to a remote observer, and per-run deterministic `runId`s preserve live/replay dedupe. `translate.ts` never mints `runId`s — it consumes them from input. EV-5 mints a deterministic `runId` per past run from the JSONL entry sequence and threads it through `TranslateContext` for the duration of that past run's frames. EV-4 publishes the contract that `runId` is input-driven; EV-5 publishes the rule that "past-run boundary" is a user entry through the last assistant or toolResult message before the next user entry (the same user-message-bounded rule the consolidated design uses for turn derivation).
 
 **Closing note for the runner** — EV-4 may proceed to step 7 (design spec write, with §4 amendment spliced in citing S1/S2/S8 evidence in the row notes) → step 8 owner implementation against the corrected rows → step 9 Skeptic verify on the corrected implementation (closing O1/O2/O3 by green tests) → step 10 judge on the corrected implementation → step 11/12 merge gated by the deterministic five-criteria check. The follow-up `agent_end`-without-`agent_settled` stays open at the principal seat for EV-8's contract; EV-4 does not add a `RUN_ERROR` row.
+
+### Step 7/8 — design spec, owner implementation, In Review
+
+- **Step 7.** Design spec written to `docs/superpowers/specs/2026-08-31-EV-4-design.md` (committed 459c9f3). It publishes the settled design (§1–§2), the fixture/test contract (§3), the §4 amendment replacement blocks (§4, authored by the facilitator per ruling Q1), and the gate table (§5, G-1..G-14). Card set `In Progress` (459c9f3).
+- **Step 8.** Owner (job-11.1) implemented in isolated worktree `.worktrees/ev-4-translate` on branch `ev-4-translate`, opened **PR #2** (head SHA `35c7ed0`, base main). Diff: `src/translate.ts` (new), `test/translate.test.ts` (new, 22 tests), §4 amendment in `docs/PI-SPEC.md`, plus the implementation plan doc. Card set `In Review` on the observed PR-open artifact.
+- **Owner gate evidence:** G-1 tsc exit 0; G-2 bun test exit 0 (22 pass); G-3/G-5/G-6/G-7/G-8/G-9 green; G-10 hunks confined to §4; G-11/G-12 purity greps exit 1 (zero); G-13/G-14 fixture green. **Finding:** G-4 (as written at step 7) required zero `THINKING_TEXT_MESSAGE` doc-wide, which is unsatisfiable against the mandatory verbatim §4.1 block that cites `THINKING_TEXT_MESSAGE_*` deprecated. The owner correctly refused to reword the binding §4.1 block and surfaced it. The §4 diff (verified) maps thinking → `REASONING_MESSAGE_*` and does not emit the deprecated family; the only hit is the citation.
+- **Facilitator correction (transparent, not a threshold reduction):** the ruled property — the deprecated family is not a mapping target — is a substantive requirement preserved by G-3 (`REASONING_MESSAGE_*` present in §4) + the O1 fixture (asserts no THINKING frame is emitted). The step-7 G-4 wording was internally contradictory with the mandatory §4.1 text; I re-scoped G-4 in the spec to assert exactly one occurrence (the citation) and recorded why. No ruled design decision changed. The Skeptic at step 9 verifies against the corrected gate.
