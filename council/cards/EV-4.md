@@ -129,3 +129,26 @@ Skeptic probed the real pi SDK source, pi docs (session-format.jsonl), and the A
 11. Single TOOL_CALL_ARGS snapshot between START and END is AG-UI-valid (no min/max). **closed-green**.
 
 Verdict: blocks. Two red findings requiring design correction: (#1) emit REASONING_MESSAGE_* not THINKING_TEXT_MESSAGE_*; (#8) flatten ToolResultMessage.content blocks to string for TOOL_CALL_RESULT.content. Residual B (replay RUN framing) not settled by tests — remains open judgment.
+
+### Step 5 — Consolidator synthesis (job-9.8, verbatim)
+
+**Consolidator ground the wiki (empty). Sorting result:**
+
+SETTLED (converged or Skeptic closed-green): pure fold translate(input,state)→{frames,state} no I/O + lint/grep guard; CUSTOM {type,name:"pi.<category>", value:{pi:<raw>, data:<semantic>}} name sole dispatch key, pi nested in value; stepName constant "turn"; runId never minted by translate (UUID live / EV-5-derived replay); parentMessageId on TOOL_CALL_START; TOOL_CALL_ARGS.delta=JSON.stringify(args) never partialResult; thinking per-content-block id "<assistantId>:think:<contentIndex>"; TOOL_CALL_RESULT from toolResult MESSAGE in assistant source order; agent_settled→RUN_FINISHED; dedupe id in §6 envelope not BaseEvent; CUSTOM name/value typing. (pi.session.unsettled_end proposed by designer, no objection, no test run.)
+
+Settled disputes (ran AND result): S3 stepName "turn" valid (green); S4 dedupe id in envelope (green); S5 agent_settled safe (green); S6 delta string type (green); S7 CUSTOM name sole dispatch key (green); S9 JSONL no turn/run entries, replay infers via fold state (green); S10 agent_settled reachable via pi.on (green); S11 single TOOL_CALL_ARGS snapshot valid (green); S2 FACTUAL layer — generation lane toolcall_start/delta/end is correct source, tool_execution_* fires after message_end in separate lane (static args snapshot + partialResult) — red against §4-literal side; closes factual half of residual A.
+
+OPEN JUDGMENT (→ product-owner, escalating to steward):
+1. §4 LOCKED-table corrections governance. Two Skeptic tests (S1 thinking family deprecated→REASONING_*; S2 tool-call source lane) + implementable correction (S8 content flattening) show §4 literal rows are wrong and must change for the translator to be correct. Who has authority to rewrite a LOCKED contract clause in response to a test? Positions at equal weight: (a) test-settled correction the spec may absorb — closed-red against the literal is dispositive; spec owner updates §4 (REASONING_MESSAGE_*, generation-lane toolcall_*, content flattening) because a locked clause contradicting a passing test is defective on its face. (b) contract-ruling path required — LOCKED means LOCKED; amending §4 routes through contract owner (product-owner→steward), not silently rewritten by facilitator/implementing seat even when a test shows the literal is wrong. Until ruled, §4 stays as written and corrections live only as open objections.
+2. Replay RUN framing (residual B). Replaying N past runs: one RUN_STARTED/FINISHED pair per past run (mirrors live, per-run boundaries meaningful to remote user) vs one outer RUN pair wrapping whole replay batch (resync = single client-facing catch-up; nested RUNs confuse perception of "what is a run"). No test can settle; remote-UX values call.
+
+OPEN OBJECTIONS (Skeptic objections, settling test not yet passed on a corrected impl):
+O1 thinking family (S1, closed-red) — §4 names THINKING_TEXT_MESSAGE_* but deprecated→REASONING_MESSAGE_* (role field); settle by green test of corrected impl.
+O2 tool-call source lane (S2, closed-red) — §4 maps tool_execution_*→TOOL_CALL_* but lane fires after message_end (false order); generation lane toolcall_* is correct, tool_execution_*→CUSTOM pi.tool.*; settle by green test of corrected impl. (Dispute of WHICH lane is correct settled red; the correction not implemented/re-tested.)
+O3 TOOL_CALL_RESULT content flattening (S8, closed-red) — content is z.string() but pi ToolResultMessage.content is (TextContent|ImageContent)[]; must flatten to string. Settle by green test. Entangled with O1/O2 governance.
+
+Consolidator verdict: NOT ready to hand off. Two blockers in order: (1) open judgment #1 (§4 governance) must be ruled before O1/O2/O3 resolve into implementation — corrections touch a LOCKED contract clause a facilitator may not rewrite unilaterally; (2) open judgment #2 (replay RUN framing) must be ruled before replay framing finalizes; independent of #1, can be ruled in parallel.
+
+### Step 6 — routing
+
+Open-judgment item 1 (§4 corrections governance) and open-judgment item 2 (replay RUN framing) both route to product-owner (escalating to steward) per council.md step 6. No Phase 1 ruling on this epic covers either question (orchestrator confirmed: all judgment delegated to council, no standing rulings). Per the escalation contract, the facilitator does not dispatch ruling seats; returning ESCALATION to the orchestrator for the ruling, then resuming this card on the ruling.
