@@ -12,7 +12,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 - EV-2 — "Control-plane tunnel REST client"
 - EV-3 — "Outbound wss transport with seq-ack envelope"
-- EV-4 — "Pure pi-to-AG-UI translation mapper"
 - EV-5 — "JSONL history replay and resync"
 - EV-6 — "Remote input injection"
 - EV-7 — "/rc:login OAuth2 enrollment command"
@@ -21,6 +20,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-2 — "Reconcile EV-8 card text with the seven-state footer set"
 
 ## Deliberating
+
+- EV-4 — "Pure pi-to-AG-UI translation mapper"
 
 ## In Progress
 
