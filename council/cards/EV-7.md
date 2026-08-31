@@ -139,3 +139,16 @@ Full council + surface-touching (user-visible `/rc:login` terminal copy; open de
 - Filename singular/plural discrepancy (credential.json vs credentials.json) — trivial drafting detail for spec pin. ALREADY_LOGGING_IN_COPY/REPLACEMENT_PROMPT_COPY constants to fold into closed-set pinning.
 
 **Consolidator sequence:** spec draft (clear B1/B2) → product-owner rulings (J1/J2/J3) → owner implementation with four open-untested tests in plan.
+
+### Step 6 — Product-owner rulings (J1/J2/J3, binding; full text `vault/raw/2026-08-31-po-ev7-ruling.md`)
+
+The orchestrator dispatched `product-owner`; it ruled on all three escalated items, no deferral. Rulings are binding and recorded verbatim:
+
+- **J1 — tenant display in success line:** append ` (tenant <tenantId>)` only when the access-token JWT payload carries a tenant-scoped `sub` claim (best-effort base64url decode returned a non-empty string); otherwise render the compact form verbatim. Security-adjacent note is binding: `tenantId` is best-effort unverified, never an authority decision, informational only. Unconditional display rejected (renders ` (tenant )`); never-display rejected (loses multi-tenant disambiguation).
+- **J2 — confirm vs silent replace on re-run while enrolled:** confirm with `loginEnglishFor('login.replacementPrompt')` before any HTTP request; Enter continues (credential overwritten), Ctrl-C aborts silently (existing preserved, clean exit). Ratified: prompt NOT shown in `--headless` mode. Skeptic structural constraint binding: prompt renders + waits before any request to authorization_endpoint / token_endpoint / device_authorization_endpoint — assertable by pre-seeding the credential store and inspecting the request log. Acceptance "replaces cleanly" reads as atomicity (full-replace tmp+fsync+rename, never merge), not silence.
+- **J3 — POSIX-0600 vs Windows ACL:** Position A — ship POSIX 0600 + documented Windows caveat. On Windows chmod is a no-op; README caveat (rides FLLWUP-1) + stateful notice in storage-failed copy when `process.platform === "win32"`. Acceptance reading: "user-only readability on the platform's canonical mechanism" — 0600 on POSIX (assert mode & 0o777 === 0o600), NTFS ACL on Windows (NOT implemented; security goal not relaxed but unmet on Windows today, and the user is told). Runner flags Windows ACL as a known follow-up at EV-7 close.
+- **General rule for EV-8 / FLLWUP-2 (binding):** (1) no glyph acks — every state change resolved via `loginEnglishFor`; missing line → escalate, never raw strings; (2) no bypass of `loginEnglishFor`; (3) replacement-prompt gate at the driver, not the command handler (EV-8 passes mode into the driver); (4) EV-8 emits authorizing on driver begin → off on terminal; success→idle is FLLWUP-2's reconciliation; (5) no second copy vocabulary for /rc:login. FLLWUP-2 reconciles EV-8 card text to the seven-state set per EV-1 Q2; do not re-litigate EV-1 Q2.
+
+Following the rulings, the spec at `docs/superpowers/specs/2026-08-31-EV-7-design.md` reconciles B1 (discoveryCache type → `Map<string, Promise<DiscoveryDocument>>`, single cache) and B2 (designer's canonical 28-row table as single source of truth; 13-row failure set; per-row tail invariant) and applies J1/J2/J3 (§1.1–§1.3).
+
+---
