@@ -127,4 +127,40 @@ Positions stabilised on the core architecture; recorded verbatim below (condense
 2. **Typed event field set.** owner reads `onStatus("dialing"|"live")` minimal; designer/principal read `{kind, severity, order, connectionId, reason?, since?}`. designer frames it as testable: a fixture running EV-8's merge policy against a field-starved shape would fail to apply the EV-2 Item-4 recorded preference. Field set to be settled at the owner's step-8 implementation / step-9 skeptic against the real merge policy need.
 3. **§8 one-line note** — whether `docs/PI-SPEC.md` §8 should carry a one-line note that the host-visible copy may distinguish first-connect from reconnecting via a payload field on the `dialing` transition. Reading (a): leave §8 unchanged (EV-8 renders either way). Reading (b): add the one-line note (prose-sync within a card's mandate per EV-1 Q3 precedent). Touches §8 prose; open-judgment, and FLLWUP-2 already reconciles EV-8 text with the seven-state set — deferred rather than decided here.
 
+---
+
+## Step 4 — Skeptic attacks and runs tests (job-15.7)
+
+Skeptic settled in 4.0m. **Verdict: `blocks`** on three open design questions, but the protocol facts all settled green. Full report recorded; key results:
+
+- **O4 closed-green (heartbeat, SETTLED BY RUNNING):** ran against real `Bun.serve` on this repo's bun 1.4.0 — `WebSocket.prototype.ping` IS a function; `ws.ping()` fires the server's `websocket.ping` handler and NOT the `message`/AG-UI data path; there is NO client `pong` event (dead-peer detection rides `close`/`error` + next failed `send`, not pong-timeout). Verdict: no change; native control-frame ping stands.
+- **O6 closed-green:** seq strictly increasing across reconnect (monotonic counter, drops happen before assignment); event gaps are intentional, handled by EV-5 replay.
+- **O7 closed-green:** ack = highest-processed-inbound watermark, correct for §5.3 resume semantics.
+- **O8 closed-green:** design injects clock/sleep/rng; no fake timers needed (bun `mock.timer` absent; verified `Bun.fakeTimers`/`jest`/`vi` all false).
+- **O9 closed-green:** gate-integrity failure-injections mapped (seq reset→fails; 0 backoff→fails; 0 jitter→fails; omitted heartbeat→connection drops; buffering-during-disconnect→fails; rearm-on-first→fails).
+- **O1 OPEN (blocks):** terminal failure — give-up-after-N vs retry-forever. Spec §8 defines `error` as terminal; §6 sets no give-up. Design cannot decide whether transport ever stops retrying or what it emits; EV-8 cannot know if a failed transport is dead or retrying.
+- **O2 OPEN (blocks step 9, not step 6):** typed event field set underspecified (minimal `onStatus("dialing"|"live")` vs `{state, connectionId, reason?, severity?}`). EV-2 tunnel.ts already models `Severity = "error"|"live"|"resyncing"` + `ReasonCopy{footerState, severity}`; merge policy (EV-2 Item 4) needs the richer shape. Closure-by-test at step 9.
+- **O3 PARTIAL (open, non-blocking):** no-other-module gate satisfiable only against `translate.ts` now; history/inject assertions deferred to when those files land (EV-5/EV-6).
+
+## Step 5 — Synthesis (consolidator, job-15.8, verbatim — condensed)
+
+**SETTLED** (each closed by a Skeptic step-4 test): the ten-point converged architecture (typed state-event seam; `reconnecting` = payload sub-state of `dialing`, not an 8th §8 state; native WS control-frame-ping heartbeat — O4 green; re-arm seam transport-when/EV-8-what; three-numbers seq/ack contract; write-time seq assignment; injected-`newId` UUID stamping never overwriting replay ids; idempotency-guard keyed on live; gate scoped to what exists; error footer state owned by EV-8 merge policy).
+
+**OPEN JUDGMENT (for product-owner, escalating to steward; no test settles):**
+1. **O1 (BLOCKING) — terminal failure: give-up-after-N vs retry-forever.** designer: transport emits `kind:"error"` (closed reasons `relay_unreachable`/`protocol_violation`/`url_expired`) once per failed cycle, can stop retrying; recovery emits `live` directly. principal: dial failures transient, §6 sets no give-up, backoff continues, reasons are metadata on `dialing`, never a footer state. A ruling decides: (i) give-up-after-N vs retry-forever at capped backoff; (ii) N and the closed reason set if give-up; (iii) whether transport emits a terminal `kind:"error"` event or only `reason` metadata; (iv) the boundary between a transport-internal failure signal and an EV-8 footer-`error` landing.
+2. **R3 (NON-BLOCKING) — §8 one-line note**: Reading (a) leave §8 unchanged; Reading (b) add a one-line note that host-visible copy may distinguish first-connect from reconnecting via a payload field on the `dialing` transition. EV-1 Q3 precedent bounds the mechanism (prose-sync would ride the PR) but not the content (a UX-preference state/note is NOT the forced-by-upstream class). FLLWUP-2 already reconciles EV-8 text with the seven-state set.
+
+**OPEN OBJECTIONS:**
+- **O2 (BLOCKS step 9, not step 6) — typed event field set.** Closure-by-test, NOT a ruling: a step-9 Skeptic fixture runs EV-8's merge policy (per EV-2 Item 4 recorded preference) against the implemented shape. Precedent-set floor (apply, don't re-ask): EV-2 Item 4 ships `severity` + a recorded most-recent-wins/highest-severity-wins preference, so `severity` and an order-or-timestamp primitive are settled by precedent; the residual is the remaining fields (`order` vs timestamp, `since?`, `attempt?`, `connectionId`, `reason?`).
+- **O3 (NON-BLOCKING) — gate scope.** translate.ts assertion testable at step 9 now; history/inject deferred-by-design to EV-5/EV-6.
+
+**Precedent applied:** EV-2 Item 4 (footer-merge deferred to EV-8; `severity` floor for O2); EV-1 Q3 + EV-4 Q1 (spec corrections corruption mechanism; UX-preference not auto-amending — bounds R3); EV-1 Q2 (seven footer states binding — `reconnecting` is a payload sub-state); EV-1 step-10 judge-object (judge evaluates PR branch at Skeptic-verified SHA — applied at step 10).
+
+**Not ready to hand off: O1 blocks routing to implementation.** O2/O3/R3 do not block step 6. Once O1 is ruled, EV-3 routes to step 8 carrying the settled architecture, the closed-green Skeptic tests, and the O2/O3 test plan.
+
+## Step 6 — routing (facilitator)
+
+Phase 1 rulings: NONE (human delegated all open-judgment calls). `product-owner`/`steward` are ruling seats this container does not dispatch. Per the `<escalation_contract>`, the open-judgment item the consolidator sorted as requiring a product-owner ruling — **O1 (terminal give-up vs retry-forever)**, with R3 (the §8 one-line note) as a non-blocking companion — carries forward to the orchestrator via ESCALATION with facts only, no recommendation. O2 and O3 are closure-by-test / deferred and do not need a ruling. Card remains `Deliberating` awaiting the ruling before steps 7–14 can proceed.
+
+
 
