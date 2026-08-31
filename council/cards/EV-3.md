@@ -186,3 +186,25 @@ The orchestrator dispatched `product-owner` for the O1 open-judgment item (with 
 ## Step 6 → Step 7 handoff (facilitator)
 
 O1 is no longer open; it is closed by the ruling. R3 is deferred to FLLWUP-2 (no EV-3 step-9 gate, no §8 prose edit on this PR). O2 remains closure-by-test at step 9 (merge-policy fixture); O3 non-blocking (translate.ts static gate now, history/inject inherited by EV-5/EV-6). EV-3 proceeds to step 7 carrying the four sub-question rulings, the companion deferral, and the ten-point converged architecture as the binding contract.
+
+---
+
+## Step 7 — design spec + handoff
+
+Design spec committed: `docs/superpowers/specs/2026-08-31-EV-3-design.md` (settled design, no §8 edit — R3 deferred to FLLWUP-2). Card → `In Progress`.
+
+## Step 8 — owner implementation (job-17.1, 8.8m)
+
+Branch `ev-3-transport`, **PR #4 open**, head `57d5632ea4cd4e728218bd83a201331b40f7208e`. Own gates: `bunx tsc --noEmit` clean; `bun test` 49 pass / 0 fail (40 existing + 9 new). Deviation documented: defensive URL regex accepts `ws:` too (test-only, in-repo Bun.serve fake has no TLS; production wss enforced by EV-2) — referred to Skeptic. Card → `In Review` (observed: PR #4 open, `gates` workflow SUCCESS on head).
+
+## Step 9 — Skeptic verification (job-17.2, 5.7m) — verify cycle 1/3
+
+Verdict **pass; NO open objections — all closed-green**. Own re-runs: tsc clean; `bun test --timeout 30000` 49 pass / 0 fail; gate-failure injection confirmed the gate can fail (8 fail on injected `fetch(`).
+- **O1(a) closed-green** — `dialLoop` gated only by stopped/disconnecting/dialToken; no give-up counter or boundary (retry-forever).
+- **O1(b) closed-green** — `TransportKind = "dialing"|"live"`; no `kind:"error"` in type or any emission.
+- **O1(c) closed-green** — `TransportReason` exactly the closed 5-value set.
+- **O1(d) closed-green** — no `setStatus` call, no `fetch(` in transport.ts.
+- **O2 closed-green** — §3.1-9 merge-policy fixture implements EV-2 Item 4 preference against the implemented shape; severity+order primitives workable; residual fields populated; no field-starved shape.
+- **O3 closed-green** — static no-socket gate on translate.ts.
+- **R3 closed-green** — `git diff main -- docs/PI-SPEC.md` empty (no §8 edit).
+- **ws:/wss: deviation closed-green** — necessary for in-repo Bun.serve fake (no TLS); confined to URL-validation regex; production wss enforced by EV-2; consistent with binding contract.
