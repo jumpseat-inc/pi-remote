@@ -25,11 +25,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-- EV-2 — "Control-plane tunnel REST client"
-
 ## Needs Human
 
 ## Done
 
+- EV-2 — "Control-plane tunnel REST client"
 - EV-4 — "Pure pi-to-AG-UI translation mapper"
 - EV-1 — "Sync PI-SPEC with the /rc:login OAuth2 enrollment design and colon command naming"
