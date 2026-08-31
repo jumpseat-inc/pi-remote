@@ -263,13 +263,7 @@ static key, never an environment variable.
   and refreshes silently at tunnel time with
   `grant_type=refresh_token` at `{token_endpoint}` — there is no separate
   refresh endpoint.
-- **Credential storage.** The enrollment credential is persisted in
-  **extension settings** with user-only readability: `piRemote.serverUrl`,
-  `piRemote.accessToken` (short-TTL), `piRemote.refreshToken` (long-lived,
-  revocable at the control plane), `piRemote.tokenExpiry`, and
-  `piRemote.tenantId` (cached from the token). A failed flow writes nothing
-  half-written; re-running `/rc:login` replaces the stored credential
-  cleanly. The token authorizes *creating tunnels*, nothing else.
+- **Credential storage.** The enrollment credential is persisted in a dedicated JSON file at `<configDir>/pi-remote/credentials.json`, serializing the `piRemote.*` keys: `piRemote.serverUrl`, `piRemote.accessToken` (short-TTL), `piRemote.refreshToken` (long-lived, revocable at the control plane), `piRemote.tokenExpiry`, and `piRemote.tenantId` (cached from the token). User-only readability is enforced on POSIX by a mode-0600 file (written atomically via tmp+fsync+rename); on Windows `chmod` is a no-op, so the 0600 guarantee is not portable there — the limitation is documented in the README's credential-storage section (riding FLLWUP-1) and surfaced as a platform notice in the storage-failed copy when running on Windows. A failed flow writes nothing half-written; re-running `/rc:login` replaces the stored credential cleanly. The token authorizes *creating tunnels*, nothing else.
 - **Environment override (documented override only).** The control-plane
   server URL may be overridden with the `PI_REMOTE_SERVER_URL` environment
   variable. **Credentials are never carried in environment variables.**
@@ -349,7 +343,7 @@ requires namespacing on the wire.
 | Command | Behavior |
 |---|---|
 | `/rc` | If no enrollment credential exists, **refuse to dial** and output a line naming the next step (`run /rc:login`); footer state `not enrolled`. If enrolled but the access token is expired, perform **one silent refresh**; if there is no refresh token or the refresh fails, output the same `/rc:login` remedy and do not dial. Otherwise `POST /tunnels` (§7.2), dial the signed URL, and start translating live events. Idempotent: if already connected, notify and no-op. OAuth enrollment is never attempted from `/rc` — that is `/rc:login`'s job. |
-| `/rc:login` | Enroll the host with the control plane's OAuth2 authorization server: the **attended** flow (default) opens the default browser (Authorization Code + PKCE, §7.2); the `--headless` flag runs the RFC 8628 device flow and prints `user_code` + `verification_uri_complete`. Persists the credential in extension settings; on failure, prints what to do next. |
+| `/rc:login` | Enroll the host with the control plane's OAuth2 authorization server: the **attended** flow (default) opens the default browser (Authorization Code + PKCE, §7.2); the `--headless` flag runs the RFC 8628 device flow and prints `user_code` + `verification_uri_complete`. Persists the credential in the dedicated user-only 0600 credential file (`<configDir>/pi-remote/credentials.json`, §7.2); on failure, prints what to do next. |
 | `/rc:off` | Close the WS, notify the control plane (`DELETE /tunnels/:id`), discard token state. Idempotent. |
 | `session_shutdown` handler | Tear down the tunnel for **every** shutdown reason (`quit`, `reload`, `new`, `resume`, `fork`) — exiting without `/rc:off` must not leave a live tunnel. Idempotent with `/rc:off`. |
 

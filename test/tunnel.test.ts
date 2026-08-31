@@ -3,6 +3,7 @@ import {
   createTunnel,
   refreshAccessToken,
   deleteTunnel,
+  discoverAuthServer,
   TunnelError,
   isTunnelError,
   tunnelReasonCopy,
@@ -10,6 +11,7 @@ import {
   ALREADY_LIVE_COPY,
   type TunnelHttpDeps,
   type TunnelReason,
+  type DiscoveryDocument,
 } from "../src/tunnel";
 
 // ---------------------------------------------------------------------------
@@ -353,8 +355,7 @@ describe("EV-2 control-plane tunnel REST client", () => {
     expect(discoveryCount).toBe(1);
   });
 
-  test("copy map: each reason resolves to its English default; reason set closed to §3.2", () => {
-    const closed: TunnelReason[] = [
+  test("copy map: each reason resolves to its English default; reason set closed to §3.2", () => {    const closed: TunnelReason[] = [
       "enrollment_expired",
       "enrollment_rejected",
       "control_plane_unreachable",
@@ -384,5 +385,58 @@ describe("EV-2 control-plane tunnel REST client", () => {
     await import("../src/tunnel");
     const after = (globalThis as Record<string, unknown>).__ev2_side_effect ?? "absent";
     expect(after).toBe(before);
+  });
+
+  test("discoverAuthServer returns the full RFC 8414 doc incl. optional device endpoint", async () => {
+    const { deps } = makeDeps({}, () => ({
+      status: 200,
+      body: {
+        authorization_endpoint: `${DEFAULT_SERVER}/auth`,        token_endpoint: TOKEN_ENDPOINT,
+        device_authorization_endpoint: `${DEFAULT_SERVER}/device`,
+      },
+    }));
+    const doc = await discoverAuthServer(deps);
+    expect(doc.authorizationEndpoint).toBe(`${DEFAULT_SERVER}/auth`);
+    expect(doc.tokenEndpoint).toBe(TOKEN_ENDPOINT);
+    expect(doc.deviceAuthorizationEndpoint).toBe(`${DEFAULT_SERVER}/device`);
+  });
+
+  test("discoverAuthServer is cached per serverUrl inside the injected scope (O7, test 17)", async () => {
+    const { deps, log } = makeDeps({}, () => ({
+      status: 200,
+      body: { authorization_endpoint: "/auth", token_endpoint: TOKEN_ENDPOINT },
+    }));
+    const a = await discoverAuthServer(deps);
+    const b = await discoverAuthServer(deps);
+    expect(a).toEqual(b);
+    expect(log.filter((r) => r.url === DISCOVERY_URL)).toHaveLength(1);
+  });
+
+  test("test 8 (open-untested): refreshAccessToken with a discovery failure throws unreachable; TunnelReason stays closed", async () => {
+    const { deps } = makeDeps({}, (req) => {
+      if (req.url === DISCOVERY_URL) return { status: 200, netFail: true };
+      return { status: 200, body: {} };
+    });
+    let thrown: unknown;
+    try {
+      await refreshAccessToken("expired-rt", deps);
+    } catch (e) {
+      thrown = e;
+    }
+    const err = thrown as TunnelError;
+    expect(isTunnelError(thrown)).toBe(true);
+    expect(err.kind).toBe("unreachable");
+    expect(err.reason).toBe("control_plane_unreachable");
+
+    // Closed TunnelReason set is unchanged — no discovery_invalid member was added.
+    const closed: TunnelReason[] = [
+      "enrollment_expired",
+      "enrollment_rejected",
+      "control_plane_unreachable",
+      "server_error",
+      "teardown_failed",
+      "validation",
+    ];
+    expect(Object.keys(tunnelReasonCopy).sort()).toEqual([...closed].sort());
   });
 });
