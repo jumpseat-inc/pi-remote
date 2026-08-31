@@ -1,7 +1,7 @@
 ---
 id: EV-7
 title: "/rc:login OAuth2 enrollment command"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: Running /rc:login provisions working enrollment credentials for the configured control plane without env vars, in both an attended mode with a browser present and an unattended headless mode, and /rc thereafter creates tunnels with no further setup.
