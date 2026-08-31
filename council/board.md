@@ -18,9 +18,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
-- FLLWUP-5 — "Emit pi.human_input.resolved host-side completion event"
-
 ## In Progress
+
+- FLLWUP-5 — "Emit pi.human_input.resolved host-side completion event"
 
 ## In Review
 

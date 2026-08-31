@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-5
 title: "Emit pi.human_input.resolved host-side completion event"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: A remote device that resolves an approval prompt receives a CUSTOM pi.human_input.resolved completion frame (promptId, deviceId, ts) confirming its resolution was applied, emitted via an added ui_prompt_end surface in translate.ts and wiring in the lifecycle layer.
