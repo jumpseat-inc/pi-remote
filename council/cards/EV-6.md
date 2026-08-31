@@ -1,7 +1,7 @@
 ---
 id: EV-6
 title: "Remote input injection"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-1
 goal: inject.ts converts inbound AG-UI user-message frames into pi.sendUserMessage calls with the correct deliverAs mode for idle, mid-stream, and queued input, and resolves pending human-input prompts with the sending deviceId recorded.
@@ -190,3 +190,10 @@ Open-judgment items R2 and R3 both classified by the consolidator as routing to 
   surfaced, no sendUserMessage); unknown promptId → fallback, never dropped; deviceId from
   envelope structural never in text; malformed/non-user ignored without throw. **Result: no
   open objections.** Proceeding to step 10.
+
+### Step 10–12 — judge, deterministic merge, reconciled, Done
+
+- **Step 10 (judge, job-25.3), PR #6 @ head SHA `b77f5763b3d54fada5983538eb6c5ff82a89bb10` (branch, not main):** verdict **PASS**. Read the branch implementation and ran the suite in the worktree; confirmed the goal is met: AG-UI user-message → sendUserMessage assembly at END with correct deliverAs (idle deduced, streaming+steer, streaming+followUp, absent/unknown→steer); (promptId, occurrence) resolution with deviceId from the envelope passed structurally and into the result. 85/85 tests pass.
+- **Step 11 — deterministic merge check (5 criteria, all met):** (1) owner gates green in full (tsc 0; 85/85; negative invariant; §5.4-only sync); (2) `gates` workflow **SUCCESS** on PR head SHA `b77f576` via `gh pr checks 6 --json name,state,workflow` (keyed on workflow field); (3) no blocking Skeptic objection (no open objections); (4) judge PASS; (5) no Needs Human and no outstanding ruling (R2/R3 applied). Merged PR #6 pinned via `gh pr merge 6 --merge --match-head-commit b77f5763b3d54fada5983538eb6c5ff82a89bb10` → **merged**, merge commit `3ea9e810c33e5945f50f1553756d9628ad6fdbfd`. Head SHA unchanged at merge (no drift).
+- **CI on merged SHA:** `gates` check on `3ea9e81` conclusion=success (push event run 33431417971), confirmed via commit check-runs and `gh run list`.
+- **Step 12 — sync & reconcile:** fetched origin; local `main` (which carried the design-spec/council commit `3c15219` via the PR base, plus two later council-doc commits) rebased cleanly onto `origin/main` (exit 0, no conflicts); `main` now at `21ac078` (council docs) on top of merge `3ea9e81`. Board + card set `Done`; validate.py clean. Council commits pushed to origin.

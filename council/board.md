@@ -23,11 +23,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-- EV-6 — "Remote input injection"
-
 ## Needs Human
 
 ## Done
+
+- EV-6 — "Remote input injection"
 
 - EV-5 — "JSONL history replay and resync"
 
