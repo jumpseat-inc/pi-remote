@@ -12,6 +12,7 @@ import {
   createTransport,
   envelope,
   nextBackoff,
+  parseInbound,
   type TransportStatusEvent,
   type TransportEnvelope,
   type InboundEnvelope,
@@ -576,6 +577,74 @@ describe("EV-3 outbound wss transport with seq-ack envelope", () => {
       expect(typeof firstError.attempt).toBe("number");
       expect(typeof firstError.since).toBe("number");
     }
+
+    f.stop();
+    await t.disconnect();
+  });
+
+  test("EV-5 U3/O3: widening — replay frame round-trips; envelope exactly 4 keys", async () => {
+    const f = startFakeServer();
+    const col = collector();
+    const t = createTransport(
+      noopDeps({ rearm: async () => ({ tunnelId: "t1", url: f.url, expiresAt: Number.MAX_SAFE_INTEGER }), onEvent: col.onEvent })
+    );
+    await t.connect({ url: f.url, expiresAt: Number.MAX_SAFE_INTEGER });
+    await col.live;
+
+    // a pre-framed replay frame carrying replay:true + a deterministic id
+    t.send({ type: "CUSTOM", name: "pi.resync.done", value: { uptoSeq: 0 } as never, id: "det-1", replay: true } as never);
+    await sleep(20);
+    const env = f.received.filter(Boolean).pop()!;
+    expect(Object.keys(env).sort()).toEqual(["ack", "frame", "seq", "v"]); // exactly 4 keys
+    const fr = env.frame as unknown as { replay?: boolean; id?: string };
+    expect(fr.replay).toBe(true);
+    expect(fr.id).toBe("det-1"); // replay id never overwritten
+
+    f.stop();
+    await t.disconnect();
+  });
+
+  test("EV-5 U2/O6: parseInbound accepts the 4 union members; rejects non-members as protocol_violation", async () => {
+    // members accepted
+    expect((parseInbound(JSON.stringify({ v: 1, seq: 1, ack: 0, frame: { type: "CUSTOM", name: "pi.x", value: { pi: "x", data: {} } } }))!.frame as { type: string }).type).toBe("CUSTOM");
+    expect(parseInbound(JSON.stringify({ v: 1, seq: 2, ack: 0, frame: { type: "resume", deviceId: "d1", lastAckedSeq: 7 } }))!.frame).toMatchObject({ type: "resume", lastAckedSeq: 7 });
+    expect(parseInbound(JSON.stringify({ v: 1, seq: 3, ack: 0, frame: { type: "resync", fromSeq: 3 } }))!.frame).toMatchObject({ type: "resync", fromSeq: 3 });
+    expect(parseInbound(JSON.stringify({ v: 1, seq: 4, ack: 0, frame: null }))!.frame).toBeNull();
+    // non-members rejected (null → protocol violation)
+    expect(parseInbound(JSON.stringify({ v: 1, seq: 1, ack: 0, frame: { type: "bogus" } }))).toBeNull();
+    expect(parseInbound(JSON.stringify({ v: 1, seq: 1, ack: 0, frame: { type: "resume", deviceId: 123, lastAckedSeq: 1 } }))).toBeNull();
+    expect(parseInbound(JSON.stringify({ v: 1, seq: 1, ack: 0, frame: { type: "resync", fromSeq: "x" } }))).toBeNull();
+  });
+
+  test("EV-5 U2/O6: resume updates watermark, never surfaces to onInbound; resync fires onResync exactly once", async () => {
+    const f = startFakeServer();
+    const col = collector();
+    let inboundCount = 0;
+    const resyncs: number[] = [];
+    const t = createTransport(
+      noopDeps({
+        rearm: async () => ({ tunnelId: "t1", url: f.url, expiresAt: Number.MAX_SAFE_INTEGER }),
+        onEvent: col.onEvent,
+        onInbound: () => { inboundCount++; },
+        onResync: (fromSeq) => { resyncs.push(fromSeq); },
+      })
+    );
+    await t.connect({ url: f.url, expiresAt: Number.MAX_SAFE_INTEGER });
+    await col.live;
+
+    f.broadcast({ v: 1, seq: 42, ack: 0, frame: { type: "resume", deviceId: "d1", lastAckedSeq: 7 } } as never);
+    await sleep(20);
+    expect(inboundCount).toBe(0); // resume never surfaces
+    t.send(aFrame()); // next outbound ack reflects the watermark
+    await sleep(20);
+    const after = f.received.filter(Boolean);
+    expect(after[after.length - 1]!.ack).toBe(42);
+
+    // a resync control frame fires the injected callback exactly once
+    f.broadcast({ v: 1, seq: 99, ack: 0, frame: { type: "resync", fromSeq: 3 } } as never);
+    await sleep(20);
+    expect(resyncs).toEqual([3]);
+    expect(inboundCount).toBe(0); // resync also never surfaces
 
     f.stop();
     await t.disconnect();

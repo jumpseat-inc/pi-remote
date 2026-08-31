@@ -72,7 +72,7 @@ export interface InboundEnvelope {
  * injected `newId`); replay frames carry EV-5's deterministic ids and are left
  * untouched.
  */
-export type AgUiFrameLike = AgUiFrame & { id?: string };
+export type AgUiFrameLike = AgUiFrame & { id?: string; replay?: boolean };
 
 // ---------------------------------------------------------------------------
 // Injection seams (§1.6) / public surface (§2).
@@ -89,6 +89,8 @@ export interface TransportDeps {
   newId?: () => string; // UUID gen for live-frame ids
   onEvent: (e: TransportStatusEvent) => void;
   onInbound: (frame: InboundEnvelope) => void;
+  /** EV-5 seam: fired exactly once per inbound `resync` control frame (§5.3). */
+  onResync?: (fromSeq: number) => void;
   // backoff / heartbeat params (defaults in the module)
   backoffBase?: number;
   backoffMax?: number;
@@ -152,11 +154,43 @@ function isWsUrl(u: string): boolean {
 }
 
 /**
- * Parse + runtime-validate an inbound envelope. Returns null for any malformed
- * shape (bad JSON / bad shape / non-numeric seq or ack). The caller surfaces a
+ * Inbound discriminated union on the frame slot (EV-5, ruling B2/O6): an AG-UI
+ * event, a resume control frame, a resync control frame, or an ack-only
+ * heartbeat (frame === null). Everything else is rejected as protocol_violation.
+ */
+export type InboundFrame =
+  | { v: 1; seq: number; ack: number; deviceId?: string; frame: AgUiFrame }
+  | { v: 1; seq: number; ack: number; deviceId?: string; frame: { type: "resume"; deviceId: string; lastAckedSeq: number } }
+  | { v: 1; seq: number; ack: number; deviceId?: string; frame: { type: "resync"; fromSeq: number } }
+  | { v: 1; seq: number; ack: number; deviceId?: string; frame: null };
+
+/** The AG-UI event types this extension can emit (translate.ts + MESSAGES_SNAPSHOT). */
+const AG_UI_TYPES = new Set<string>([
+  "RUN_STARTED",
+  "RUN_FINISHED",
+  "STEP_STARTED",
+  "STEP_FINISHED",
+  "TEXT_MESSAGE_START",
+  "TEXT_MESSAGE_CONTENT",
+  "TEXT_MESSAGE_END",
+  "REASONING_MESSAGE_START",
+  "REASONING_MESSAGE_CONTENT",
+  "REASONING_MESSAGE_END",
+  "TOOL_CALL_START",
+  "TOOL_CALL_ARGS",
+  "TOOL_CALL_END",
+  "TOOL_CALL_RESULT",
+  "CUSTOM",
+  "MESSAGES_SNAPSHOT",
+]);
+
+/**
+ * Parse + runtime-validate an inbound envelope against the discriminated union.
+ * Returns null for any malformed shape (bad JSON / bad shape / non-numeric seq or
+ * ack / frame that matches none of the four members). The caller surfaces a
  * `protocol_violation` for a null result.
  */
-function parseInbound(data: string): InboundEnvelope | null {
+export function parseInbound(data: string): InboundFrame | null {
   let obj: unknown;
   try {
     obj = JSON.parse(data);
@@ -169,15 +203,24 @@ function parseInbound(data: string): InboundEnvelope | null {
   if (typeof o.seq !== "number" || !Number.isFinite(o.seq)) return null;
   if (typeof o.ack !== "number" || !Number.isFinite(o.ack)) return null;
   const frame = o.frame;
-  if (frame !== null && typeof frame !== "object") return null;
-  if (frame !== null && typeof (frame as { type?: unknown }).type !== "string") return null;
-  return {
-    v: 1,
-    seq: o.seq,
-    ack: o.ack,
-    deviceId: typeof o.deviceId === "string" ? o.deviceId : undefined,
-    frame: frame === null ? null : (frame as AgUiFrame),
-  };
+  const deviceId = typeof o.deviceId === "string" ? o.deviceId : undefined;
+  if (frame === null) {
+    return { v: 1, seq: o.seq, ack: o.ack, deviceId, frame: null };
+  }
+  if (typeof frame !== "object" || frame === null) return null;
+  const f = frame as Record<string, unknown>;
+  if (typeof f.type !== "string") return null;
+  if (f.type === "resume") {
+    if (typeof f.deviceId !== "string") return null;
+    if (typeof f.lastAckedSeq !== "number" || !Number.isFinite(f.lastAckedSeq)) return null;
+    return { v: 1, seq: o.seq, ack: o.ack, deviceId: f.deviceId, frame: f as unknown as { type: "resume"; deviceId: string; lastAckedSeq: number } };
+  }
+  if (f.type === "resync") {
+    if (typeof f.fromSeq !== "number" || !Number.isFinite(f.fromSeq)) return null;
+    return { v: 1, seq: o.seq, ack: o.ack, deviceId, frame: f as unknown as { type: "resync"; fromSeq: number } };
+  }
+  if (!AG_UI_TYPES.has(f.type)) return null;
+  return { v: 1, seq: o.seq, ack: o.ack, deviceId, frame: f as unknown as AgUiFrame };
 }
 
 // ---------------------------------------------------------------------------
@@ -387,7 +430,21 @@ export function createTransport(deps: TransportDeps): TransportHandle {
       }
       highestDeviceAck = Math.max(highestDeviceAck, inbound.ack);
       inboundSeq = Math.max(inboundSeq, inbound.seq);
-      deps.onInbound(inbound);
+      if (inbound.frame === null) {
+        // heartbeat / ack-only
+        deps.onInbound({ v: 1, seq: inbound.seq, ack: inbound.ack, deviceId: inbound.deviceId, frame: null });
+        return;
+      }
+      if (inbound.frame.type === "resume") {
+        // control: watermark updated above; never surfaces to onInbound
+        return;
+      }
+      if (inbound.frame.type === "resync") {
+        // control: fires the injected seam exactly once; never surfaces to onInbound
+        deps.onResync?.(inbound.frame.fromSeq);
+        return;
+      }
+      deps.onInbound({ v: 1, seq: inbound.seq, ack: inbound.ack, deviceId: inbound.deviceId, frame: inbound.frame });
     };
     ws.onerror = () => {
       /* onclose follows */
