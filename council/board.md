@@ -20,8 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
-- EV-5 — "JSONL history replay and resync"
 ## In Progress
+
+- EV-5 — "JSONL history replay and resync"
 
 ## In Review
 

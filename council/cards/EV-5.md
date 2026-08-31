@@ -1,7 +1,7 @@
 ---
 id: EV-5
 title: "JSONL history replay and resync"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: history.ts replays the active JSONL branch through translate.ts on connect and on resync, framing the batch with replay true and deterministic event ids derived from entry id plus content hash, then answers with resync_done up to the highest replayed seq.
@@ -23,6 +23,26 @@ host's JSONL, never from server state.
 - Replaying a session containing compaction and branch summaries emits the
   active branch only — no orphaned or pre-compaction entries — and matches
   what a local reader would consider the session's meaning.
+- Replay frames carry `replay: true` and deterministic ids; delivering the
+  same replay batch twice yields identical ids, so client-side dedupe by
+  event id is sufficient (tested by running the replay twice and comparing).
+- A `resync` request after a disconnect produces the replay batch followed by
+  `pi.resync.done` (CUSTOM) whose `value.uptoSeq` equals the highest replayed seq.
+- Replay initialization emits MESSAGES_SNAPSHOT carrying the active-branch
+  message list; each compaction point emits CUSTOM `pi.context.compaction` only.
+
+> **Acceptance amendment (EV-5 ruling A, binding, facilitator-authored).** The
+> former fourth bullet read "Compaction entries surface as MESSAGES_SNAPSHOT
+> plus CUSTOM `pi.context.compaction`". Product-owner ruled (Side B, Skeptic's
+> corrective, governing O1 closed-red): MESSAGES_SNAPSHOT is a destructive
+> all-or-nothing state-reset (AG-UI, O9 closed-green) and pi compaction carries
+> a single summary string (O10 closed-green), so it is emitted **only at
+> replay init**, carrying the active branch, and the compaction point emits
+> **CUSTOM `pi.context.compaction` only** — never MESSAGES_SNAPSHOT in-stream.
+> The resync terminator bullet is likewise corrected (ruling B1): the §5.3
+> literal `{type:"resync_done", uptoSeq}` is `CUSTOM {type:"CUSTOM",
+> name:"pi.resync.done", value:{uptoSeq}}` (O8 closed-green — no RESYNC_DONE in
+> the AG-UI enum). Both ride EV-5's PR per the EV-1 Q3 + EV-4 Q1 precedent.
 
 ## Deliberation record
 
@@ -97,11 +117,59 @@ Open (open-untested until implementation): U1 MESSAGES_SNAPSHOT final resolution
 
 **Verdict: BLOCKS.** Three closed-red corrections (O1 MESSAGES_SNAPSHOT presentation, O3 replay-field widening, O6 parseInbound hardening) + U4 (runId edge) must be resolved before the design is ready for synthesis. The MESSAGES_SNAPSHOT presentation — how a compaction should surface to a remote client, given AG-UI's destructive-reset semantics and pi's summary-only data, and given the card's binding acceptance "compaction surfaces as MESSAGES_SNAPSHOT + CUSTOM" and §5.2's literal "compaction → MESSAGES_SNAPSHOT + CUSTOM" — is an open design judgment for step 6 routing.
 
+## Step 6 continuation — product-owner ruling (binding, appended verbatim)
 
-- Replay frames carry `replay: true` and deterministic ids; delivering the
-  same replay batch twice yields identical ids, so client-side dedupe by
-  event id is sufficient (tested by running the replay twice and comparing).
-- A `resync` request after a disconnect produces the replay batch followed by
-  `resync_done` whose `uptoSeq` equals the highest replayed seq.
-- Compaction entries surface as MESSAGES_SNAPSHOT plus CUSTOM
-  `pi.context.compaction`.
+The orchestrator dispatched `product-owner` (judgment row, with routing
+authority checked); it ruled on both open-judgment items, no steward
+deferral needed. The ruling is binding and applied without re-asking. Full
+ruling document: `vault/raw/2026-08-31-po-ev5-ruling.md`. Binding text as
+delivered:
+
+> **Ruling A — Side B.** `history.ts` emits exactly one `MESSAGES_SNAPSHOT` at
+> replay init carrying the active-branch message list as `messages:
+> MessageSchema[]` (destructive state-reset, AG-UI-native); each compaction
+> point in the walk emits `CUSTOM pi.context.compaction` only, with no
+> `MESSAGES_SNAPSHOT` in-stream. The card's acceptance line and §5.2 step 3
+> are amended (one paragraph + one line, facilitator-authored, evidence-cited)
+> to match the corrected emission. Grounds: MESSAGES_SNAPSHOT is a destructive
+> state-reset (AG-UI Dart messages.clear(); addAll()) — an in-stream mid-replay
+> emission would clobber already-streamed panes; pi's compaction entry carries
+> one summary string (no messages list) — a snapshot at a compaction point
+> cannot be built without fabricating content not in the JSONL.
+>
+> **Ruling B1.** §5.3's literal `{type:"resync_done", uptoSeq}` is corrected to
+> `CUSTOM {type:"CUSTOM", name:"pi.resync.done", value:{uptoSeq}}`; the
+> correction rides EV-5's PR per EV-1 Q3 + EV-4 Q1 precedent — no separate spec
+> card, no steward.
+>
+> **Ruling B2.** §2's literal lock is outbound-only (the text says "every byte
+> leaving the extension") and does not reach inbound; the inbound resume/resync
+> shapes already live in §5.3's handshake contract; `transport.ts` hardens
+> `parseInbound` to a discriminated union on the `frame` slot (`AgUiFrame |
+> {type:"resume",deviceId,lastAckedSeq} | {type:"resync",fromSeq} | null`),
+> the envelope stays exactly 4 keys, control frames are handled by transport
+> (resume updates the inbound watermark, never reaches `onInbound`; resync
+> triggers an injected `onResync(fromSeq)` callback wired by EV-8), and §5.3
+> gets one clarifying sentence (facilitator-authored, O6 evidence-cited). §2 is
+> not amended. No portfolio change; no steward. The hardening is additive:
+> existing AG-UI shapes validate identically, and `protocol_violation` (the
+> existing EV-3 reason taxonomy value) covers rejected inbound shapes —
+> rejection is narrower than today's silent pass, so the security model is
+> preserved.
+>
+> **General rule for EV-6 / EV-7 / EV-8 / FLLWUP-2:** The EV-1 Q3 + EV-4 Q1 +
+> EV-5 precedent binds uniformly — a spec correction forced by authoritative
+> upstream evidence, preserving the security model, belonging to the contract
+> surface the implementing card owns, rides the implementing card's PR as
+> facilitator-authored evidence-cited prose-sync; no separate spec card, no
+> steward escalation. Specific emissions carry forward: MESSAGES_SNAPSHOT only
+> at init (active-branch message list); CUSTOM `pi.context.compaction` only at
+> compaction points in-stream; `pi.resync.done` is the resync terminator;
+> `parseInbound` validates a discriminated union on the `frame` slot; envelope
+> stays exactly `{v, seq, ack, frame}` (4 keys); resume updates the inbound
+> watermark without surfacing to `onInbound`; resync triggers an injected
+> `onResync(fromSeq)` callback wired by EV-8. Amendments that change the
+> security model (new server contract surface, loosened tenancy, expanded
+> threat model) are portfolio changes and route to steward — they do not ride
+> the implementing card's PR. None of EV-6/EV-7/EV-8/FLLWUP-2 re-litigate A,
+> B1, or B2.
