@@ -15,9 +15,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-7 — "EV-7 Windows ACL for credential-file user-only readability"
 
 ## Deliberating
-- FLLWUP-8 — "Wire the ui_prompt_start raise path end-to-end (runtime-observable acceptance for FLLWUP-5 contract b)"
 
 ## In Progress
+- FLLWUP-8 — "Wire the ui_prompt_start raise path end-to-end (runtime-observable acceptance for FLLWUP-5 contract b)"
 
 ## In Review
 
