@@ -14,13 +14,13 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 
-- FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
 - FLLWUP-3 — "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
 
 ## Deliberating
 
 ## In Progress
 
+- FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
 ## In Review
 
 ## Needs Human
