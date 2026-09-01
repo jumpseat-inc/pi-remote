@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   buildWindowsAclArgv,
   clearCredential,
@@ -144,7 +144,9 @@ describe("EV-7 credential store", () => {
       // {ok:false} ⟺ nothing was left on disk (the load-bearing invariant).
       expect(readCredential({ configDir: cfg })).toBeNull();
       expect(existsSync(credentialPath({ configDir: cfg }))).toBe(false);
-      expect(readdirSync(cfg).filter((e) => e.includes(".tmp-"))).toEqual([]); // no tmp remains
+      // tmp lives in dirname(credentialPath) = <cfg>/pi-remote/, NOT cfg itself.
+      const credDir = dirname(credentialPath({ configDir: cfg }));
+      expect(readdirSync(credDir).filter((e) => e.includes(".tmp-"))).toEqual([]); // no tmp remains
       expect(appliedPaths).toHaveLength(1);
       rmSync(cfg, { recursive: true, force: true });
     } finally {
