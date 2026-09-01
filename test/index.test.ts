@@ -552,13 +552,6 @@ describe("FLLWUP-5 S-O2: manual PiEvent construction (no ev as PiEvent cast)", (
     expect(cf.value.data.prompt).toBe("P?");
     expect(cf.value.data.occurrence).toBe(1); // forward's registerPrompt special-case untouched
 
-    // 6: user_input → TEXT_MESSAGE_* role user
-    const userStartBefore = types().filter((t) => t === "TEXT_MESSAGE_START").length;
-    h.emit("user_input", { event: "user_input", messageId: "m3", text: "hi" });
-    await h.waitFor(() => types().filter((t) => t === "TEXT_MESSAGE_START").length === userStartBefore + 1);
-    const us = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_START").at(-1)!.frame as { role?: string };
-    expect(us.role).toBe("user");
-
     // 7: ui_prompt_end — feed the REAL SDK payload shape (type:, not event:) — the probe-4 hazard
     h.emit("ui_prompt_end", { type: "ui_prompt_end", reason: "ui_prompt", kind: "confirm", title: "Allow rm -rf?" });
     await h.waitFor(() => customs("pi.human_input.closed").length === 1);
@@ -713,7 +706,6 @@ describe("EV-8 runId", () => {
 
     // fold a message then settle
     h.emit("message_start", { event: "message_start", messageId: "m1", role: "user" });
-    h.emit("user_input", { event: "user_input", messageId: "m1", text: "hi" });
     h.emit("message_end", { event: "message_end", messageId: "m1" });
     h.emit("agent_settled");
     await h.waitFor(() => h.relay.received.some((e) => e.frame?.type === "RUN_FINISHED"));

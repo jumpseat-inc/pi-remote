@@ -265,18 +265,6 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
     ]);
   });
 
-  test("user input → TEXT_MESSAGE_* with role 'user'", () => {
-    const frames = runSequence([{ event: "user_input", messageId: "user-1", text: "hello" }], {
-      sessionId: "s1",
-      runId: "r1",
-    });
-    expect(frames).toEqual([
-      { type: "TEXT_MESSAGE_START", messageId: "user-1", role: "user" },
-      { type: "TEXT_MESSAGE_CONTENT", messageId: "user-1", delta: "hello" },
-      { type: "TEXT_MESSAGE_END", messageId: "user-1" },
-    ]);
-  });
-
   test("user role: message_start → message_update delta → message_end renders TEXT_MESSAGE_START/CONTENT/END", () => {
     const frames = runSequence(
       [
