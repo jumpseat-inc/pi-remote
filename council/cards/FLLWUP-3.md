@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-3
 title: "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-1
 goal: translate.ts maps the remaining live pi events that EV-4's §4 table did not cover — queue_update, bash_execution_update, auto_retry_* — and decides the AG-UI representation of live tool-progress (partialResult), extending the EV-4 mapper without changing its pure fold shape.
@@ -681,3 +681,11 @@ Skeptic re-ran the full gate set independently at PR #14 head `36e3483` (worktre
 ### Step 10 — judge verdict (runner 6, 2026-09-01; job-4.3, settled 0.5m / 11 turns) — PASS
 
 Judge dispatched with the card's goal + acceptance terms + Skeptic step-9 evidence only (fresh eyes; settled decisions not relitigated), per the standing step-10 rule evaluating the PR branch at the Skeptic-verified SHA (PR #14, head `36e3483`), not main. The judge ran its own fresh verification: tsc exit 0; translate suite 44/0; mapper-only scope structurally confirmed; purity green; all 10 mapping rows implemented per the rulings (J-1 long name, J-3 fan-out on data.source); partialResult never TOOL_CALL_ARGS; PI-SPEC amendment scoped per O-1; doc-comments at both sites; fold signature unchanged. **Verdict: PASS.**
+
+### Steps 11–12 — deterministic merge check, merge, sync, Done (runner 6, 2026-09-01)
+
+Deterministic merge check, all five criteria held (executed mechanically, observed artifacts): (1) owner gates green in full — tsc exit 0, bun test 172/0, greps, purity, determinism (owner-observed, skeptic re-run green); (2) GitHub Actions green on PR head SHA — `gh pr checks 14 --json name,state,workflow`: `gates` workflow state SUCCESS (keyed on workflow field, not name) at head `36e3483`, re-read immediately before merge; (3) no blocking Skeptic objection — step-9 verdict VERIFIED, no block; (4) judge PASS (step 10); (5) no Needs Human state, no outstanding ruling (J-1/J-2/J-3 applied, binding general rule recorded on this card face and in spec §8).
+
+**Merge:** `gh pr merge 14 --merge --match-head-commit 36e348335845ebdcdbe676964071be851d289e94` → success; **PR #14 state MERGED, merge commit `3cfc1fdbac6984e81a65b728a33e67e6f04a...`** (3cfc1fdb). No SHA mismatch; no retry needed.
+
+**Sync and reconcile:** `git pull --ff-only` refused — local main carried this runner's step-8/9/10 record commits (made after the PR branched), origin carried the merge + PR-head commits; divergence benign and fully enumerated (`git log` both directions inspected before any action). Reconciled by `git rebase origin/main`: the three local docs-only record commits replayed cleanly on top; merge commit `3cfc1fd` intact in history; merged content verified present on main (translate.ts mappings grep, PI-SPEC caveat grep, spec file). Card set `Done` from the observed merged artifact.

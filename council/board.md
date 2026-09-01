@@ -20,11 +20,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-- FLLWUP-3 — "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
-
 ## Needs Human
 
 ## Done
+
+- FLLWUP-3 — "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
 
 - FLLWUP-10 — "Sync spec §8 /rc:login row with the while-live refusal"
 
