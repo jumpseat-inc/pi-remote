@@ -310,6 +310,17 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     }
   }
 
+  /** FLLWUP-5 contract (b): host-side completion frame for a tracked prompt resolution.
+   *  deviceId comes from the InjectResult (envelope-derived, never free text);
+   *  ts from the injected lifecycle clock (deps.now), not the fold. */
+  function emitResolved(promptId: string, occurrence: number, deviceId: string | undefined): void {
+    transportRef.handle?.send({
+      type: "CUSTOM",
+      name: "pi.human_input.resolved",
+      value: { pi: "pi.human_input.resolved", data: { promptId, occurrence, deviceId, ts: now() } },
+    });
+  }
+
   /** Start a fresh transport + dial (one createTransport per /rc, spec §1). */
   function startDial(initial: CreateTunnelResult): void {
     const transport = createTransport({
@@ -321,7 +332,16 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       rng: deps.rng,
       newId: deps.newId,
       onEvent: onTransportEvent,
-      onInbound: (env: InboundEnvelope) => void injector.handle(env),
+      onInbound: (env: InboundEnvelope) => {
+        void injector.handle(env).then((result) => {
+          if (result.kind === "resolved") {
+            emitResolved(result.promptId, result.occurrence, result.deviceId);
+          } else if (result.kind === "steered_fallback" && result.tracked) {
+            emitResolved(result.promptId, result.occurrence, result.deviceId);
+          }
+          // ignored / injected / stale / steered_fallback-with-tracked:false → no resolved
+        });
+      },
       onResync: (fromSeq) => void runReplay(fromSeq),
     });
     transportRef.handle = transport;
