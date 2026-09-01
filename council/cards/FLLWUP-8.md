@@ -38,3 +38,12 @@ Remote approval flow is end-to-end runtime-observable: a host that receives a
 frame in the live stream after replay. When this lands, FLLWUP-5's acceptance
 (b) re-opens from fixture-green to runtime-observable. Gates: `bunx tsc
 --noEmit` exit 0; `bun test` full suite green (155 baseline grows).
+## Binding ruling rider (FLLWUP-3 general rule, product-owner — binding)
+
+The dispatch names ruled in FLLWUP-3 and its consolidation are stable keys
+(EV-2 Item 2) — this card may not relitigate them. Every new subscription uses
+manual PiEvent construction per FLLWUP-5 S-O2, never `ev as PiEvent`. This
+card's acceptance re-opens from fixture-green to runtime-observable as already
+stated, and the FLLWUP-3 spec amendment's runtime-unreachability caveat
+(scoped to the four new families only, per O-1) must be amended again in the
+same PR that makes it false.

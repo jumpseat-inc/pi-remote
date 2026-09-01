@@ -39,3 +39,10 @@ message_start, message_update, message_end, tool_result, ui.confirm as wired,
 user_input as wired, ui_prompt_end, session_shutdown) still typechecks against
 the vendored union. Gates: `bunx tsc --noEmit` exit 0; `bun test` full suite
 green.
+## Binding ruling rider (FLLWUP-3 general rule, product-owner — binding)
+
+The dispatch names ruled in FLLWUP-3 and its consolidation are stable keys
+(EV-2 Item 2) — this card may not relitigate them. The vendored typed `on()`
+union reflects the real SDK whitelist: until the SDK forwards a family, that
+family stays unwired regardless of the mapper, and this card is not license to
+add dead subscriptions the compiler will now correctly reject.
