@@ -22,7 +22,6 @@ import {
 import {
   readCredential,
   saveCredential,
-  type ApplyAcl,
   type EnrollmentCredential,
   type StoreDeps,
 } from "./credential";
@@ -90,9 +89,6 @@ export interface LoginDeps {
   confirmReplacement?: () => Promise<boolean>;
   /** Test seam: override the loopback callback wait timeout (ms). */
   redirectTimeoutMs?: number;
-  /** Test seam: overrides the win32 icacls invocation inside the credential
-   * store, so the acl-failed notice path is reachable on non-win32. */
-  applyAcl?: ApplyAcl;
 }
 
 export interface LoginCommand {
@@ -204,12 +200,9 @@ const NON_FAILURE_ROWS: Record<string, string> = {
   "login.replacementPrompt": REPLACEMENT_PROMPT_COPY,
 };
 
-/** Appended to the storage-failed row when the user-only ACL could not be
- * enforced on this host (FLLWUP-7; binding ruling: cause names the host,
- * retry is /rc:login, no "file an issue"). Keyed on `saved.reason`, never on
- * `process.platform`. */
-export const ACL_ENFORCEMENT_FAILED_NOTICE =
-  " This host could not apply user-only protection to the credential file — the volume may not support NTFS ACLs, or security software blocked it — so nothing was saved. Run /rc:login to retry.";
+/** J3 Windows platform notice appended to the storage-failed row (win32). */
+export const WINDOWS_STORAGE_NOTICE =
+  " Note: this platform does not enforce user-only file permissions for the saved credential (READ the README caveat).";
 
 // ---------------------------------------------------------------------------
 // EV-8 footer + command copy (spec §8 — single resolved vocabulary).
@@ -582,15 +575,10 @@ function finalizeSuccess(
   cred: EnrollmentCredential
 ): LoginOutcome {
   const tenantId = tenantIdFromAccessToken(cred.accessToken);
-  const saved = saveCredential(
-    { ...cred, tenantId: cred.tenantId ?? tenantId },
-    { configDir: deps.configDir, applyAcl: deps.applyAcl }
-  );
+  const saved = saveCredential({ ...cred, tenantId: cred.tenantId ?? tenantId }, { configDir: deps.configDir });
   if (!saved.ok) {
     let line = loginEnglishFor("login.failure.storageFailed");
-    // Keyed on the WriteResult reason, not the platform: a win32 io_error must
-    // NOT claim the host refused ACL enforcement (FLLWUP-7).
-    if (saved.reason === "acl_enforcement_failed") line += ACL_ENFORCEMENT_FAILED_NOTICE;
+    if (process.platform === "win32") line += WINDOWS_STORAGE_NOTICE;
     print(deps, line);
     return { kind: "failure", reason: "storageFailed" };
   }

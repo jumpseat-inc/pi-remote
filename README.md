@@ -72,10 +72,8 @@ The OAuth2 enrollment credential lives in a dedicated JSON file at
 `<configDir>/pi-remote/credentials.json`, serializing the `piRemote.*` keys
 (server URL, access token, refresh token, token expiry, tenant id). User-only
 readability is enforced on POSIX by a mode-0600 file, written atomically via
-tmp+fsync+rename. On Windows, user-only readability is enforced via an NTFS
-ACL applied by icacls to the temp file (inherited permissions stripped, the
-current user granted Modify) before the credential bytes are written; if the
-ACL cannot be applied, nothing is saved. A failed flow writes
+tmp+fsync+rename; on Windows `chmod` is a no-op, so the 0600
+user-only-readability guarantee is not enforced there. A failed flow writes
 nothing half-written; re-running `/rc:login` replaces the stored credential
 cleanly.
 
