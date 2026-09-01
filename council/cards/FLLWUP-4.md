@@ -152,3 +152,28 @@ Filed at vault/raw/2026-09-02-po-fllwup4-ruling.md. Appended verbatim:
 > General rule for the remaining Backlog (FLLWUP-11 through 16): (1) copy or constants ruled verbatim by a prior ruling change only through their own card and ruling, never folded into an adjacent card however small the edit. (2) Where any card ships knowingly partial coverage of a surface, the partiality is announced at the surface itself — module comment, README, or spec row — not only in the card record. (3) New configuration follows the existing entry-point precedence of env over setting rather than inventing per-feature source orders; new key names are free at authoring time but become stable, non-relitigable contract from merge.
 
 **Rulings applied:** OJ1 → follow-up card drafted at step 13 (draft-then-confirm); OJ2 → 22-key coverage with announced partiality naming index.ts:542; OJ3 → env-over-setting resolver source; OJ4 → /rc remedy in both id and English rows; OJ5 → in-card substitution at the two re-point sites only. Proceeding to step 7.
+
+### Step 7 — design spec
+
+Committed at `docs/superpowers/specs/2026-09-02-FLLWUP-4-design.md` (self-reviewed: no placeholders/TODOs, consistent with the rulings and settled deliberation, unambiguous for an owner with no memory of the deliberation).
+
+### Step 8 — owner implementation (PR #18)
+
+Branch `feat/fllwup-4-id-localization`, head `faaaf41e58ff658a8673f1ef907d871746698016`, isolated worktree `/tmp/fllwup-4`. Commits `00c3f9a`, `4e4462d`, `faaaf41`. Owner gates: `bunx tsc --noEmit` exit 0; `bun test` 207 pass / 1 skip (win32 ACL) / 0 fail. Deviations from spec: none. Observed artifacts: PR #18 OPEN, base main, head SHA matches; `gates` workflow SUCCESS on the head (facilitator-observed). Card set In Review.
+
+### Step 9 — Skeptic verification (verdict: PASS, no open objections)
+
+All checks run by the Skeptic on the PR head. Objections and terms:
+
+- Gates green — **closed-green** (tsc exit 0; 207 pass / 1 skip / 0 fail; gate integrity proven by injected type error → exit 1).
+- Red-then-green integration is real, not vacuous — **closed-green** (reverting both re-points → 3 fail / 17 pass on test/copy.test.ts; restore → 0 fail, empty diff).
+- 22-key table ≡ derived set — **closed-green** (independent probe: gaps `[]`, orphans `[]`, empty `[]`).
+- Only the urlExpired English row changed (R4), both rows name /rc — **closed-green** (full login.ts diff: removed lines are exactly the old row, one JSDoc line, one direct return).
+- No new keys; signatures unchanged — **closed-green**.
+- Parked sites untouched — **closed-green** (diff base..HEAD on test/index.test.ts, transport.ts, merge.ts = 0 lines; ALREADY_LIVE_COPY and ACL_ENFORCEMENT_FAILED_NOTICE byte-identical; inputPrompt literal base :542 → head :552, owner's shift claim true).
+- Locale precedence env-over-setting, setLocale before controller — **closed-green** (R3 probes pass).
+- Three-valued fallback — **closed-green** (Skeptic's own probes through the real modules, not just repo tests).
+- Designer invariants — **closed-green** (command literals byte-identical; placeholder survives in stored id string and is substituted at both re-points; em-dash parity: zero violations, zero ASCII `--`).
+- Record correction — **closed-red, non-blocking**: `copy.ts`'s coverage announcement cites `index.ts:542` for the inputPrompt literal, which sits at `:552` on the shipped branch (shifted by this card's own 10 added lines). The comment reproduces the ruling's own verbatim citation and names the literal unambiguously by full text; the shift itself was verified. Same class as the deliberation-phase `:128→:129` correction. Recorded; not a blocker; no fix cycle spent (step-9 counter: 1 of 3 used).
+
+Proceeding to step 10.
