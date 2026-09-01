@@ -17,9 +17,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Progress
 
-- FLLWUP-9 — "Replace the local ExtensionAPI stand-in with the real SDK typed on()"
-
 ## In Review
+
+- FLLWUP-9 — "Replace the local ExtensionAPI stand-in with the real SDK typed on()"
 
 ## Needs Human
 

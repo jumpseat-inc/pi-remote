@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-9
 title: "Replace the local ExtensionAPI stand-in with the real SDK typed on()"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: Replace the local ExtensionAPI stand-in in index.ts with the real pi SDK on() type so over-broad string event subscriptions become compile-time errors
