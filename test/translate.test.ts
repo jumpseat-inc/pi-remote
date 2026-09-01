@@ -277,6 +277,24 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
     ]);
   });
 
+  test("user role: message_start → message_update delta → message_end renders TEXT_MESSAGE_START/CONTENT/END", () => {
+    const frames = runSequence(
+      [
+        { event: "message_start", messageId: "user-1", role: "user" },
+        { event: "message_update", messageId: "user-1", events: [{ kind: "text", delta: "hel" }] },
+        { event: "message_update", messageId: "user-1", events: [{ kind: "text", delta: "lo" }] },
+        { event: "message_end", messageId: "user-1" },
+      ],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toEqual([
+      { type: "TEXT_MESSAGE_START", messageId: "user-1", role: "user" },
+      { type: "TEXT_MESSAGE_CONTENT", messageId: "user-1", delta: "hel" },
+      { type: "TEXT_MESSAGE_CONTENT", messageId: "user-1", delta: "lo" },
+      { type: "TEXT_MESSAGE_END", messageId: "user-1" },
+    ]);
+  });
+
   test("FLLWUP-5 (a): ui_prompt_end → CUSTOM pi.human_input.closed, informational mirror, no ts/deviceId/promptId (G-11 stays green)", () => {
     const mk = () =>
       runSequence([{ event: "ui_prompt_end", kind: "confirm", title: "Allow rm -rf?" }], { sessionId: "s1", runId: "r1" });
