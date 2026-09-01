@@ -140,6 +140,7 @@ export type PiEvent =
   | { event: "tool_result"; messageId: string; toolCallId: string; content: ToolResultContentBlock[] }
   | { event: "ui.confirm"; promptKind: string; prompt: string }
   | { event: "ui_prompt_end"; kind: UIPromptKind; title?: string }
+  | { event: "ui_prompt_start"; kind: UIPromptKind; title?: string }
   | { event: "session_compact"; summary?: string }
   | { event: "model_select"; model: string }
   | { event: "thinking_level_select"; level: string }
@@ -533,6 +534,25 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
             prompt: input.prompt,
             schemaVersion: 1,
             promptId: fnv1a(`${input.promptKind}\u0000${input.prompt}`),
+          },
+        },
+      });
+      break;
+
+    case "ui_prompt_start":
+      // FLLWUP-8 — live raise: mirrors the ui_prompt_end close shape ({kind, title, schemaVersion:1})
+      // plus promptId. No `prompt`, no `promptKind` — the SDK event carries no prompt body (skeptic F1),
+      // and no live client ever consumed the synthetic ui.confirm raise shape. Pure: no clock, no entropy.
+      frames.push({
+        type: "CUSTOM",
+        name: "pi.human_input",
+        value: {
+          pi: "ui_prompt_start",
+          data: {
+            kind: input.kind,
+            title: input.title,
+            schemaVersion: 1,
+            promptId: fnv1a(`${input.kind}\u0000${input.title ?? ""}`),
           },
         },
       });
