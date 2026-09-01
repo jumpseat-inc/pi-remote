@@ -1,7 +1,7 @@
 ---
 id: EPIC-1
 title: "pi-remote — remote control for a live pi session over AG-UI"
-state: Backlog
+state: Done
 owner: null
 epic: null
 goal: A running pi session can be observed and driven in real time from granted remote client devices through a relay, with correct replay on reconnect, injected input that behaves like typed input, and no tunnel left alive after shutdown.

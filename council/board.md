@@ -5,6 +5,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- FLLWUP-17 — "Key ALREADY_LIVE_COPY as tunnel.alreadyLive and localize it (OJ1 follow-up)"
 - FLLWUP-16 — "Give the Windows SDDL read-back test an explicit timeout sized for process cold start"
 - FLLWUP-13 — "Clean up registerPrompt signature to {promptId}"
 - FLLWUP-14 — "Document remote raise-UI best-effort behavior for select, editor, and custom prompt kinds"
@@ -12,7 +13,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-11 — "Reconcile the ExtensionAPI stand-in's non-on members with the real SDK surface"
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 
-- EPIC-1 — "pi-remote — remote control for a live pi session over AG-UI"
 
 ## Ready
 
@@ -25,6 +25,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Needs Human
 
 ## Done
+- EPIC-1 — "pi-remote — remote control for a live pi session over AG-UI"
 
 - FLLWUP-4 — "EV-2 localization seam: second (en→id) message lookup and resolver"
 
