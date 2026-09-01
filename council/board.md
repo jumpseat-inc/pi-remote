@@ -20,9 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Progress
 
-- FLLWUP-10 — "Sync spec §8 /rc:login row with the while-live refusal"
-
 ## In Review
+
+- FLLWUP-10 — "Sync spec §8 /rc:login row with the while-live refusal"
 
 ## Needs Human
 

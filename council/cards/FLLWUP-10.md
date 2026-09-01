@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-10
 title: "Sync spec §8 /rc:login row with the while-live refusal"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: docs/PI-SPEC.md §8's /rc:login row names the while-live refusal ("close the tunnel first with /rc:off") so the spec agrees with the shipped implementation and README copy.
@@ -75,3 +75,32 @@ into the dispatch: owner alone; isolated worktree for ALL git work
 (standing process note — a prior card's owner leaked staged deltas into the
 main worktree's index); gates for this repo are `bunx tsc --noEmit` exit 0
 and `bun test` exit 0 (155 green baseline), no Mongo, no GATE-EVIDENCE.md.
+Card set `In Progress` on frontmatter and board; validate.py clean; board
+commit 4bdc73e.
+
+### Step 8 — owner plans, then implements (job-41.1, settled 12.9m, 22 turns)
+
+Owner implemented in isolated worktree on branch
+`flluwp-10-spec-login-refusal`, based on origin/main @ 0a5629e; single
+commit `aa65589 docs: §8 rc:login row names the while-live refusal
+(FLLWUP-10)` touching only docs/PI-SPEC.md (`git diff --numstat` = `1 1`).
+PR **#13** open against main, head SHA
+`aa655892ce80621ce461fa9b04ac78f85b020190` (PR headRefOid matches). The §8
+`/rc:login` Behavior cell gained, after "…on failure, prints what to do
+next.": "Refuses to run while a tunnel is live — close the tunnel first
+with /rc:off. The same refusal rule applies across all non-idle states
+(dialing, resyncing, authorizing, error); the login driver is entered only
+from off and not enrolled." — README-register opening sentence (README.md:85
+phrasing) plus the full EV-8 J5 semantics. Local gates re-run in the
+worktree after the edit: `bunx tsc --noEmit` exit 0; `bun test` 155 pass /
+0 fail / 869 expect — exit 0 (card baseline exactly). Owner's acceptance
+evidence: one-line diff (seven-state set and every other row byte-identical);
+grep-verified README.md:85 and src/login.ts:240 unmodified and agreeing.
+Facilitator then verified the observed artifacts directly: `gh pr view 13`
+→ OPEN, base main, headRefOid aa65589…, mergeable MERGEABLE; `gh pr checks
+13` → `gates` workflow SUCCESS (two rows, both gates/SUCCESS); `gh pr diff
+13 --name-only` → docs/PI-SPEC.md only; main worktree clean (`git status
+--short` empty — no leaked deltas recurred). Step-8 condition met: branch
+exists with an open PR → `In Review` from the observed artifacts, per
+council.md step 8 (the owner's gate report is not a precondition for the
+transition).
