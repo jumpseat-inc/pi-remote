@@ -20,8 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Progress
 
-- FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
 ## In Review
+
+- FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
 
 ## Needs Human
 

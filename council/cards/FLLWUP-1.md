@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-1
 title: "Sync README with the OAuth2 enrollment reality"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: README.md no longer references PI_REMOTE_HOST_KEY or env-var-based enrollment and documents /rc:login OAuth2 enrollment as the setup path, matching the spec as rewritten by EV-1.
@@ -66,3 +66,30 @@ work (standing process note — a prior card's owner leaked staged deltas
 into the main worktree's index); gates for this repo are
 `bunx tsc --noEmit` exit 0 and `bun test` exit 0 (155 green baseline), no
 Mongo, no GATE-EVIDENCE.md (gates are the card's own acceptance commands).
+
+### Step 8 — owner plans, then implements (job-40.1, settled 11.4m, 18 turns)
+
+Owner implemented in isolated worktree `.worktrees/flluwp-1-readme-sync` on
+branch `flluwp-1-readme-sync` (based on main @ 259a9d7); single commit
+`2cbfe44 docs: sync README with /rc:login OAuth2 enrollment (FLLWUP-1)`
+(README.md only, 34+/7-). PR **#12** open against main. Head SHA
+`2cbfe4491e6a87793c2245e8864ab3c174a959b0` (PR headRefOid matches). Local
+gates re-run in the worktree after the edit: `bunx tsc --noEmit` exit 0;
+`bun test` 155 pass / 0 fail / 869 expect — exit 0. Owner's acceptance
+evidence: zero `PI_REMOTE_HOST_KEY` and zero `/rc-off` in README (grep exit
+1); colon table rows `/rc` / `/rc:login` (attended + `--headless`) /
+`/rc:off` with bare-`/rc` no-credential refusal naming `/rc:login` and
+`/rc:login`-while-live refusal "close the tunnel first with /rc:off"; full
+seven-state footer in lifecycle order; new `## Credential storage` section
+with POSIX 0600 + Windows chmod no-op caveat; `PI_REMOTE` occurs exactly
+once (the URL override), "Credentials are never carried in environment
+variables" present. Owner's stated deviations: no plan file written
+(mechanical handoff IS the plan — adjudicated scope); "Not yet installable"
+tagline left intact after a contradiction check (no contradiction found);
+spec-vs-README register choices for the credential section. Facilitator
+then verified the observed artifacts directly: `gh pr view 12` → OPEN,
+base main, headRefOid 2cbfe449…, mergeable MERGEABLE; `gh pr checks 12` →
+`gates` workflow SUCCESS (two rows, both gates/SUCCESS); main worktree
+clean (`git status --short` empty, no cached diff — no leaked deltas
+recurred). Step-8 condition met: branch exists with an open PR → `In
+Review` from the observed artifacts, per council.md step 8.
