@@ -224,8 +224,18 @@ raise-side `ui_prompt_end` mapping is an informational passive mirror:
 schemaVersion: 1 }`, a distinct dispatch name that cannot be correlated
 to a promptId and is never merged with `pi.human_input.resolved`. The
 resolved frame is lifecycle-emitted (no JSONL entry kind) and surfaces in
-the live stream after resync; it is fixture-green today, runtime-observable
-once the raise path lands (FLLWUP-8).
+the live stream after resync. The raise path is wired as of FLLWUP-8: a
+live SDK `ui_prompt_start` raises `CUSTOM` `pi.human_input` with
+`value.pi: "ui_prompt_start"` and `value.data: { kind, title,
+schemaVersion: 1, promptId }`, so contract (b) — a remote answer matching
+a raised prompt — is runtime-observable end to end. On the live raise
+path `promptId` is a bucket hash over `(kind, title)`; `occurrence` is
+the true discriminator and the counter restarts per session — `promptId`
+alone is never a global identity. Prompt-body fidelity loss: the
+installed SDK discards the message body, so `select`/`editor`/`custom`
+prompts carry only `kind` + `title?` on the wire (for `custom` there is
+no title at all). The client must not dispatch on `value.pi`; the CUSTOM
+`name` is the sole dispatch key.
 
 ## 6. Transport & durability
 

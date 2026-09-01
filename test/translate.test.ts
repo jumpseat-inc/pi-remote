@@ -660,3 +660,62 @@ describe("FLLWUP-3 — remaining live pi events + tool_execution_update split", 
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });
+
+// FLLWUP-8: test-local FNV-1a replica (fnv1a is unexported in src/translate.ts).
+function fnv1a(input: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  return h.toString(16);
+}
+
+describe("FLLWUP-8: ui_prompt_start raise mapping", () => {
+  test("confirm raise → CUSTOM pi.human_input, four data keys, no prompt/promptKind", () => {
+    const frames = runSequence(
+      [{ event: "ui_prompt_start", kind: "confirm", title: "Allow rm -rf?" }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as { type: string; name: string; value: { pi: string; data: Record<string, unknown> } };
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.human_input");
+    expect(f.value.pi).toBe("ui_prompt_start");
+    expect(f.value.data).toEqual({
+      kind: "confirm",
+      title: "Allow rm -rf?",
+      schemaVersion: 1,
+      promptId: fnv1a("confirm\u0000Allow rm -rf?"),
+    });
+    expect(Object.keys(f.value.data).sort()).toEqual(["kind", "promptId", "schemaVersion", "title"]);
+    expect("prompt" in f.value.data).toBe(false);
+    expect("promptKind" in f.value.data).toBe(false);
+  });
+
+  test("title absent → title undefined, promptId is the kind-only constant (T4)", () => {
+    const frames = runSequence([{ event: "ui_prompt_start", kind: "input" }], { sessionId: "s1", runId: "r1" });
+    const f = frames[0] as { value: { data: Record<string, unknown> } };
+    expect("title" in f.value.data).toBe(true); // key present, value undefined
+    expect(f.value.data.title).toBeUndefined();
+    expect(f.value.data.promptId).toBe(fnv1a("input\u0000"));
+  });
+
+  test("pure + deterministic: two runs byte-identical (G-11/G-12 stay green)", () => {
+    const a = runSequence([{ event: "ui_prompt_start", kind: "custom" }], { sessionId: "s1", runId: "r1" });
+    const b = runSequence([{ event: "ui_prompt_start", kind: "custom" }], { sessionId: "s1", runId: "r1" });
+    expect(a).toEqual(b);
+    const f = a[0] as { value: { data: Record<string, unknown> } };
+    expect(f.value.data.promptId).toBe(fnv1a("custom\u0000"));
+  });
+
+  test("raise data = close data + promptId (T10 close/raise symmetry)", () => {
+    const raise = runSequence([{ event: "ui_prompt_start", kind: "confirm", title: "T" }], { sessionId: "s1", runId: "r1" });
+    const close = runSequence([{ event: "ui_prompt_end", kind: "confirm", title: "T" }], { sessionId: "s1", runId: "r1" });
+    const r = (raise[0] as { value: { data: Record<string, unknown> } }).value.data;
+    const c = (close[0] as { value: { data: Record<string, unknown> } }).value.data;
+    const { promptId, ...raiseCore } = r;
+    expect(promptId).toEqual(expect.any(String));
+    expect(raiseCore).toEqual(c); // {kind, title, schemaVersion:1} identical
+  });
+});

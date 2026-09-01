@@ -787,3 +787,100 @@ describe("EV-8 /rc:login (J5)", () => {
     h.relay.stop();
   });
 });
+
+describe("FLLWUP-8: ui_prompt_start live raise path", () => {
+  function raisesOf(h: Harness) {
+    return h.relay.received.filter(
+      (e) => e.frame?.type === "CUSTOM" && (e.frame as { name?: string }).name === "pi.human_input"
+    );
+  }
+  function resolvedOf(h: Harness) {
+    return h.relay.received.filter(
+      (e) => e.frame?.type === "CUSTOM" && (e.frame as { name?: string }).name === "pi.human_input.resolved"
+    );
+  }
+  function fnv1a(input: string): string {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < input.length; i++) {
+      h ^= input.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0;
+    }
+    return h.toString(16);
+  }
+  async function answer(h: Harness, promptId: string, occurrence: number, deviceId: string, response = "yes") {
+    h.relay.broadcast({
+      v: 1,
+      seq: 100,
+      ack: 0,
+      deviceId,
+      frame: {
+        type: "CUSTOM",
+        name: "pi.human_input.response",
+        value: { pi: "ui.confirm", data: { promptId, occurrence, response } },
+      },
+    });
+  }
+
+  test("T1: live SDK raise → exactly one stamped pi.human_input frame", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    h.emit("ui_prompt_start", { type: "ui_prompt_start", reason: "ui_prompt", kind: "confirm", title: "Allow rm -rf?" });
+    await h.waitFor(() => raisesOf(h).length === 1);
+    const f = raisesOf(h)[0]!.frame as { value: { pi: string; data: Record<string, unknown> } };
+    expect(f.value.pi).toBe("ui_prompt_start");
+    expect(f.value.data.kind).toBe("confirm"); // verbatim
+    expect(f.value.data.title).toBe("Allow rm -rf?");
+    expect(f.value.data.schemaVersion).toBe(1);
+    expect(f.value.data.promptId).toBe(fnv1a("confirm\u0000Allow rm -rf?"));
+    expect(f.value.data.occurrence).toBe(1);
+    expect(Object.keys(f.value.data).sort()).toEqual(["kind", "occurrence", "promptId", "schemaVersion", "title"]);
+    expect("prompt" in f.value.data).toBe(false);
+    h.relay.stop();
+  });
+
+  test("T2: resolved e2e — remote answer after live raise emits pi.human_input.resolved (FLLWUP-5 (b) red→green)", async () => {
+    const h = await makeHarness(); // production default resolvePendingPrompt: () => false
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    h.emit("ui_prompt_start", { type: "ui_prompt_start", reason: "ui_prompt", kind: "confirm", title: "Allow rm -rf?" });
+    await h.waitFor(() => raisesOf(h).length === 1);
+    const promptId = (raisesOf(h)[0]!.frame as { value: { data: { promptId: string } } }).value.data.promptId;
+    await answer(h, promptId, 1, "dev-live");
+    await h.waitFor(() => resolvedOf(h).length === 1);
+    const frame = resolvedOf(h)[0]!.frame as { value: { pi: string; data: Record<string, unknown> } };
+    expect(frame.value.pi).toBe("pi.human_input.resolved");
+    expect(frame.value.data).toEqual({ promptId, occurrence: 1, deviceId: "dev-live", ts: 0 });
+    h.relay.stop();
+  });
+
+  test("T3: occurrence counter — two identical raises → 1 then 2", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    h.emit("ui_prompt_start", { type: "ui_prompt_start", reason: "ui_prompt", kind: "confirm", title: "Allow rm -rf?" });
+    h.emit("ui_prompt_start", { type: "ui_prompt_start", reason: "ui_prompt", kind: "confirm", title: "Allow rm -rf?" });
+    await h.waitFor(() => raisesOf(h).length === 2);
+    const occ = raisesOf(h).map(
+      (e) => (e.frame as { value: { data: { occurrence: number } } }).value.data.occurrence
+    );
+    expect(occ).toEqual([1, 2]);
+    h.relay.stop();
+  });
+
+  test("T5: bogus kind → mirroring coercion: kind coerced to custom, registration fires", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    h.emit("ui_prompt_start", { type: "ui_prompt_start", reason: "ui_prompt", kind: "bogus" });
+    await h.waitFor(() => raisesOf(h).length === 1);
+    const f = raisesOf(h)[0]!.frame as { value: { data: Record<string, unknown> } };
+    expect(f.value.data.kind).toBe("custom");
+    expect(f.value.data.occurrence).toBe(1);
+    // registration fired: answering the coerced promptId resolves (tracked), not phantom
+    const promptId = fnv1a("custom\u0000");
+    await answer(h, promptId, 1, "dev-bogus");
+    await h.waitFor(() => resolvedOf(h).length === 1);
+    h.relay.stop();
+  });
+});
