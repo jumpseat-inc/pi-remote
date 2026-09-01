@@ -151,3 +151,221 @@ Three-generator first pass produced TWO complete positions (principal, designer)
 - Any §4 (or §4-adjacent) representation added rides the same prose-sync path
   the EV-1 Q3 / EV-4 Q1 rulings established (facilitator-authored spec
   amendment alongside the implementation, evidence-cited).
+
+### Step 3 — bounded exchange
+
+#### Round 2 (owner job-1.1, principal job-1.2, designer job-1.3 — all settled)
+
+**Round outcome (facilitator record).** Positions CROSSED, did not converge: the principal conceded to designer's round-1 (split, summarization_retry in-scope, short bash name); the designer conceded to principal's round-1 (no split, summarization out, long bash name); the owner (first position, saw only round-1 material) endorsed principal's round-1 verbatim (raw names, summarization out, no split). Every disputed point is live with a 2-vs-1 shape: split (2 no-split: owner+designer vs 1 split: principal); summarization (2 out vs 1 in); bash name (2 long vs 1 short); retry name (2 short `pi.session.retry_*` vs 1 raw `pi.session.auto_retry_*`). Majority is recorded as a fact, not a decision — round 3 (final under the cap) is dispatched with each seat seeing the other two round-2 positions. Principal's round-2 also surfaced a concrete mechanical finding: the split breaks the existing O2 fixture (`test/translate.test.ts:170-185`, 3 frames → 4) and the PiEvent's independently-optional `args?`/`partialResult?` fields mean designer's H2 "exactly two frames" over-claims (conditional emission required).
+
+**owner (job-1.1, verbatim).**
+
+Verification done. Facts confirmed against the working tree: `translate.ts:452–461` folds `partialResult` into `pi.tool.update` data alongside `args`; `translate.ts:531–533` is the silent `default: break` guard; `index.ts` has live subs only for `agent_*`, `turn_*`, `message_*`, `tool_result`, `ui.confirm`, `ui_prompt_end` — no `tool_execution_*`, no queue/retry/bash-delta subs — and its local `ExtensionAPI.on` is the permissive `on(event: string, ...)` (index.ts:46), so a dead subscription would compile. Replay maps JSONL `bash_execution` → `pi.tool.bash_execution` (translate.ts:324–326). One precedent note both seats glossed: `session_info_changed` → `pi.session.info_change` shows the codebase does *not* follow a strict raw-name rule, so naming for new events is a fresh call, not an inherited one.
+
+Position follows.
+
+## owner position — FLLWUP-3, round 2
+
+### (a) Approach
+
+Both seats agree on the load-bearing facts (unreachable via `ExtensionAPI.on()`, mapper-only fixture-green delivery, manual PiEvent construction, purity guards) — the disagreements are two naming/scope calls and one representation call. I hold with **principal** on all three: raw-name CUSTOM names for the new events, `summarization_retry_*` routed out as a named follow-up, and `partialResult` kept folded — but I adopt **designer's** non-collapse fixture (H3) and her framing that the family-boundary call itself is in scope (the call is "out", which satisfies it). The deciding criterion throughout: these events cannot fire at runtime in the installed SDK, so every expansion of scope here is contract surface we must maintain forever in exchange for zero observable behavior today.
+
+### (b) Proposed mapping table
+
+| PiEvent | CUSTOM `name` | `value.data` | Note |
+|---|---|---|---|
+| `queue_update` | `pi.session.queue_update` | `{ steering, followUp }` | Both seats agree. Snapshot, not delta. |
+| `bash_execution_update` | `pi.tool.bash_execution_update` | `{ id?, delta }` | Raw SDK name; distinct from JSONL `pi.tool.bash_execution`. |
+| `auto_retry_start` | `pi.session.auto_retry_start` | `{ attempt, maxAttempts, delayMs, errorMessage }` | Raw name; symmetric with the end frame. |
+| `auto_retry_end` | `pi.session.auto_retry_end` | `{ success, attempt, finalError? }` | |
+| `summarization_retry_*` | — (not mapped) | — | Out of scope; routed as follow-up (see (c) #2). |
+| `tool_execution_update` (partialResult) | unchanged: `pi.tool.update` | `{ toolCallId, args?, partialResult? }` | No split; no `pi.tool.progress` frame. |
+
+### (c) Tradeoffs — concessions and holds
+
+1. **Naming — HOLD against designer, with her objection answered.** Designer shortens (`pi.tool.bash_update`, `pi.session.retry_start/end`); I keep raw SDK names. Her tradeoff #2 (bash-specific name, not widening `pi.tool.update`) argues against a position principal doesn't hold — `pi.tool.bash_execution_update` is already bash-specific, so that point doesn't discriminate. My deciding argument is maintenance: when the SDK bridge lands, a maintainer reading `agent-session.d.ts` greps the exact SDK event name and finds the mapping with zero translation table in their head. Designer's retry scheme is also asymmetric — it *drops* the `auto_` qualifier from the generic family but *keeps* a qualifier for `summary_retry_*`; the moment the summary family lands, `retry_start` vs `summary_retry_start` forces a client to know which qualifier means "generic" rather than reading the name. Raw names make the later family `pi.session.summarization_retry_*` by the same rule. I concede the `info_change` precedent shows raw names aren't a codebase-wide rule — this is a stated convention for *new* events, not a claimed invariant.
+2. **`summarization_retry_*` boundary — HOLD with principal, but the call is made.** Designer's point that the follow-up card's "only purpose is the family-boundary call" is true but not disqualifying: this deliberation *makes* the boundary call (answer: out), which is what the card demands. Principal's scope argument is decisive on the merits: the acceptance text names "each `auto_retry_*` variant"; the summary family carries a union payload (`{source:"branchSummary"} | {source:"compaction", reason}`) needing its own fixtures; and since neither family is runtime-reachable, inclusion buys nothing user-visible now. Cost of deferral: one trivial card. Cost of inclusion: larger diff, re-worded acceptance mid-deliberation, twice the dead-contract surface.
+3. **partialResult — HOLD with principal against designer's split.** Three reasons, in weight order: (i) *Scope* — the card's goal is mapping **unmapped** events; `partialResult` is already mapped and tested; splitting changes the data shape of an existing documented CUSTOM name mid-epic for zero runtime gain (verified: `index.ts` has no `tool_execution_*` subscription, so neither shape is live). (ii) *Wire cost* — the SDK delivers `{args, partialResult}` as one event on a potentially high-frequency stream (bash/long tool output); designer's fan-out doubles frame volume per update and invents an ordering guarantee (her H7) the client must now rely on. (iii) *Discrimination cost is low* — `data.partialResult === undefined` is typed field inspection on a two-field payload, not payload archaeology. Designer's dispatch-key ideal is right in principle, but the binding context explicitly makes `pi.tool.progress` conditional on deliberation adoption, and the trigger for adopting it (SDK decoupling partialResult from args) does not exist. I concede her H3 non-collapse fixture regardless — it's good hygiene under either scheme.
+4. **Accepted by everyone:** mapper-only, no `index.ts` wiring, honest fixture-green acceptance claim, spec amendment carrying the runtime-unreachability caveat, manual PiEvent construction (FLLWUP-5 S-O2), no `TOOL_CALL_ARGS` smuggling.
+
+### (d) Falsifiable testable claims
+
+1. **Per-event single-frame fixture (settles the `default: break` silent-drop).** For each of the four new variants: `translate(<event>, freshState)` emits **exactly one** `CUSTOM` frame whose `name`, `value.pi`, and `value.data` equal the table. Fails today (variants don't exist in the union); the only guard against `translate.ts:531`.
+2. **partialResult lock (settles decision 2 against the split).** `translate({event:"tool_execution_update", toolCallId:"t1", args:{cmd:"ls"}, partialResult:"a\n"}, freshState)` emits **exactly one** frame — not two — named `pi.tool.update` with `value.data === {toolCallId, args, partialResult}`; output contains no `TOOL_CALL_ARGS` and no `pi.tool.progress`. This is the direct falsifier of designer's H2/H7: if anyone implements the split, this test goes red.
+3. **Dead-wiring grep gate (makes "mapper-only" runnable).** `grep -nE 'deps\.on\("(queue_update|bash_execution_update|auto_retry_start|auto_retry_end)"' index.ts` exits 1. Necessary because index.ts:46's permissive `on(event: string)` means the compiler will *not* catch a dead subscription.
+4. **Out-of-scope grep gate (settles the family boundary).** `grep -n 'summarization_retry' src/translate.ts` exits 1 — mechanical proof the summary family didn't get folded in.
+5. **Live/replay non-collapse (adopted from designer H3).** A JSONL `bash_execution` entry produces `pi.tool.bash_execution` and never `pi.tool.bash_execution_update`; a live `bash_execution_update` produces `pi.tool.bash_execution_update` and never `pi.tool.bash_execution`. Two fixtures, cross-asserting the negative.
+6. **Gates.** G-11/G-12 purity greps green; `bunx tsc --noEmit` exit 0; `bun test` exit 0 at 155 + all new fixtures; determinism: new-event sequence translated twice → byte-identical frames.
+
+### (e) Residuals to route
+
+- **SDK bridge card** (typed `on` overloads + `_emitExtensionEvent` forwarder additions) — the actual runtime blocker; FLLWUP-9 class. The spec amendment must state unreachability in one evidence-cited sentence.
+- **`summarization_retry_*` follow-up card** — mapper rows only, same pattern/deadness; include the union-payload fixture design there.
+- **partialResult revisit trigger** — if a future SDK decouples `partialResult` into an independent delta stream, reopen `pi.tool.progress`. No test settles it today; recorded, not solved.
+- **Category-prefix taste** (`pi.session.*` vs a future `pi.run.*` for retries) — unroutable by test; keep `pi.session.*` consistent with existing status rows; PO decides only if the client contract ever cares.
+- **Permissive `deps.on` type** (index.ts:46) — the grep gate guards this card, but tightening that signature is FLLWUP-9-adjacent hygiene worth a line on that card.
+
+Deliberation only — no files touched, no mutating commands run.
+
+**principal (job-1.2, verbatim).**
+
+## (a) What changed in my position — three concessions
+
+1. **partialResult split — I concede the split.** The designer's dispatch-key-clarity argument is correct, and it's confirmed by the codebase's own convention: `model_select` → `pi.session.model_change`, `session_info_changed` → `pi.session.info_change`, `session_compact` → `pi.context.compaction` (`src/translate.ts:519-536`). This mapper renames to the *client-perceived concept*, not the raw event name. Folding `partialResult` into `pi.tool.update.data` was status quo, not a design. I concede to two frames, **with one refinement** (below).
+
+2. **`summarization_retry_*` in scope — I concede.** My round-1 "union payload" objection dissolves on inspection: `value.data` is typed `unknown` and the fold passes it through verbatim (`CustomFrame` at `src/translate.ts:74`), so `{source:"branchSummary"} | {source:"compaction", reason}` needs zero normalization. The designer is right that a follow-up whose only purpose is the family-boundary call is overhead — and the family-boundary call *is* what this card delegated.
+
+3. **Bash naming — I concede `pi.tool.bash_update`.** There is a concrete correctness argument I missed in round 1: my `pi.tool.bash_execution_update` makes the replay name `pi.tool.bash_execution` a **strict prefix** of the live name. A client doing `name.startsWith("pi.tool.bash_execution")` to catch replays would silently also catch live deltas. The designer's `pi.tool.bash_update` shares only `pi.tool.bash_` with the replay name — no prefix collision. Right call.
+
+## (b) What I hold, and why
+
+**One refinement to the split — conditional emission.** The `PiEvent` union marks both fields optional: `{ event: "tool_execution_update"; toolCallId: string; args?: unknown; partialResult?: string }` (`src/translate.ts:138`). The designer's H2 asserts "exactly one `pi.tool.update` + one `pi.tool.progress` per update" — that over-claims and would emit `pi.tool.progress {partialResult: undefined}` for a config-only update. Hold: emit `pi.tool.update` only when `args !== undefined`, emit `pi.tool.progress` only when `partialResult !== undefined`, order update-then-progress when both present.
+
+**Both split frames must carry `toolCallId`.** The designer's H2 says progress clients key on `toolCallId`, but its table never says the progress frame *contains* it. It must: `pi.tool.progress.data === { toolCallId, partialResult }`, and `pi.tool.update.data === { toolCallId, args }`.
+
+**The existing O2 fixture breaks and nobody's flagged it.** `test/translate.test.ts:170-185` feeds `start → update{args,partialResult} → end` and asserts `frames.map(f => f.type)` equals exactly `["CUSTOM","CUSTOM","CUSTOM"]` — three frames for three inputs. With the split, `update` fans out and the sequence becomes four frames. This test **must be updated as part of the split**, or `bun test` goes red. The design seat cannot see this from the design-doc vantage; it's exactly the kind of seam detail that sinks an otherwise sound decision.
+
+**The real seam risk remains `default: break` at `src/translate.ts:531`.** Adding a `PiEvent` variant without a matching `case` silently emits zero frames. My round-1 claim #1 (one fixture per new event asserting the exact frame) is the only guard. This is the blind spot the import/data vantage has: the fold *looks* complete while silently dropping.
+
+**Mapper-only, no `index.ts` wiring, runtime caveat in spec.** Unchanged — confirmed again that `index.ts:581-615` has zero `tool_execution_*` subscriptions and the SDK whitelist won't deliver any of these events. Both seats already agree; keep it.
+
+**Blind spots, named separately:**
+- *Design seat* cannot see that its H2 contradicts the optional-field types, and that the split breaks the existing 3-frame O2 fixture — both are in `translate.ts`/`test/translate.test.ts`, which the design-doc vantage doesn't read.
+- *Import/data seat* (my round-1 vantage) cannot see that "already folded" is status-quo defense, not design — the rename convention it lives next to argues *for* the split.
+- *Wiring seat* cannot see that subscriptions added without fold cases produce zero frames (`default: break`), and that the SDK whitelist means "live" is a lie without an SDK bridge.
+
+## (c) Converged mapping table (as I now see it)
+
+| PiEvent / entry | CUSTOM `name` | `value.data` |
+|---|---|---|
+| `queue_update` | `pi.session.queue_update` | `{ steering, followUp }` verbatim |
+| `bash_execution_update` | `pi.tool.bash_update` | `{ id?, delta }` verbatim |
+| `auto_retry_start` | `pi.session.retry_start` | `{ attempt, maxAttempts, delayMs, errorMessage }` verbatim |
+| `auto_retry_end` | `pi.session.retry_end` | `{ success, attempt, finalError? }` verbatim |
+| `summarization_retry_scheduled` | `pi.session.summary_retry_scheduled` | `{ attempt, maxAttempts, delayMs, errorMessage }` verbatim |
+| `summarization_retry_attempt_start` | `pi.session.summary_retry_attempt_start` | `{ source }` union verbatim |
+| `summarization_retry_finished` | `pi.session.summary_retry_finished` | `{}` |
+| `tool_execution_update` (args present) | `pi.tool.update` | `{ toolCallId, args }` |
+| `tool_execution_update` (partialResult present) | `pi.tool.progress` | `{ toolCallId, partialResult }` — emitted *after* `pi.tool.update` when both present |
+| JSONL `bash_execution` (replay, unchanged) | `pi.tool.bash_execution` | passthrough (`src/translate.ts:324-325`) |
+
+Retry naming note: I adopt the designer's `pi.session.retry_start/end` (dropping `auto_`) over my `auto_retry_*` — settled by the rename convention, not by test.
+
+## H1–H9 classification
+
+- **H1** — already covered by my round-1 claim #1 (per-event exact-name/value fixture).
+- **H2** — **needs a new test, and correction**: conditional emission (not "exactly two frames always"), `toolCallId` asserted on both frames. Also requires updating the existing O2 fixture (`test/translate.test.ts:170-185`).
+- **H3** — **needs a new test** for the live side; the JSONL side is already pinned by the existing test at `test/translate.test.ts:379`. Endorse the falsifier as stated.
+- **H4** — covered by claim #1's pattern; the `auto_retry_*` fixtures still need to be written. Endorse.
+- **H5** — **needs a new test** (now in scope); assert verbatim union passthrough.
+- **H6** — already covered by my round-1 claim #4 (G-11/G-12 greps, `tsc`, `bun test`).
+- **H7** — **the new test that settles disagreement #1** (see below). Endorse.
+- **H8** — untestable at the mapper layer (prose/spec-artifact check); route to the consolidator as an acceptance item.
+- **H9** — untestable now (this card adds no subscriptions); my round-1 grep gate (claim #3: no `deps.on("queue_update|bash_execution_update|auto_retry_*")` in `index.ts`) is the runnable proxy today. H9 proper belongs to the future SDK-bridge card.
+
+**Settling test for disagreement #1:** feed `{ event:"tool_execution_update", toolCallId:"c", args:{cmd:"ls"}, partialResult:"a\n" }` → frames array is exactly `[ {CUSTOM, name:"pi.tool.update", value:{pi:"tool_execution_update", data:{toolCallId:"c", args:{cmd:"ls"}}}}, {CUSTOM, name:"pi.tool.progress", value:{pi:"tool_execution_update", data:{toolCallId:"c", partialResult:"a\n"}}} ]` in that order; plus `args`-only → one `pi.tool.update` and zero `pi.tool.progress`; `partialResult`-only → one `pi.tool.progress` and zero `pi.tool.update`.
+
+## (d) Remaining open items for the consolidator
+
+1. **Update the O2 fixture** (`test/translate.test.ts:170-185`) in the same commit as the split — 3 frames becomes 4. Not optional.
+2. **Spec amendment sentence (H8)** must carry the runtime-unreachability caveat in the same paragraph as the new mappings — evidence-cited, per EV-1 Q3 / EV-4 Q1.
+3. **`pi.session.retry_*` vs `pi.session.auto_retry_*`** — I adopt the designer's shorter form per convention, but this is taste, not test. PO tie-break only if the client contract cares about the literal prefix; otherwise `retry_start/retry_end` stands.
+4. **`partialResult:""` semantics** (designer residual #4) — under conditional emission, empty string *is* present and emits a `pi.tool.progress` frame. State that explicitly in the fixture so the empty-delta behavior is pinned, not accidental.
+5. **Reframe, stated**: the card is not "map the unmapped events" (invites live wiring) and not my round-1 "extend union, fixture-green, keep folding" (too conservative). It is: *settle the client-perceived dispatch contract for three currently-dead event families AND split the one live event's two fields into distinct dispatch keys — fixture-green, with the runtime caveat carried in spec and the `default: break` silent-drop guard covered by a fixture per event.* The proposed design is now sound; the remaining risk is entirely in the two mechanical details the design seat can't see: the optional-field emission rule and the broken O2 fixture.
+
+**designer (job-1.3, verbatim).**
+
+Three verifications ground my round-2 reasoning:
+
+1. The principal's claim that `partialResult` is **already folded into the existing `pi.tool.update` data** (not dropped) is correct. `translate.ts:452-458` shows `data: { toolCallId, args, partialResult }`.
+2. The PiEvent union signature (line 138) is `tool_execution_update` carrying `{toolCallId, args?, partialResult?}` — both fields are independently optional on the **same event**. That is what the principal means by "atomicity."
+3. The `summarization_retry_attempt_start` payload is genuinely a discriminated union (`{source:"branchSummary"} | {source:"compaction", reason}`) — confirmed in the facilitator's binding context, and that union shape matters for the mapper contract.
+
+Three falsifiers the principal did NOT supply, but which I can derive now, that my round-1 predictions were already covering: H2 (split produces exactly one `pi.tool.update` and one `pi.tool.progress`) — this overlaps with principal's claim 2 in form. H5 covers summarization retries — overlaps with the boundary question. H6 (purity) — overlaps with principal's claim 4.
+
+Now I can write the round-2 position.
+
+# FLLWUP-3 — designer round-2 position
+
+**Card context.** Round-1 produced the principal's mapper-only, fixture-green, atomicity-preserved framing and my split-second, three-namespace, summarization-retry-in framing. Owner enters round 2 concurrently; I cannot react to it here. The two live disagreements are the `partialResult` split, the `summarization_retry_*` scope, and the bash naming third leg.
+
+I read the code at `translate.ts:452-458` to ground the atomicity argument: the current case does emit `{toolCallId, args, partialResult}` together as one frame. The PiEvent union at line 138 gives `tool_execution_update` as a single variant with `args?` and `partialResult?` independently optional on the *same* event. That is the principal's atomicity evidence; it holds against the codebase as it stands today.
+
+I also read `brainstorming/SKILL.md` per the superpowers bootstrap. It is process guidance for creative work; not a refactoring decision on this round. The seat's deliverable here is a position, not a plan.
+
+**(a) What changed in my position — explicit concessions.**
+
+**Concession 1 (the load-bearing one). On the `partialResult` split, I concede the atomicity argument for today and offer a comprehension-level test as the honest boundary. The principal is right that `_emitExtensionEvent` forwards `{toolCallId, toolName, args, partialResult}` as a single event, and the current code folds them at `translate.ts:458`. Splitting that single SDK payload into two CUSTOM frames risks two real failure modes I had under-weighted:**
+
+- **Drift.** Today's PiEvent is a union with `args?` and `partialResult?` independently optional. A `_subtle_ bug in any client or replay-side renames one field on a single path_ would present as "I am getting `pi.tool.progress` but never `pi.tool.end`" or the symmetric complaint, and the mapper would still type-check. The folded shape is the simplest contract for *the event as the SDK emits it*; the split forces the mapper to be the translator, not the mirror, and translation is where silent-drop traps live. The principal's `default: break` at `translate.ts:531-532` is the load-bearing instance of that trap class — the more translation the mapper does, the more cases it must keep green in the switch.
+- **Replay-determinism asymmetry.** Replay determinism is a recorded seat concern in FLLWUP-5 and in my own round-1 H6. A replay that constructs `tool_execution_update {args, partialResult}` and a live payload that arrives the same way are *mechanically the same input*. Mapping them to two frames in live and one in replay (or vice versa) is a divergence the mapper can introduce silently; folding keeps the symmetric contract. I withdraw my H7 prediction's force as a correctness gate and downgrade it to a taste question for the client.
+
+**What I hold, from inside that concession.** *The mapper mirrors the SDK payload atomically today.* That is a fact, not a design choice. The design choice the principal is actually making is **"atomicity is a property of today, not a property of the contract"** — and on that I keep the round-1 view: when the SDK eventually emits `partialResult` as an independent delta stream decoupled from args (the principal's residual §3), the split becomes correct *retrospectively*, and the cost of doing it retrospectively is a client-side reshape of the same dispatcher. The atomicity contract is correct for the installed SDK; the *contract durability* is the open question, and no mapper-layer test settles it.
+
+To avoid pretending the seat has settled what the seat cannot settle, I propose the consolidator accepts one comprehension-level test in the spec acceptance: the mapper doc-comment at line 452-458 records *"if a future SDK decouples `partialResult` from `args` on this event, revisit this fold and split into `pi.tool.update {args}` + `pi.tool.progress {partialResult}` per the FLLWUP-3 designer round-1 H2/H7 rationale"*. That is the smallest artifact that carries the round-1 argument forward without burning owner-budget on a split today. The principal's grep gate (`grep deps.on "queue_update"...` exits 1) is independently useful and I support it; that gate is about runtime claim honesty, not about the partialResult question.
+
+**Concession 2 (smaller). On `summarization_retry_*` scope, I concede the family's separate follow-up. The principal's argument that folding a union-typed payload (`{source:"branchSummary"} | {source:"compaction", reason}`) into the same acceptance as `auto_retry_*` muddies the contract is correct.** A client reading `pi.session.retry_*` would expect a homogeneous payload shape; the union type forces a discriminator in the data. The cleanest move is: `auto_retry_*` lands here, `summarization_retry_*` files as a follow-up card whose acceptance names the union payload explicitly, with two semantic-conventions decisions the consolidator should bundle: (i) do the two `source` arms keep the same `pi.session.summary_retry_start` name and differ only in `data`, or do they earn distinct names (`pi.session.summary_retry_branch` / `pi.session.summary_retry_compaction`)? My taste — distinct names — but it is taste, not principle. I withdraw my H5 prediction's claim that all three belong in FLLWUP-3 and amend it to "the three belong in a *named, scoped* follow-up card", which preserves the gating argument without taking owner time on a side family.
+
+**Concession 3 (naming). On the bash third leg: the principal proposes `pi.tool.bash_execution_update` (raw SDK-event fidelity) vs my `pi.tool.bash_update` (ergonomic). On re-examination, the principal is right.** Two reasons, ranked by consequence to a first-time reader:
+
+- **The dispatch-name contract is `name` as the sole key. Fidelity is the principled default** unless a shorter name clearly reads better. `bash_update` is shorter, but reading `pi.tool.bash_update` cold and not knowing the SDK event name, a reader has to guess what "update" updates. `pi.tool.bash_execution_update` reads as "the bash tool's execution-lane update frame" once a reader knows there is a `pi.tool.bash_execution` replay cousin. The longer name carries the SDK's own taxonomy; the client that already speaks the SDK dialects maps on first contact. This is the naming equivalent of *knowledge in the world beats knowledge in the head*.
+- **Parity with the JSONL replay cousin.** `pi.tool.bash_execution` is the existing JSONL replay name; `pi.tool.bash_execution_update` makes the live/replay distinction read off the suffix (`_update`), which the client uses to subscribe by lane. My round-1 reasoning under-weighted this.
+
+I concede the name to `pi.tool.bash_execution_update` and withdraw my `pi.tool.bash_update` position.
+
+**(b) What I hold and why.**
+
+- **The other three names as proposed.** `pi.session.queue_update` (session-shape question), `pi.session.retry_start`, `pi.session.retry_end` (session status, sibling of `info_change`/`model_change`/`thinking_level_change`). The principal's framing is identical to mine on all three; no disagreement, no further argument.
+- **The truthfulness frame.** "Mapper fixture-green, runtime-observable only when the SDK bridge lands" — same as FLLWUP-5 §5.4. The principal and I converge here; the owner's first round-2 position (incoming) should not change it.
+- **The acceptance claim shape.** The card's acceptance says "any newly mapped event" is fixture-green. I endorse that; I oppose any PR that claims a live runtime surface for these events.
+- **The grep gate for `deps.on`** — principal's claim 3 — is correct and cheap to add; I support it without reservation.
+
+**(c) Converged mapping table as I now see it.**
+
+| PiEvent | CUSTOM `name` (sole dispatch key) | `value.pi` | `value.data` |
+|---|---|---|---|
+| `queue_update` | `pi.session.queue_update` | `"queue_update"` | `{ steering: string[], followUp: string[] }` |
+| `bash_execution_update` | `pi.tool.bash_execution_update` | `"bash_execution_update"` | `{ id?: string, delta: string }` |
+| `auto_retry_start` | `pi.session.retry_start` | `"auto_retry_start"` | `{ attempt, maxAttempts, delayMs, errorMessage }` |
+| `auto_retry_end` | `pi.session.retry_end` | `"auto_retry_end"` | `{ success, attempt, finalError? }` |
+| `tool_execution_update` (today) | `pi.tool.update` — atomic, with `{toolCallId, args, partialResult}` preserved together | `"tool_execution_update"` | `{ toolCallId, args?, partialResult? }` |
+
+The summarization-retry rows are **out of FLLWUP-3** by concession 2, and I name them here only so the consolidator has the routing:
+
+| (follow-up card) | | | |
+|---|---|---|---|
+| `summarization_retry_scheduled` | `pi.session.summary_retry_scheduled` | `"summarization_retry_scheduled"` | `{ attempt, maxAttempts, delayMs, errorMessage }` |
+| `summarization_retry_attempt_start` | `pi.session.summary_retry_start` (or split by `source` — consolidator call) | `"summarization_retry_attempt_start"` | `{ source:"branchSummary" } \| { source:"compaction", reason }` |
+| `summarization_retry_finished` | `pi.session.summary_retry_finished` | `"summarization_retry_finished"` | `{}` |
+
+The mapper fan-out for `tool_execution_update` collapses back to one frame; no split. Purity stays green: no clock, no entropy, no I/O. Fixtures are per-row. The mapper doc-comment at `translate.ts:452-458` carries the *retrospective-split trigger condition* I proposed above, so the round-1 H2/H7 reasoning is preserved as design history rather than burned as code today.
+
+**(d) H1–H9 status — what survives, what is amended, what the principal already covered.**
+
+- H1 name routing — survives for the three names we agreed on; reverses for `pi.tool.progress` because the split is conceded.
+- H2 identity stability — withdrawn as a correctness gate; downgraded to a doc-comment note about the future-SDK-split trigger condition.
+- H3 bash live/replay distinction — survives with amended name (`pi.tool.bash_execution_update` instead of `pi.tool.bash_update`).
+- H4 retry-state surface — survives unchanged; the principal's table agrees verbatim.
+- H5 summarization namespace — withdrawn from FLLWUP-3 by concession 2; reroutes to the follow-up card with the consolidator-level "one name or two" question noted.
+- H6 fold purity — survives; principal claim 4 covers it; reinforce with a doc-comment.
+- H7 ordering prediction — withdrawn with H2.
+- H8 runtime-caveat honesty — survives, restated exactly.
+- H9 subscription-fidelity (S-O2 manual construction at the eventual bridge site) — survives; not in conflict with the mapper-only claim because no new `index.ts` subscriptions land in FLLWUP-3.
+
+The principal's testable claims cover what my H6 covered, what my H4 covered in form, and the new grep gate (their claim 3) is independent. H8 corresponds to the spec-sentence rider, which is already in the card's acceptance ("Any §4-adjacent representation added rides the same prose-sync path the EV-1 Q3 / EV-4 Q1 rulings established"). No contradiction with the principal's claims; the principal's `default: break` finding at `translate.ts:531-532` is the seam risk they own and they own it well — my H6 runs alongside it, not against it.
+
+**(e) Open items for the consolidator — design disputes no test can settle.**
+
+1. **The `partialResult` doc-comment trigger condition.** I want the mapper comment at `translate.ts:452-458` to record the retrospective-split trigger ("if the SDK decouples `partialResult` from `args`, revisit the fold"). The principal will likely accept this; if they object, the dispute is wording-only, not mapper shape. **No test settles this.**
+2. **`summarization_retry_attempt_start` — one name or two by `source`?** A reader can decode `data.source` cheaply; a reader can also subscribe to two distinct names. The cheaper move is one name plus a discriminator in `data`; the more dispatch-clear move is two names. This is a taste call the consolidator should make — not a correctness question. **No test settles this.**
+3. **`bash_execution_update` buffering at the client layer** (my round-1 residual 5): preserved, untouched, and explicitly out of mapper scope. **No test settles this; client-side decision.**
+4. **`partialResult: ""` semantics** (round-1 residual 4): the faithful-emit policy survives. It is a client-side filter decision and is noted for the spec. **No test settles this.**
+5. **`queue_update` null-state UX** (round-1 residual 3): snapshot-faithful, client filters. Unchanged. **No test settles this.**
+
+**Predictions that survive in their original phrasing:** H1 (modified to the three names we agreed on), H3 (amended name), H4, H6, H8, H9.
+
+**Predictions withdrawn or amended to taste:** H2 (withdrawn as gate, preserved as doc-comment), H5 (withdrawn from FLLWUP-3, preserved as a follow-up card brief), H7 (withdrawn with H2).
+
+**Predictions already covered by the principal:** H6 (purity) — covered by principal claim 4. H8 (spec caveat rider) — covered by the card's acceptance and the principal's mapper-only framing. H4 (retry-state surface) — independently re-stated by the principal in their table; my version is the same answer with the same fields.
+
+End of round-2 designer position. Owner position lands concurrently; I have not yet seen it, so this position does not pretend to settle the implementation-budget half of the question.
