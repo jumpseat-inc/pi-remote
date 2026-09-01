@@ -96,11 +96,29 @@ framing envelope (§6). Mapping (using pi's real event names):
 | `ui.confirm` / approval-style prompts (`ui_prompt_start`/`ui_prompt_end`) | `CUSTOM` (`pi.human_input`) | human-in-the-loop; client replies flow back via injection (§5.3). AG-UI native interrupt framing if/when the client implements it |
 | `context` / token budgets / compaction (`session_compact`) | `CUSTOM` (`pi.context.*`) | escape hatch |
 | `model_select`, `thinking_level_select`, `session_info_changed` | `CUSTOM` (`pi.session.*`) | client-side status |
+| `queue_update` | `CUSTOM` (`pi.session.queue_update`) | queue snapshot (`{steering, followUp}`), not a delta; client diffs snapshots — no SDK `queue_drained` event exists |
+| `bash_execution_update` | `CUSTOM` (`pi.tool.bash_execution_update`) | live bash output delta (`{id?, delta}`); the `_update` suffix is the live/replay distinction against the JSONL replay name `pi.tool.bash_execution` |
+| `auto_retry_start` / `auto_retry_end` | `CUSTOM` (`pi.session.retry_start` / `pi.session.retry_end`) | retry state (`attempt`, `maxAttempts`, `delayMs`, `errorMessage` / `success`, `finalError?`); raw SDK names ride in `value.pi` |
+| `summarization_retry_scheduled` / `_attempt_start` / `_finished` | `CUSTOM` (`pi.session.summary_retry_scheduled` / `summary_retry_branch` or `summary_retry_compaction` / `summary_retry_finished`) | `attempt_start` fans out on `data.source`: `branchSummary` → `summary_retry_branch`, `compaction` → `summary_retry_compaction`; payload passes through verbatim |
+| `tool_execution_update` (refined) | `CUSTOM` (`pi.tool.update` + `pi.tool.progress`) | conditional split by payload: `args` present → `pi.tool.update {toolCallId, args}`; `partialResult` present → `pi.tool.progress {toolCallId, partialResult}`, emitted after `update` when both carry; empty-string `partialResult` emits |
 
 pi concepts AG-UI cannot express are **always** `CUSTOM` events — never a
 second wire format. The `CUSTOM` frame is `{ type: "CUSTOM", name: "pi.<category>",
 value: { pi: <event-name>, data: … } }` — `name` is the sole dispatch key, `pi`
 is provenance, and `data` is the semantic payload.
+
+The `queue_update`, `bash_execution_update`, `auto_retry_*`, and
+`summarization_retry_*` families are **not runtime-observable** in the
+installed pi SDK: `ExtensionAPI.on()` is a typed whitelist that does not
+include them (`dist/core/extensions/types.d.ts` ~905–941) and the runtime
+session→extension forwarder whitelists only agent/turn/message/
+tool_execution events (`dist/core/agent-session.js` ~470–555). Their
+mapper rows are contract-green, not live; wiring lands with the SDK bridge
+(FLLWUP-8/9), and this caveat is amended again in the same PR that makes
+it false. This caveat does **not** cover `pi.tool.update` /
+`pi.tool.progress`: `tool_execution_update` is bridgeable today (typed
+`on("tool_execution_update")` overload; forwarder at
+`agent-session.js:537–546`).
 
 ## 5. History translation: JSONL → AG-UI (locked decision)
 
