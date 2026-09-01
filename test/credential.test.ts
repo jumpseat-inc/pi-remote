@@ -170,6 +170,28 @@ describe("EV-7 credential store", () => {
     }
   });
 
+  // icacls /save output decoder. Observed reality (CI run 33540684331):
+  // on windows-latest it writes UTF-16LE *without* a BOM (older icacls writes with one) — tolerate both.
+  function decodeIcaclsSaveSddl(raw: Buffer): string {
+    const body = raw.subarray(0, 2).toString("hex") === "fffe" ? raw.subarray(2) : raw;
+    const text = body.toString("utf16le");
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    // First non-empty line is the file path; the SDDL is the line starting with "D:".
+    return lines.find((l) => /^D:/.test(l)) ?? lines[lines.length - 1] ?? "";
+  }
+
+  test("icacls /save decoder: identical SDDL with and without UTF-16LE BOM", () => {
+    const sample = "c:\\tmp\\cred.json\r\nD:AI(A;ID;FA;;;S-1-5-21-1-2-3)\r\n";
+    const expected = "D:AI(A;ID;FA;;;S-1-5-21-1-2-3)";
+    const withBom = Buffer.concat([Buffer.from("fffe", "hex"), Buffer.from(sample, "utf16le")]);
+    const withoutBom = Buffer.from(sample, "utf16le");
+    expect(decodeIcaclsSaveSddl(withBom)).toBe(expected);
+    expect(decodeIcaclsSaveSddl(withoutBom)).toBe(expected);
+  });
+
   test.skipIf(process.platform !== "win32")("win32 ACL read-back (SDDL via icacls /save): no inherited ACEs, no well-known SIDs, current-user grant; re-enroll replaces", () => {
     const cfg = tempConfigDir();
     try {
@@ -182,13 +204,11 @@ describe("EV-7 credential store", () => {
       const sid = parseWhoamiUserSid(who.stdout.toString());
       expect(sid).not.toBeNull();
 
-      // icacls /save writes SDDL as UTF-16LE with a BOM — decode accordingly.
       const sddlPath = join(cfg, "acl.sddl");
       const saved = Bun.spawnSync(["icacls", p, "/save", sddlPath]);
       expect(saved.exitCode).toBe(0);
       const raw = readFileSync(sddlPath);
-      expect(raw.subarray(0, 2).toString("hex")).toBe("fffe"); // UTF-16LE BOM
-      const sddl = raw.subarray(2).toString("utf16le");
+      const sddl = decodeIcaclsSaveSddl(raw);
       // Locale-independent: SIDs, never display names (Everyone/Users are localized).
       expect(sddl).not.toContain("S-1-1-0"); // Everyone
       expect(sddl).not.toContain("S-1-5-32-545"); // BUILTIN\Users
