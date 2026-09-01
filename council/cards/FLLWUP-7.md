@@ -185,3 +185,33 @@ Full report run against the current codebase (all probes cleaned, suite green af
 - **Additional verified facts** — `icacls /save` output is UTF-16LE with BOM in SID form (`*S-1-…`), so the locale-independent read-back strategy is sound but must decode UTF-16; human `icacls` display names are localized (German `Jeder` etc.), confirming read-back must not assert display names.
 
 Skeptic verdict: no blocking red on the converged design's core contract. One closed-red against a test formulation (drop the darwin framing, use `win32 + io_error`). Two items to pin before implementation: (a) how the injectable executor seam reaches `finalizeSuccess` (LoginDeps threading); (b) `process.platform` writable-global restore discipline in tests. Both are design details, not failures of the card's invariants.
+
+### Round 4 (step 5) — consolidator synthesis
+
+**Agreed design (all seats converged, no blocking red against the core contract):**
+
+- **Mechanism:** `icacls` subprocess via `Bun.spawnSync`, applied to the tmp file **before** rename. Fail-closed: non-zero icacls exit ⇒ `rmSync(tmp)`, nothing renamed, `{ ok: false, reason: "acl_enforcement_failed" }`. No new runtime dependency.
+- **Write path:** open tmp → apply ACL to the empty tmp → write credential bytes → fsync → rename. POSIX `chmodSync(tmp, 0o600)` path untouched. Zero window where the target exists world-readable.
+- **Contract:** `WriteResult = { ok: true } | { ok: false; reason: "io_error" | "acl_enforcement_failed" }`; `{ok:true}` ⟺ persisted-and-user-only-protected on both platforms; `{ok:false}` ⟺ nothing left on disk; `platform_acl_not_supported` retired (skeptic: zero test churn — closed-green).
+- **Grant level:** `(M)` (Modify). **SID acquisition:** `whoami /user /fo csv`; SID-resolution failure ⇒ `acl_enforcement_failed`, never an unprotected write; `*S-1-3-4` stays out until validated on Windows.
+- **CI strategy (the card's flagged acceptance-vs-platform conflict — owned by the deliberation per orchestrator standing context):** add a `windows-latest` job to `.github/workflows/gates.yml` scoped to `bun test test/credential.test.ts`; principal conceded (a skipIf-gated manual test is the same documented-not-enforced posture EV-7 took). Corrections adopted: (a) guard the POSIX-0600 assertion (`test/credential.test.ts:48-56`) with `test.skipIf(process.platform === "win32")`; (b) locale-independent read-back assertions via `icacls /save` SDDL (`(<I>)` absence, user SID present, well-known SIDs `S-1-1-0`/`S-1-5-32-545`/`S-1-5-11` absent) — never display-name substrings; decode UTF-16LE+BOM.
+- **Copy:** notice keyed on `saved.reason === "acl_enforcement_failed"` (not `process.platform`); failure tail says nothing was saved (fail-closed wording; designer's "may be readable by other accounts" clause stale and dropped); **success line silent on all platforms (settled — designer's own round-2 position states this explicitly; all three seats converge)**; README + PI-SPEC §7.2 drop "chmod is a no-op", affirm enforcement with fail-closed semantics.
+- **Tests (ubuntu-runnable):** fail-closed via injectable ACL executor (`{ok:false, reason:"acl_enforcement_failed"}` ⇒ `readCredential() === null`, no tmp remains); exact argv `["<tmp>", "/inheritance:r", "/grant:r", "*<sid>:(M)"]`; reason-keyed notice rendering (`acl_enforcement_failed` ⇒ notice, `io_error` ⇒ bare row); README grep-guard. Windows-runtime read-back settles via the windows-latest job.
+
+**Settled disputes (skeptic-closed):** zero-test-churn rename (closed-green); platform-keyed notice wrong on win32 io_error (closed-green); gates.yml ubuntu-only (closed-green); fail-closed violated today on win32 with no test catching it (closed-green); setup-bun@v2 + scoped test invocation feasible (closed-green); 0600 assertion unguarded (closed-green; 0o666-on-NTFS consequence settles via windows job); icacls /save UTF-16LE+BOM SID form sound for locale-independent assertions (closed-green).
+
+**Open objections (for the spec to pin):**
+1. LoginDeps seam threading (open-untested) — the injectable executor must thread through `LoginDeps` so the acl-failed notice path is reachable/testable on non-win32; otherwise `win32 + io_error` route is the fallback. Pin in spec.
+2. `process.platform` restore discipline in tests (open-untested) — save/restore around win32-patch tests or existing platform-guarded tests are silently corrupted. Pin in spec.
+3. "0o666 on NTFS" (open-untested) — settles via windows-latest job + skipIf guard, one change.
+4. "`:F`/`(M)` include DELETE" (open-untested) — settles via windows job's full-replace round-trip test.
+5. Designer prediction 2 darwin framing (closed-red against the formulation) — drop the darwin framing; use the `win32 + io_error` route. Property survives.
+
+### Step 6 — routing record
+
+- **Routed as settled (no ruling needed):** success-line silence — consolidator flagged it for product-owner confirmation, but the deliberation record itself settles it: the designer's round-2 design position states "(3) The success line stays silent — no platform suffix" and owner + principal agreed in round 2. All three seats converge; nothing left to rule.
+- **Routed to product-owner (open judgment, no test can settle):** the remedy clause of the `acl_enforcement_failed` failure tail — whether the user-facing notice directs the user to **"file an issue"** (designer's final copy: "…Run /rc:login to retry; if it repeats, file an issue.") or to **retry + log channel without "file an issue"** (owner: "file an issue" overweights an abnormal condition (EDR, FAT volume, missing icacls); the typed reason in `LoginOutcome` already provides a log channel; notice should state cause + suggest `/rc:login` retry). Designer ranked the wording taste but did not withdraw the "file an issue" remedy; owner explicitly left it flagged for product-owner. Does not block the design or the tests — blocks final copy only. Phase 1 rulings: none cover this. Facilitator carries facts only; see escalation report.
+- **Not routed (taste, non-blocking, resolve in implementation/code review):** exact tail phrasing beyond the remedy clause; prose-only README vs illustrative icacls command line (designer rank-last preferences).
+- **Spec pins (implementation details, owner pins in spec):** LoginDeps seam threading; `process.platform` restore discipline; windows-latest job + 0600 skipIf guard; locale-independent read-back assertions.
+
+**Status: ESCALATION to product-owner** (via orchestrator) on the remedy clause. Card remains `Deliberating` pending the ruling.
