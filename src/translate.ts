@@ -143,8 +143,7 @@ export type PiEvent =
   | { event: "session_compact"; summary?: string }
   | { event: "model_select"; model: string }
   | { event: "thinking_level_select"; level: string }
-  | { event: "session_info_changed"; info: unknown }
-  | { event: "user_input"; messageId: string; text: string };
+  | { event: "session_info_changed"; info: unknown };
 
 // ---------------------------------------------------------------------------
 // JSONL entry surface (replay path) — normalized entries per spec §5/§2.
@@ -527,13 +526,6 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
 
     case "session_info_changed":
       frames.push({ type: "CUSTOM", name: "pi.session.info_change", value: { pi: "session_info_changed", data: { info: input.info } } });
-      break;
-
-    case "user_input":
-      // Injected locally, then echoed like any other message — role "user".
-      frames.push({ type: "TEXT_MESSAGE_START", messageId: input.messageId, role: "user" });
-      frames.push({ type: "TEXT_MESSAGE_CONTENT", messageId: input.messageId, delta: input.text });
-      frames.push({ type: "TEXT_MESSAGE_END", messageId: input.messageId });
       break;
 
     default:

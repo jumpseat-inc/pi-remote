@@ -86,7 +86,8 @@ framing envelope (§6). Mapping (using pi's real event names):
 | pi surface | AG-UI event | Notes |
 |---|---|---|
 | `agent_start` / `agent_settled` | `RUN_STARTED` / `RUN_FINISHED` | `agent_settled`, not `agent_end`, so retries/compaction retries don't emit premature run-end |
-| `message_update` (`assistantMessageEvent` text deltas) | `TEXT_MESSAGE_CONTENT` (+ `TEXT_MESSAGE_START`/`END` around the message) | streaming assistant reply |
+| `message_start` + `message_update` (`assistantMessageEvent` text deltas) | `TEXT_MESSAGE_START` / `TEXT_MESSAGE_CONTENT` | role comes from the message (user or assistant); `TEXT_MESSAGE_START` fires on the first text delta, deltas stream as `TEXT_MESSAGE_CONTENT` |
+| `message_end` | `TEXT_MESSAGE_END` | symmetric close of the message framing pair; emitted once the message has streamed text (`translate.ts` fires it only for a message whose `message_start`/`message_update` opened text) |
 | thinking content in `message_update` | `REASONING_MESSAGE_*` | reasoning pane — corrected against AG-UI's reasoning-message migration (S1: `THINKING_TEXT_MESSAGE_*` deprecated); thinking block ids use `<assistantId>:think:<contentIndex>` |
 | `message_update` (`assistantMessageEvent` `toolcall_start`/`toolcall_delta`/`toolcall_end`) | `TOOL_CALL_START` / `TOOL_CALL_ARGS` / `TOOL_CALL_END` | rich tool UI — corrected against the pi SDK generation lane (S2: `tool_execution_*` fires in a separate execution lane after `message_end`, carrying a static args snapshot + `partialResult`, and would attach tool calls to a closed assistant message); `TOOL_CALL_START.parentMessageId` = requesting assistant messageId |
 | `tool_execution_start` / `_update` / `_end` | `CUSTOM` (`pi.tool.*`) | execution lane output (`partialResult`) has no AG-UI tool-progress event (S2) — escapes as `CUSTOM`, never smuggled into `TOOL_CALL_ARGS` |
@@ -95,7 +96,6 @@ framing envelope (§6). Mapping (using pi's real event names):
 | `ui.confirm` / approval-style prompts (`ui_prompt_start`/`ui_prompt_end`) | `CUSTOM` (`pi.human_input`) | human-in-the-loop; client replies flow back via injection (§5.3). AG-UI native interrupt framing if/when the client implements it |
 | `context` / token budgets / compaction (`session_compact`) | `CUSTOM` (`pi.context.*`) | escape hatch |
 | `model_select`, `thinking_level_select`, `session_info_changed` | `CUSTOM` (`pi.session.*`) | client-side status |
-| user input (from a client) | `TEXT_MESSAGE_START` (role `user`) | injected locally, then echoed onto the wire like any other message |
 
 pi concepts AG-UI cannot express are **always** `CUSTOM` events — never a
 second wire format. The `CUSTOM` frame is `{ type: "CUSTOM", name: "pi.<category>",
