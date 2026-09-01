@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-7
 title: "EV-7 Windows ACL for credential-file user-only readability"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: On Windows, the pi-remote credential file at the agent config path is readable only by the host user, enforced via an NTFS ACL rather than the no-op chmod, closing the gap EV-7 documented.
@@ -215,3 +215,15 @@ Skeptic verdict: no blocking red on the converged design's core contract. One cl
 - **Spec pins (implementation details, owner pins in spec):** LoginDeps seam threading; `process.platform` restore discipline; windows-latest job + 0600 skipIf guard; locale-independent read-back assertions.
 
 **Status: ESCALATION to product-owner** (via orchestrator) on the remedy clause. Card remains `Deliberating` pending the ruling.
+
+### Step 6 — ruling (product-owner, resumed turn)
+
+## FLLWUP-7 ruling — acl_enforcement_failed remedy clause (product-owner, binding)
+
+**No "file an issue."** The acl_enforcement_failed failure tail states the cause and the fail-closed consequence and names /rc:login as the retry — owner's position, with one firm requirement: the cause clause must be substantive enough to point at the host (e.g., "…this host could not apply user-only protection to the credential file — the volume may not support NTFS ACLs, or security software blocked it — so nothing was saved. Run /rc:login to retry."). Exact phrasing below that bar stays taste and belongs to implementation.
+
+Reasoning: EV-2 Item 1 — an extra remedy clause is owed when a real, distinct next step exists and the named party can change the outcome. The 403 admin clause passed that test (the admin can grant scope); "file an issue" fails it — the conditions producing acl_enforcement_failed (EDR interference, FAT/exFAT volume, missing icacls) are host-local, and no maintainer action can apply an ACL on the user's machine. The party who can change the outcome is the user or their host admin; the honest service is naming what class of thing went wrong on their host. The retry-only alternative survives the persistence objection because it states the cause: a stated cause converts the notice into information the user can act on (NTFS-backed path, EDR policy), and the typed acl_enforcement_failed reason in LoginOutcome already provides the diagnostic trail for anyone who chooses to report. Same stated-sentence, no-over-promise standard as EV-2 Item 3.
+
+Options rejected: designer's "if it repeats, file an issue" (names the wrong actor; repetition doesn't cure host-locality); a README pointer in place of the clause (the README is not a remediation channel — the cause clause carries that load); retry alone with no cause clause (soft over-promise — incomplete, not the base design).
+
+**Status: ruling received and binding. Deliberation closed; proceeding to step 7.**

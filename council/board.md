@@ -17,9 +17,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-4 — "EV-2 localization seam: second (en→id) message lookup and resolver"
 
 ## Deliberating
-- FLLWUP-7 — "EV-7 Windows ACL for credential-file user-only readability"
 
 ## In Progress
+- FLLWUP-7 — "EV-7 Windows ACL for credential-file user-only readability"
 
 ## In Review
 
