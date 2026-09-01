@@ -238,6 +238,28 @@ Verbatim binding rules from the spec (do not relax):
     break;
   ```
 
+  **Discriminator fix (required by the spec's own fixture):** `translate()`
+  currently dispatches on `"kind" in input` — but the new `ui_prompt_end`
+  PiEvent legitimately carries `kind`, so `translate({event:"ui_prompt_end", kind,
+  title}, state)` (the spec Test-plan fixture) would collide with the JsonlEntry
+  discriminator and misroute to `translateJsonl`, emitting a WRONG
+  `pi.session.info_change` frame (probe-4 kind-collision, reproduced at the fold
+  level). Every `JsonlEntry` carries `entryId`; no `PiEvent` does — so switch the
+  discriminator, behavior-identical for all existing inputs:
+  ```ts
+  export function translate(input: Input, state: TranslateState): FoldResult {
+    // FLLWUP-5 contract (a): JsonlEntry is discriminated by `entryId` (every JSONL
+    // entry carries it); PiEvent is discriminated by `event`. `kind` is NOT a safe
+    // discriminator: the ui_prompt_end PiEvent legitimately carries a `kind` field,
+    // and `"kind" in input` would misroute it to translateJsonl (probe-4
+    // kind-collision → wrong pi.session.info_change frame).
+    if ("entryId" in input) {
+      return translateJsonl(input, state);
+    }
+    return translateLive(input, state);
+  }
+  ```
+
 - [ ] **Step 4: Run the translate suite and verify it PASSES (new fixtures + existing G-11/G-12 purity guards)**
 
   Run: `bun test test/translate.test.ts`
@@ -620,7 +642,7 @@ Verbatim binding rules from the spec (do not relax):
 
 ## Self-review (writing-plans skill checklist)
 
-**Spec coverage:** §1.1 (UIPromptKind + variant) → Task 2; §1.2 (pure case + exact frame) → Task 2; §2.1 (onInbound capture, emission rules, emitResolved with deps.now) → Task 3; §2.2 (strict 4-field wire shape, no kind) → Task 3 fixture (`toEqual` + keys assertion); §3.1 (tracked on steered_fallback) → Task 1; §3.2 (occurrence on resolved+steered_fallback, stale/ignored without) → Task 1; §4 (seven-site manual construction, forward unchanged, registerPrompt special-case preserved) → Task 4; §5 (amended acceptance) → Task 6 PR body; §6 (spec amendment) → Task 5; Test plan → Task 1 (S-O3/occurrence), Task 2 (pure fold), Task 3 (lifecycle + strict deep-equal), Task 4 (seven sites + static guard); Gates → Task 6. G-11/G-12 purity → Task 2 Step 4 verifies the existing guards still pass.
+**Spec coverage:** §1.1 (UIPromptKind + variant) → Task 2; §1.2 (pure case + exact frame) → Task 2 (plus the `"entryId" in input` discriminator fix the spec's own Test-plan fixture requires — `kind` is no longer a safe JsonlEntry discriminator once `ui_prompt_end` carries it; behavior-identical for every existing input); §2.1 (onInbound capture, emission rules, emitResolved with deps.now) → Task 3; §2.2 (strict 4-field wire shape, no kind) → Task 3 fixture (`toEqual` + keys assertion); §3.1 (tracked on steered_fallback) → Task 1; §3.2 (occurrence on resolved+steered_fallback, stale/ignored without) → Task 1; §4 (seven-site manual construction, forward unchanged, registerPrompt special-case preserved) → Task 4; §5 (amended acceptance) → Task 6 PR body; §6 (spec amendment) → Task 5; Test plan → Task 1 (S-O3/occurrence), Task 2 (pure fold), Task 3 (lifecycle + strict deep-equal), Task 4 (seven sites + static guard); Gates → Task 6. G-11/G-12 purity → Task 2 Step 4 verifies the existing guards still pass.
 
 **Placeholder scan:** every code step carries the exact code; no "TBD"/"add error handling"/"similar to Task N".
 
