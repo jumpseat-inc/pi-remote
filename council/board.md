@@ -19,9 +19,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
-- FLLWUP-6 — "Remove or document the dead user_input PiEvent in translate.ts"
-
 ## In Progress
+
+- FLLWUP-6 — "Remove or document the dead user_input PiEvent in translate.ts"
 
 ## In Review
 
