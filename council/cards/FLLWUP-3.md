@@ -143,6 +143,10 @@ Two consecutive skeptic dispatches, both killed by provider connection errors, n
 
 Per dispatch discipline (a seat that produces no output across its window and one re-dispatch is a halt; no third dispatch), the run halts here. NO skeptic objections or test results are recorded from these attempts — the resumed runner must re-run step 4 from a fresh skeptic dispatch. The "5 frames from 1 event" fragment suggests the dead instance may have found a fan-out anomaly (possibly the O2 fixture's `tool_execution_update` producing more frames than expected under some probe); treat it as an unverified lead, not a result.
 
+### Step 4 resume (runner 4, 2026-09-01) — fresh skeptic dispatched
+
+Orchestrator probed the provider directly: both the skeptic's model and the other seats' models respond normally — the two step-4 deaths were transient. No deliberation content is redone; steps 1–3 stand as recorded above (round 3 FINAL, cap reached). A FRESH skeptic is dispatched with the full deliberation record (the card file itself). One unverified lead from the dead job-2.1's log fragment — "5 frames from 1 event" (possibly a fan-out anomaly around the O2 fixture's `tool_execution_update`) — is handed to the skeptic as an open question to settle or leave open with a named test, NOT as a finding.
+
 ## Acceptance
 
 - `queue_update`, `bash_execution_update`, and each `auto_retry_*` variant map
