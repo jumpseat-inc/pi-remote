@@ -1,11 +1,61 @@
 ---
 id: FLLWUP-8
 title: "Wire the ui_prompt_start raise path end-to-end (runtime-observable acceptance for FLLWUP-5 contract b)"
-state: Ready
+state: Deliberating
 owner: null
 epic: EPIC-1
 goal: Wire deps.on ui_prompt_start with manual PiEvent construction and registerPrompt on the canonical SDK payload so FLLWUP-5's pi.human_input.resolved becomes runtime-observable end to end
 ---
+
+## Step 1 — path classification
+
+- Full council (not mechanical): cross-seam (index.ts live-path wiring + translate.ts
+  pure mapper) and spec-ambiguous/design-judgment — the orchestrator's Phase-1 record
+  explicitly delegates the payload re-mapping fork to this deliberation: the SDK's
+  `ui_prompt_start` carries `{type, reason:"ui_prompt", kind:UIPromptKind, title?}`
+  while the synthetic seam expects `{event:"ui.confirm", promptKind, prompt}`; whether
+  to add a backward-compatible PiEvent variant for the live shape or re-map into the
+  existing synthetic shape is a design fork, as is whether the raised frame's data
+  carries the SDK's `kind` verbatim.
+- Surface-touching: yes — the remote client's approval UI begins receiving live
+  prompts (the raise path becomes runtime-observable; same user-visible surface
+  FLLWUP-5 seated `designer` for). `designer` seated as third generator in steps 2–3.
+- Binding context carried in (not open for relitigation): manual PiEvent construction
+  per FLLWUP-5 S-O2, never `ev as PiEvent`; dispatch names ruled in FLLWUP-3/EV-2 are
+  stable keys (pi.human_input, pi.human_input.closed, pi.human_input.resolved,
+  pi.human_input.stale, pi.human_input.fallback_to_steer — existing names may not be
+  relitigated); steward R3 Side B (EV-6): wiring `deps.on("ui_prompt_start")` is
+  OBSERVATION — the host already receives the prompt — not host-UI sponsorship, and
+  the steering fallback is the permanent live resolution path; FLLWUP-9's typed
+  `on()` union is live (`src/pi-sdk-on.ts`, `PiSDKOnEvent` includes `ui_prompt_start`
+  per SDK types.d.ts:927) and any new subscription MUST typecheck against it; the
+  `ui.confirm` synthetic seam is fixture-only (guard bridge returns early) and
+  load-bearing for 5 tests (FLLWUP-9 deletion probe); the raise stamps
+  (promptId, occurrence) onto the wire via `injector.registerPrompt({promptId, kind,
+  prompt}) → {occurrence}` (EV-8 pattern, index.ts forward() ui.confirm special case);
+  FLLWUP-5 contract (b) is fixture-green and this card's acceptance re-opens it to
+  runtime-observable; J-REPLAY (FLLWUP-5 PO ruling): replay need not be
+  self-sufficient — resolved surfaces only in the live stream after resync; gates =
+  `bunx tsc --noEmit` exit 0 + `bun test` full suite green (172 baseline; add fixtures
+  for the live raise path); no Mongo, no boot gate; FLLWUP-11/12 are explicitly NOT
+  this card's scope; the FLLWUP-3 §4 runtime-unreachability caveat is scoped to the
+  four FLLWUP-3 families only — wiring ui_prompt_start does NOT make those live, so
+  the spec amendment in this PR covers only what this PR actually falsifies (the
+  FLLWUP-5 §5.4 "fixture-green today, runtime-observable once the raise path lands
+  (FLLWUP-8)" sentence becomes false on this PR and must be amended in the same PR).
+- Facilitator-verified SDK evidence (grounding, not opinion): installed SDK
+  `dist/core/extensions/types.d.ts:563-570` — `UIPromptKind = "select" | "confirm" |
+  "input" | "editor" | "custom"`; `UIPromptStartEvent { type:"ui_prompt_start";
+  reason:"ui_prompt"; kind:UIPromptKind; title?:string }` (UIPromptEndEvent identical
+  shape, :572-577); emitted from `runner.js:270-300` `withUIPrompt` — depth-guarded,
+  only the outermost prompt emits, `title` omitted when absent (`...(title ? {title}
+  : {})`); typed `on("ui_prompt_start", ExtensionHandler<UIPromptStartEvent>)` at
+  types.d.ts:927. `registerPrompt` is NOT an SDK symbol — it is the injector's own
+  method (`src/inject.ts:66-69,179`): `registerPrompt(input: {promptId: string; kind:
+  string; prompt: string}): {occurrence: number}`. Current translate.ts mapping:
+  `ui.confirm` → CUSTOM `pi.human_input` data `{promptKind, prompt, schemaVersion:1,
+  promptId: fnv1a(promptKind + "\u0000" + prompt)}` (translate.ts:525-539);
+  `ui_prompt_end` → CUSTOM `pi.human_input.closed` (translate.ts:541-549).
 
 ## Intent
 

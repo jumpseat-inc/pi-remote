@@ -13,9 +13,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Ready
 - FLLWUP-4 — "EV-2 localization seam: second (en→id) message lookup and resolver"
 - FLLWUP-7 — "EV-7 Windows ACL for credential-file user-only readability"
-- FLLWUP-8 — "Wire the ui_prompt_start raise path end-to-end (runtime-observable acceptance for FLLWUP-5 contract b)"
 
 ## Deliberating
+- FLLWUP-8 — "Wire the ui_prompt_start raise path end-to-end (runtime-observable acceptance for FLLWUP-5 contract b)"
 
 ## In Progress
 
