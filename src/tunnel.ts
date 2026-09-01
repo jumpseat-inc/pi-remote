@@ -15,6 +15,8 @@
  * docs/PI-SPEC.md §3/§7.2 and the EV-2 design spec §1–§3.
  */
 
+import { resolveCopy } from "./copy";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -159,9 +161,14 @@ const englishDefaults: Record<string, string> = Object.fromEntries(
   Object.values(tunnelReasonCopy).map((c) => [c.userLineKey, c.userLine])
 );
 
-/** English-default lookup: resolves a message key to its user-facing string. */
+/**
+ * English-default lookup: resolves a message key to its user-facing string.
+ * Delegates to the FLLWUP-4 resolver (id overlay + three-valued fallback);
+ * signature unchanged — every call site becomes locale-aware with zero
+ * call-site changes.
+ */
 export function englishFor(key: string): string {
-  return englishDefaults[key] ?? key;
+  return resolveCopy(key, englishDefaults);
 }
 
 // ---------------------------------------------------------------------------

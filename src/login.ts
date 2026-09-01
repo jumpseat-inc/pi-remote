@@ -19,6 +19,7 @@ import {
   type DiscoveryDocument,
   type TunnelHttpDeps,
 } from "./tunnel";
+import { resolveCopy } from "./copy";
 import {
   readCredential,
   saveCredential,
@@ -235,7 +236,7 @@ export const FOOTER_ROWS: Record<string, string> = {
     "Could not reach the relay — the tunnel is reconnecting",
   "tunnel.error.protocolViolation":
     "The relay violated the protocol — the tunnel is reconnecting",
-  "tunnel.error.urlExpired": "The tunnel URL expired — re-dial",
+  "tunnel.error.urlExpired": "The tunnel URL expired — run /rc to re-dial",
   // command-output lines (spec §8 "add rows as needed").
   "rc.unenrolled": "No enrollment credential found — run /rc:login",
   "rc.serverUrlRequired":
@@ -255,9 +256,12 @@ const englishDefaults: Record<string, string> = {
   ),
 };
 
-/** English-default lookup: resolves a message key to its user-facing string. */
+/** English-default lookup: resolves a message key to its user-facing string.
+ * Delegates to the FLLWUP-4 resolver (id overlay + three-valued fallback);
+ * signature unchanged — every internal call site becomes locale-aware with
+ * zero call-site changes. */
 export function loginEnglishFor(key: string): string {
-  return englishDefaults[key] ?? key;
+  return resolveCopy(key, englishDefaults);
 }
 
 export const loginReasonCopy: Record<LoginReason, LoginReasonCopy> =
