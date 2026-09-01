@@ -149,7 +149,10 @@ Orchestrator probed the provider directly: both the skeptic's model and the othe
 
 ### Step 4 resume (runner 4, 2026-09-01) — skeptic dispatch log
 
-- **job-3.1** (20-min window): ran 15 turns / 11.5m, died on provider error `Request timed out.` (state=done, stopReason=error). No output recorded. Re-dispatching once per dispatch discipline.
+- **job-3.1** (20-min window): ran 15 turns / 11.5m, died on provider error `Request timed out.` (state=done, stopReason=error). No output recorded. Re-dispatched once per dispatch discipline.
+- **job-3.2** (re-dispatch, same input): ran 18 turns / 20.4m to its full window, died on provider error `Request timed out.` (state=timeout, stopReason=error). No output recorded; job cancelled.
+
+Per dispatch discipline AND the standing resume instruction ("if the skeptic dies on provider errors across its window and one re-dispatch, that is a HALT"), the run HALTS here at step 4. FOUR skeptic dispatches have now died on provider timeouts across two containers (job-2.1, job-2.2, job-3.1, job-3.2) while owner/principal/designer dispatches succeed — the instability is specific to the skeptic seat's model/usage pattern, not the provider as a whole. NO skeptic objections or test results are recorded from any attempt; step 4 remains OPEN. A resumed runner must dispatch a fresh skeptic with the full deliberation record (this card) — or the orchestrator must first repair the skeptic seat's provider path (e.g. model change per the `d786c77` precedent that fixed the owner seat). The "5 frames from 1 event" lead remains UNVERIFIED — an open question for the fresh skeptic, not a finding.
 
 ## Acceptance
 
