@@ -1,10 +1,21 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  buildWindowsAclArgv,
   clearCredential,
   credentialPath,
+  parseWhoamiUserSid,
   readCredential,
   saveCredential,
   saveCredentialAsync,
@@ -13,6 +24,13 @@ import {
 
 function tempConfigDir(): string {
   return mkdtempSync(join(tmpdir(), "ev7-cred-"));
+}
+
+/** Patch process.platform (skeptic pin: always restore — see callers' finally). */
+function setPlatform(p: NodeJS.Platform): NodeJS.Platform {
+  const orig = process.platform;
+  (process as unknown as { platform: NodeJS.Platform }).platform = p;
+  return orig;
 }
 
 function cred(overrides: Partial<EnrollmentCredential> = {}): EnrollmentCredential {
@@ -43,7 +61,7 @@ describe("EV-7 credential store", () => {
     rmSync(cfg, { recursive: true, force: true });
   });
 
-  test("J3 mode gate (test 13): persisted file is POSIX 0600", () => {
+  test.skipIf(process.platform === "win32")("J3 mode gate (test 13): persisted file is POSIX 0600", () => {
     const cfg = tempConfigDir();
     saveCredential(cred(), { configDir: cfg });
     const p = credentialPath({ configDir: cfg });
@@ -89,6 +107,105 @@ describe("EV-7 credential store", () => {
     writeFileSync(p, '{"serverUrl": "x"}', "utf8");
     expect(readCredential({ configDir: cfg })).toBeNull();
     rmSync(cfg, { recursive: true, force: true });
+  });
+
+  test("buildWindowsAclArgv: exact icacls argv — tmp, /inheritance:r, /grant:r *SID:(M)", () => {
+    expect(buildWindowsAclArgv("C:\\tmp\\cred.json.tmp-1", "S-1-5-21-1-2-3")).toEqual([
+      "C:\\tmp\\cred.json.tmp-1",
+      "/inheritance:r",
+      "/grant:r",
+      "*S-1-5-21-1-2-3:(M)",
+    ]);
+  });
+
+  test("parseWhoamiUserSid: extracts the (never-localized) SID column of whoami /user /fo csv", () => {
+    const csv =
+      '"UserName","SID"\r\n"DESKTOP\\alice","S-1-5-21-3623811015-3361044348-30300820-1013"\r\n';
+    expect(parseWhoamiUserSid(csv)).toBe(
+      "S-1-5-21-3623811015-3361044348-30300820-1013"
+    );
+    expect(parseWhoamiUserSid('"UserName","SID"\r\n')).toBeNull();
+    expect(parseWhoamiUserSid("")).toBeNull();
+  });
+
+  test("win32 fail-closed: ACL failure ⇒ {ok:false, acl_enforcement_failed}, nothing on disk, no tmp remains", () => {
+    const origPlatform = setPlatform("win32");
+    try {
+      const cfg = tempConfigDir();
+      const appliedPaths: string[] = [];
+      const result = saveCredential(cred(), {
+        configDir: cfg,
+        applyAcl: (path) => {
+          appliedPaths.push(path);
+          return { ok: false };
+        },
+      });
+      expect(result).toEqual({ ok: false, reason: "acl_enforcement_failed" });
+      // {ok:false} ⟺ nothing was left on disk (the load-bearing invariant).
+      expect(readCredential({ configDir: cfg })).toBeNull();
+      expect(existsSync(credentialPath({ configDir: cfg }))).toBe(false);
+      expect(readdirSync(cfg).filter((e) => e.includes(".tmp-"))).toEqual([]); // no tmp remains
+      expect(appliedPaths).toHaveLength(1);
+      rmSync(cfg, { recursive: true, force: true });
+    } finally {
+      setPlatform(origPlatform);
+    }
+  });
+
+  test("win32 + successful ACL seam ⇒ {ok:true} and the credential is readable (no platform penalty)", () => {
+    const origPlatform = setPlatform("win32");
+    try {
+      const cfg = tempConfigDir();
+      const result = saveCredential(cred(), {
+        configDir: cfg,
+        applyAcl: () => ({ ok: true }),
+      });
+      expect(result).toEqual({ ok: true });
+      expect(readCredential({ configDir: cfg })).toEqual(cred());
+      rmSync(cfg, { recursive: true, force: true });
+    } finally {
+      setPlatform(origPlatform);
+    }
+  });
+
+  test.skipIf(process.platform !== "win32")("win32 ACL read-back (SDDL via icacls /save): no inherited ACEs, no well-known SIDs, current-user grant; re-enroll replaces", () => {
+    const cfg = tempConfigDir();
+    try {
+      const result = saveCredential(cred(), { configDir: cfg });
+      expect(result).toEqual({ ok: true });
+      const p = credentialPath({ configDir: cfg });
+
+      const who = Bun.spawnSync(["whoami", "/user", "/fo", "csv"]);
+      expect(who.exitCode).toBe(0);
+      const sid = parseWhoamiUserSid(who.stdout.toString());
+      expect(sid).not.toBeNull();
+
+      // icacls /save writes SDDL as UTF-16LE with a BOM — decode accordingly.
+      const sddlPath = join(cfg, "acl.sddl");
+      const saved = Bun.spawnSync(["icacls", p, "/save", sddlPath]);
+      expect(saved.exitCode).toBe(0);
+      const raw = readFileSync(sddlPath);
+      expect(raw.subarray(0, 2).toString("hex")).toBe("fffe"); // UTF-16LE BOM
+      const sddl = raw.subarray(2).toString("utf16le");
+      // Locale-independent: SIDs, never display names (Everyone/Users are localized).
+      expect(sddl).not.toContain("S-1-1-0"); // Everyone
+      expect(sddl).not.toContain("S-1-5-32-545"); // BUILTIN\Users
+      expect(sddl).not.toContain("S-1-5-11"); // Authenticated Users
+      expect(sddl).not.toContain(";ID;"); // inherited-ACE flag → inheritance stripped
+      expect(sddl).toContain(sid as string); // the current user holds the grant
+
+      // The human icacls output shows no inherited marker either.
+      const shown = Bun.spawnSync(["icacls", p]);
+      expect(shown.exitCode).toBe(0);
+      expect(shown.stdout.toString()).not.toContain("(<I>)");
+
+      // Re-enrollment replaces over the protected target ((M) includes DELETE).
+      const again = saveCredential(cred({ accessToken: "at-2" }), { configDir: cfg });
+      expect(again).toEqual({ ok: true });
+      expect(readCredential({ configDir: cfg })?.accessToken).toBe("at-2");
+    } finally {
+      rmSync(cfg, { recursive: true, force: true });
+    }
   });
 
   test("saveCredentialAsync resolves to the same WriteResult", async () => {

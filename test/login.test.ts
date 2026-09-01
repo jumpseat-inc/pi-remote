@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -12,7 +12,7 @@ import {
   REPLACEMENT_PROMPT_COPY,
   runAttendedLogin,
   runHeadlessLogin,
-  WINDOWS_STORAGE_NOTICE,
+  ACL_ENFORCEMENT_FAILED_NOTICE,
   type LoginDeps,
   type LoginOutcome,
   type LoginReason,
@@ -311,7 +311,64 @@ describe("EV-7 copy vocabulary", () => {
     expect(REPLACEMENT_PROMPT_COPY).toContain("Press Enter to continue");
     expect(loginEnglishFor("login.alreadyRunning")).toBe(ALREADY_LOGGING_IN_COPY);
     expect(loginEnglishFor("login.replacementPrompt")).toBe(REPLACEMENT_PROMPT_COPY);
-    expect(WINDOWS_STORAGE_NOTICE.length).toBeGreaterThan(0);
+    expect(ACL_ENFORCEMENT_FAILED_NOTICE.length).toBeGreaterThan(0);
+    // Binding ruling: cause clause names the host substantively; retry is /rc:login; no "file an issue".
+    expect(ACL_ENFORCEMENT_FAILED_NOTICE).toContain("nothing was saved");
+    expect(ACL_ENFORCEMENT_FAILED_NOTICE).toContain("Run /rc:login");
+    expect(ACL_ENFORCEMENT_FAILED_NOTICE).not.toContain("file an issue");
+    expect(ACL_ENFORCEMENT_FAILED_NOTICE).not.toContain("may be readable");
+    expect(ACL_ENFORCEMENT_FAILED_NOTICE).not.toContain("other accounts");
+  });
+});
+
+describe("EV-7 storage-failed notice is reason-keyed, not platform-keyed", () => {
+  async function withWin32(fn: () => Promise<unknown>) {
+    const origPlatform = process.platform;
+    (process as unknown as { platform: NodeJS.Platform }).platform = "win32";
+    try {
+      return await captureLog(fn);
+    } finally {
+      (process as unknown as { platform: NodeJS.Platform }).platform = origPlatform;
+    }
+  }
+
+  test("acl_enforcement_failed (via LoginDeps.applyAcl seam) ⇒ storageFailed row + notice tail", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("tenant-acl"), expires_in: 300 });
+    const deps = attendedDeps(c, {}, { applyAcl: () => ({ ok: false }) });
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await withWin32(() => runAttendedLogin(deps, null));
+    const outcome = result as LoginOutcome;
+    expect(outcome.kind).toBe("failure");
+    if (outcome.kind === "failure") expect(outcome.reason).toBe("storageFailed");
+    const line = logs.find((l) =>
+      l.includes("Could not persist credentials locally")
+    );
+    expect(line).toBeDefined();
+    expect(line).toContain("user-only protection");
+    expect(line).toContain("nothing was saved");
+    expect(line).toContain("Run /rc:login");
+    expect(line).not.toContain("file an issue");
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("win32 + io_error ⇒ bare storageFailed row, NO notice tail", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("tenant-io"), expires_in: 300 });
+    const deps = attendedDeps(c);
+    // A regular file blocks creating the pi-remote directory ⇒ io_error.
+    mkdirSync(deps.configDir, { recursive: true });
+    writeFileSync(join(deps.configDir, "pi-remote"), "not a dir");
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await withWin32(() => runAttendedLogin(deps, null));
+    const outcome = result as LoginOutcome;
+    expect(outcome.kind).toBe("failure");
+    if (outcome.kind === "failure") expect(outcome.reason).toBe("storageFailed");
+    const line = logs.find((l) =>
+      l.includes("Could not persist credentials locally")
+    );
+    expect(line).toBeDefined();
+    expect(line).not.toContain("user-only protection");
+    expect(line).not.toContain("security software");
+    rmSync(deps.configDir, { recursive: true, force: true });
   });
 });
 
