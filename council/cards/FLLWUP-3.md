@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-3
 title: "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: translate.ts maps the remaining live pi events that EV-4's §4 table did not cover — queue_update, bash_execution_update, auto_retry_* — and decides the AG-UI representation of live tool-progress (partialResult), extending the EV-4 mapper without changing its pure fold shape.
@@ -669,3 +669,7 @@ O-5 (neither-field case) remains an implementation-time closure for the owner as
 ### Step 7 — design spec written (runner 6, 2026-09-01)
 
 Spec committed at `docs/superpowers/specs/2026-09-01-FLLWUP-3-design.md`, folding the three rulings, O-1's caveat scoping (S-3), O-5's implementation-time closure, and the FLLWUP-8/9 general rule into the settled round-3 design. Card set `In Progress`; proceeding to step 8 (owner implementation dispatch).
+
+### Step 8 — owner implementation (runner 6, 2026-09-01; job-4.1, settled 9.6m / 22 turns)
+
+Owner implemented in isolated worktree `.worktrees/flluwp-3-live-events` (branch `flluwp-3-live-events` off main `0ade5bb`). PR **#14** open, head SHA `36e348335845ebdcdbe676964071be851d289e94` (facilitator-verified via `gh pr view`). Commits: `9c570d7` feat(translate) — union + fold cases + fixtures + plan; `36e3483` docs — verbatim §7 PI-SPEC amendment. TDD: fixtures first, red confirmed 14 fail/30 pass, then green. Owner-observed gates: tsc exit 0; bun test 172 pass / 0 fail / 941 expect (155 baseline + 17 new); dead-wiring grep exit 1; `as PiEvent` grep exit 1; purity guards green; determinism byte-identical. index.ts untouched. Card set `In Review` from the observed PR artifact.

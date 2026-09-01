@@ -18,9 +18,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Progress
 
-- FLLWUP-3 — "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
-
 ## In Review
+
+- FLLWUP-3 — "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
 
 ## Needs Human
 
