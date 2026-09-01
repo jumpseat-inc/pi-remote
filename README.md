@@ -66,16 +66,29 @@ accordingly:
   plane and may only reach tunnels of their tenant. The server enforces
   grants at fan-out; the extension never sees client credentials.
 
+## Credential storage
+
+The OAuth2 enrollment credential lives in a dedicated JSON file at
+`<configDir>/pi-remote/credentials.json`, serializing the `piRemote.*` keys
+(server URL, access token, refresh token, token expiry, tenant id). User-only
+readability is enforced on POSIX by a mode-0600 file, written atomically via
+tmp+fsync+rename; on Windows `chmod` is a no-op, so the 0600
+user-only-readability guarantee is not enforced there. A failed flow writes
+nothing half-written; re-running `/rc:login` replaces the stored credential
+cleanly.
+
 ## Commands
 
 | Command | Behavior |
 | --- | --- |
-| `/rc` | Create the tunnel, dial out, start translating live events. Idempotent. |
-| `/rc-off` | Tear down the tunnel and revoke the token. Idempotent. |
+| `/rc` | With no enrollment credential, refuses to dial and tells you to run `/rc:login` (footer state `not enrolled`). Otherwise creates the tunnel, dials out, and starts translating live events. Idempotent. |
+| `/rc:login` | Enroll the host with the control plane: the attended flow (default) opens the default browser (Authorization Code + PKCE, RFC 7636 / RFC 8252); `--headless` runs the RFC 8628 device flow and prints `user_code` + `verification_uri_complete`. Refuses to run while a tunnel is live — close the tunnel first with `/rc:off`. |
+| `/rc:off` | Tear down the tunnel and revoke the token. Idempotent. |
 
-A footer status shows tunnel state (`off` / `dialing` / `live` /
-`resyncing`), and an idempotent `session_shutdown` handler tears the tunnel
-down on quit, reload, or session switch — even without `/rc-off`.
+A footer status shows the tunnel lifecycle as exactly one of seven states, in
+order: `off` → `not enrolled` → `authorizing` → `dialing` → `resyncing` →
+`live` → `error`. An idempotent `session_shutdown` handler tears the tunnel
+down on quit, reload, or session switch — even without `/rc:off`.
 
 ## Scope
 
@@ -89,5 +102,19 @@ fixes the wire, replay, and auth contracts they must satisfy.
 pi install git:…/pi-remote
 ```
 
-Configuration will be one-time: the relay server URL and a host enrollment
-key (`PI_REMOTE_SERVER_URL`, `PI_REMOTE_HOST_KEY`).
+Setup is a one-time OAuth2 enrollment run from inside a `pi` session via
+`/rc:login`: attended by default, unattended with `--headless`.
+
+- **Attended (default).** Opens the default browser — Authorization Code +
+  PKCE (RFC 7636) against a public client, no client secret, following the
+  RFC 8252 loopback pattern
+  (`redirect_uri=http://127.0.0.1:<ephemeral>/callback`).
+- **Unattended (headless host).** `/rc:login --headless` runs the RFC 8628
+  device flow, printing `user_code` and `verification_uri_complete` for you
+  to relay to another device, then polls the token endpoint honoring
+  `interval` / `slow_down` / `authorization_pending` / `expired_token` /
+  `access_denied`.
+
+The only environment override is `PI_REMOTE_SERVER_URL`, for the
+control-plane server URL. Credentials are never carried in environment
+variables — settings-based OAuth2 enrollment is the documented path.
