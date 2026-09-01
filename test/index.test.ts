@@ -515,6 +515,62 @@ describe("EV-8 teardown/rearm race", () => {
   });
 });
 
+describe("FLLWUP-5 S-O2: manual PiEvent construction (no ev as PiEvent cast)", () => {
+  test("static guard: no `as PiEvent` cast survives in index.ts", async () => {
+    const src = await Bun.file(new URL("../index.ts", import.meta.url)).text();
+    expect(src).not.toMatch(/as PiEvent/);
+  });
+
+  test("all seven subscriptions produce the intended fold output; ui_prompt_end survives the real SDK shape", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const customs = (name: string) =>
+      h.relay.received.filter((e) => e.frame?.type === "CUSTOM" && (e.frame as { name?: string }).name === name);
+    const types = () => h.relay.received.map((e) => e.frame?.type);
+
+    // 1+2+3: message_start / message_update / message_end → TEXT_MESSAGE_START/CONTENT/END
+    h.emit("message_start", { event: "message_start", messageId: "m1", role: "assistant" });
+    h.emit("message_update", { event: "message_update", messageId: "m1", events: [{ kind: "text", delta: "hello" }] });
+    h.emit("message_end", { event: "message_end", messageId: "m1" });
+    await h.waitFor(() => types().includes("TEXT_MESSAGE_END"));
+    expect(types()).toContain("TEXT_MESSAGE_START");
+    expect(types()).toContain("TEXT_MESSAGE_CONTENT");
+    expect(types()).toContain("TEXT_MESSAGE_END");
+
+    // 4: tool_result → TOOL_CALL_RESULT
+    h.emit("tool_result", { event: "tool_result", messageId: "m2", toolCallId: "call_1", content: [{ type: "text", text: "out" }] });
+    await h.waitFor(() => types().includes("TOOL_CALL_RESULT"));
+    const tc = h.relay.received.find((e) => e.frame?.type === "TOOL_CALL_RESULT")!.frame as { content: string };
+    expect(tc.content).toBe("out");
+
+    // 5: ui.confirm → CUSTOM pi.human_input with the raise stamp preserved
+    h.emit("ui.confirm", { event: "ui.confirm", promptKind: "approve", prompt: "P?" });
+    await h.waitFor(() => customs("pi.human_input").length === 1);
+    const cf = customs("pi.human_input")[0]!.frame as { value: { data: { promptKind: string; prompt: string; occurrence?: number } } };
+    expect(cf.value.data.promptKind).toBe("approve");
+    expect(cf.value.data.prompt).toBe("P?");
+    expect(cf.value.data.occurrence).toBe(1); // forward's registerPrompt special-case untouched
+
+    // 6: user_input → TEXT_MESSAGE_* role user
+    const userStartBefore = types().filter((t) => t === "TEXT_MESSAGE_START").length;
+    h.emit("user_input", { event: "user_input", messageId: "m3", text: "hi" });
+    await h.waitFor(() => types().filter((t) => t === "TEXT_MESSAGE_START").length === userStartBefore + 1);
+    const us = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_START").at(-1)!.frame as { role?: string };
+    expect(us.role).toBe("user");
+
+    // 7: ui_prompt_end — feed the REAL SDK payload shape (type:, not event:) — the probe-4 hazard
+    h.emit("ui_prompt_end", { type: "ui_prompt_end", reason: "ui_prompt", kind: "confirm", title: "Allow rm -rf?" });
+    await h.waitFor(() => customs("pi.human_input.closed").length === 1);
+    const closed = customs("pi.human_input.closed")[0]!.frame as { value: { pi: string; data: { kind: string; title: string } } };
+    expect(closed.value.pi).toBe("ui_prompt_end");
+    expect(closed.value.data.kind).toBe("confirm");
+    expect(closed.value.data.title).toBe("Allow rm -rf?");
+
+    h.relay.stop();
+  });
+});
+
 describe("EV-8 occurrence stamp", () => {
   test("occurrence 1 then 2 for the same promptId; the answer is resolved, not ignored", async () => {
     const h = await makeHarness();
