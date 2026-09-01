@@ -397,31 +397,31 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
 
   function forward(input: PiEvent): void {
     if (!transportRef.handle) return;
-    if (input.event === "ui.confirm") {
-      ensureLiveState();
-      const { frames, state } = translate(input, liveState!);
-      liveState = state;
-      for (const f of frames) {
-        if (f.type === "CUSTOM" && f.name === "pi.human_input") {
-          const data = (f.value.data ?? {}) as { promptId?: unknown; promptKind?: unknown; prompt?: unknown };
-          const promptId = data.promptId;
-          if (typeof promptId === "string") {
-            const { occurrence } = injector.registerPrompt({
-              promptId,
-              kind: typeof data.promptKind === "string" ? data.promptKind : "",
-              prompt: typeof data.prompt === "string" ? data.prompt : "",
-            });
-            f.value.data = { ...data, occurrence };
-          }
-        }
-        transportRef.handle.send(f as unknown as AgUiFrameLike);
-      }
-      return;
-    }
     ensureLiveState();
     const { frames, state } = translate(input, liveState!);
     liveState = state;
     for (const f of frames) {
+      if (f.type === "CUSTOM" && f.name === "pi.human_input") {
+        const data = (f.value.data ?? {}) as {
+          promptId?: unknown;
+          kind?: unknown;
+          promptKind?: unknown;
+          title?: unknown;
+          prompt?: unknown;
+        };
+        const promptId = data.promptId;
+        if (typeof promptId === "string") {
+          // FLLWUP-8: one raise path, one (promptId, occurrence) stamping site, one registerPrompt call site.
+          // The promptKind/prompt fallback reads exist solely so the 5 synthetic ui.confirm fixtures keep
+          // flowing through this same stamp (their frames carry promptKind/prompt; live frames carry kind/title).
+          const { occurrence } = injector.registerPrompt({
+            promptId,
+            kind: typeof data.kind === "string" ? data.kind : typeof data.promptKind === "string" ? data.promptKind : "",
+            prompt: typeof data.title === "string" ? data.title : typeof data.prompt === "string" ? data.prompt : "",
+          });
+          f.value.data = { ...data, occurrence };
+        }
+      }
       transportRef.handle.send(f as unknown as AgUiFrameLike);
     }
   }
@@ -618,6 +618,15 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     if (!e) return;
     forward({
       event: "ui_prompt_end",
+      kind: isUIPromptKind(e.kind) ? e.kind : "custom",
+      title: typeof e.title === "string" ? e.title : undefined,
+    });
+  });
+  deps.on("ui_prompt_start", (ev) => {
+    const e = ev as { kind?: unknown; title?: unknown } | null | undefined;
+    if (!e) return;
+    forward({
+      event: "ui_prompt_start",
       kind: isUIPromptKind(e.kind) ? e.kind : "custom",
       title: typeof e.title === "string" ? e.title : undefined,
     });
