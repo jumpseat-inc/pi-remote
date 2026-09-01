@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-6
 title: "Remove or document the dead user_input PiEvent in translate.ts"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: translate.ts's user_input PiEvent mapping is either removed or explicitly documented as dead live-path code, so the module carries no mapping that the real pi SDK never emits.
