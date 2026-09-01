@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-4
 title: "EV-2 localization seam: second (en→id) message lookup and resolver"
-state: In Review
+state: Done
 owner: feat/fllwup-4-id-localization
 epic: EPIC-1
 goal: A second message lookup plus a resolver ships alongside tunnel.ts's existing key-based reason-to-message table so tunnel error and status copy can resolve in a language other than English without touching any emission site.
@@ -177,3 +177,13 @@ All checks run by the Skeptic on the PR head. Objections and terms:
 - Record correction — **closed-red, non-blocking**: `copy.ts`'s coverage announcement cites `index.ts:542` for the inputPrompt literal, which sits at `:552` on the shipped branch (shifted by this card's own 10 added lines). The comment reproduces the ruling's own verbatim citation and names the literal unambiguously by full text; the shift itself was verified. Same class as the deliberation-phase `:128→:129` correction. Recorded; not a blocker; no fix cycle spent (step-9 counter: 1 of 3 used).
 
 Proceeding to step 10.
+
+### Step 10 — Judge (verdict: PASS)
+
+Judge dispatched with the card goal + Skeptic evidence only, evaluating the PR branch at the Skeptic-verified SHA `faaaf41` (PR #18), not main. Verdict **PASS**: (1) second language shipped — 22 keys independently extracted and confirmed as the 6∪16 union, zero overlap; (2) resolver with three-valued fallback + `<serverUrl>` substitution at print time; (3) no emission-site changes — no new keys, signatures unchanged, only the ruled urlExpired English amendment, parked sites byte-identical; (4) exactly two re-points, both `renderCopy(englishFor(key), { serverUrl })`; (5) locale sourcing matches the ruling; (6) gates green on the PR branch (independently verified).
+
+### Steps 11–12 — deterministic merge check, merge, sync
+
+All five criteria held: (1) owner gates green in full; (2) `gates` workflow `state: SUCCESS` on PR head `faaaf41e58ff658a8673f1ef907d871746698016` (read via `gh pr checks --json`, keyed on the `workflow` field); (3) no blocking Skeptic objection; (4) judge PASS; (5) no Needs Human state, all five rulings on record. Merged with `gh pr merge 18 --merge --match-head-commit faaaf41e58ff658a8673f1ef907d871746698016` — **result: MERGED**, merge commit `7322c199a39416641322e8d889481fc0f42dc149`.
+
+CI on the merged SHA: first run — `gates` SUCCESS, `gates-windows` FAILURE on the EV-7 win32 SDDL read-back test timing out at 5000ms (process cold start; "killed 1 dangling process"). That is the exact flake FLLWUP-16 was filed for; the test is in the credential path this card never touches, and the same job passed on the PR head. Rerun of the failed job on the merged SHA: **SUCCESS** — CI confirmed green on `7322c19`. Local main fast-forwarded onto origin/main; card set Done from observed artifacts.
