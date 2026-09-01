@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-8
 title: "Wire the ui_prompt_start raise path end-to-end (runtime-observable acceptance for FLLWUP-5 contract b)"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: Wire deps.on ui_prompt_start with manual PiEvent construction and registerPrompt on the canonical SDK payload so FLLWUP-5's pi.human_input.resolved becomes runtime-observable end to end
@@ -154,3 +154,11 @@ Baseline gates: `bunx tsc --noEmit` exit 0; `bun test` **172 pass / 0 fail / 941
 ## Step 6 — routing
 
 The consolidator returned zero open-judgment items and zero blocking open objections — nothing routes to product-owner or steward, and no Phase-1 ruling needs applying beyond those already on the card face (steward R3 Side B applied throughout as binding context; FLLWUP-5 PO items 1–7 applied as card constraints; no dispute re-asked). The card proceeds to step 7 on the settled design.
+
+## Step 7 — spec + handoff
+
+Spec written to `docs/superpowers/specs/2026-09-01-FLLWUP-8-design.md` (sole handoff; folds the settled design with the consolidator's pins, including the O9 resolution and the T1–T12 fixture list). Self-reviewed: no placeholders; consistent with the deliberation record; scope confined to the card goal; unambiguous (handler, mapper, stamp rule, fixture list all pinned). Committed (449307b). Card → In Progress on board.
+
+## Step 8 — owner implementation (job-7.10 died on provider error at 16.1m mid-plan, no output; job-7.11 re-dispatch settled in 10.5m)
+
+Owner implemented the spec in the (reused) worktree `.worktrees/flluwp-8-raise` (branch `flluwp-8-raise`), pushed, PR **#16** opened against main. Head SHA **3aef894d1dfacea3d7b2d41c9247aec52e01c1b9**. Local gates recorded: `bunx tsc --noEmit` exit 0; `bun test` **180 pass / 0 fail / 969 expect()** (172 baseline + 8 new: 4 mapper, 4 e2e). T12 failure-injection: directive removed → TS2345 at pi-sdk-on.ts:34, restored → exit 0 (red-on-widen holds). Binding riders verified in the diff: pi-sdk-on.ts and inject.ts absent from `git diff main --stat`; the 5 synthetic ui.confirm fixtures + guard bridge pass unmodified; manual PiEvent construction (never `ev as PiEvent`); the O9 coercion semantics implemented (bogus kind → coerced "custom" frame + registration, no drop); forward() collapsed (zero `input.event === "ui.confirm"` matches); PI-SPEC §5.4 amended (falsified sentence replaced, bucket-hash note, fidelity-loss caveat, value.pi provenance note), §4 FLLWUP-3 caveat untouched. Facilitator observed the artifact directly: `gh pr view 16` → OPEN, headRefName flluwp-8-raise, headRefOid 3aef894. Card → In Review on the board from the observed artifact (PR #16 open).
