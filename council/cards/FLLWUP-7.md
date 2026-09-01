@@ -227,3 +227,12 @@ Reasoning: EV-2 Item 1 — an extra remedy clause is owed when a real, distinct 
 Options rejected: designer's "if it repeats, file an issue" (names the wrong actor; repetition doesn't cure host-locality); a README pointer in place of the clause (the README is not a remediation channel — the cause clause carries that load); retry alone with no cause clause (soft over-promise — incomplete, not the base design).
 
 **Status: ruling received and binding. Deliberation closed; proceeding to step 7.**
+
+### Step 9–11 continuation record (resumed turn)
+
+- **Verify cycle 1 (skeptic @ e5fcbbd): block.** One closed-red: the fail-closed test's "no `*.tmp-*` remains" assertion inspected `<cfg>` while the tmp lives in `<cfg>/pi-remote/` — the gate could never fail on a leak (skeptic proved it by injecting `rmSync` removal: suite stayed green with the tmp on disk). Everything else closed-green. Owner fix: assertion now reads `dirname(credentialPath(...))`; red-then-green proof observed.
+- **Verify cycle 2 (skeptic @ c5accbd): verify, no blocks.** Test-only diff confirmed; gate proven load-bearing (injected leak ⇒ 1 fail at the fixed assertion; restored ⇒ 186 pass / 1 skip / 0 fail); tsc exit 0; no platform-patch contamination.
+- **Judge: PASS** at c5accbd on all four acceptance criteria.
+- **Deterministic merge check criterion 2 FAILED** at c5accbd: the new `gates-windows` job (windows-latest) ran the read-back test for the first time on real Windows and went red — the test asserts `icacls /save` output starts with a UTF-16LE BOM (`fffe`), but the actual file begins `6300` (UTF-16LE **without** BOM; the first line is the path). The BOM premise was a research-validated claim never exercised on a Windows runner. Test-encoding defect, not a design defect.
+- **Facilitator incident (recorded for the audit trail):** the board-state commit `4470c2a` accidentally swept the PR's seven implementation files into `main` (they were staged in the main checkout by a seat working outside its worktree). Repaired forward with `10b1f8b` — a revert restoring those paths to their pre-accident state on main; no force push; PR #17 untouched. The implementation must land only via the deterministic merge check.
+- **Verify cycle 3 (in flight):** owner fixing the SDDL BOM test defect on the PR branch; skeptic re-verification and judge re-run to follow at the new head SHA. This is the final verify cycle of the three-cycle cap.
