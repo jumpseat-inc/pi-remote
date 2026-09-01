@@ -22,11 +22,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-- FLLWUP-10 — "Sync spec §8 /rc:login row with the while-live refusal"
-
 ## Needs Human
 
 ## Done
+
+- FLLWUP-10 — "Sync spec §8 /rc:login row with the while-live refusal"
 
 - FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
 

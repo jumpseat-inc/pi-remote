@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-10
 title: "Sync spec §8 /rc:login row with the while-live refusal"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-1
 goal: docs/PI-SPEC.md §8's /rc:login row names the while-live refusal ("close the tunnel first with /rc:off") so the spec agrees with the shipped implementation and README copy.
@@ -103,4 +103,85 @@ Facilitator then verified the observed artifacts directly: `gh pr view 13`
 --short` empty — no leaked deltas recurred). Step-8 condition met: branch
 exists with an open PR → `In Review` from the observed artifacts, per
 council.md step 8 (the owner's gate report is not a precondition for the
-transition).
+transition). Board commit fbc16dc.
+
+### Step 9 — Skeptic verification (job-41.2, settled 2.5m, 17 turns)
+
+Skeptic verified the branch at head `aa655892ce80621ce461fa9b04ac78f85b020190`
+(PR #13). **Verdict: no open objections.** All 10 objections closed-green,
+each actually run: (1) §8 /rc:login row contains the exact remedy copy
+"close the tunnel first with /rc:off" (grep exit 0); (2) row carries the
+full J5 semantics (non-idle states, driver only from off/not enrolled);
+(3) `git diff origin/main -- docs/PI-SPEC.md` is exactly one hunk touching
+only the /rc:login row; (4) seven-state footer set byte-identical to main;
+(5) grep consistency README.md + src/login.ts + §8 all carry "close the
+tunnel first with /rc:off"; (6) docs-only diff (`--name-only` = docs/
+PI-SPEC.md only); (7) `bunx tsc --noEmit` exit 0; (8) `bun test` 155 pass /
+0 fail / 869 expect, exit 0. Gate integrity proven: `git show
+origin/main:docs/PI-SPEC.md | grep -c "close the tunnel first"` exits 1 (the
+pre-merge file lacks the sentence — the content gate provably fails where
+the change is absent), and the repo's own test (index.test.ts) genuinely
+asserts the refusal copy `loginEnglishFor("rc:login.refusal")` =
+"close the tunnel first with /rc:off" is printed when /rc:login runs while
+live (footer unchanged). Verify cycle 1 of ≤3: green, no fix round.
+
+### Step 10 — Judge stop condition (job-41.3, settled 0.2m, 4 turns)
+
+Judge dispatched per the binding step-10 rule (product-owner ruling,
+vault/raw/2026-08-31-po-ev1-step10-judge-object.md, general rule — cited
+in the dispatch): object = the PR branch at the Skeptic-verified SHA
+aa65589, not main; input was the card's goal + the Skeptic's evidence,
+nothing else. **Verdict: PASS.** Judge independently re-ran the decisive
+test at the SHA: `git show aa65589:docs/PI-SPEC.md | grep -c "close the
+tunnel first"` → 1 (refusal copy present in §8's /rc:login row), and the
+negative `git show origin/main:docs/PI-SPEC.md | grep -c "close the tunnel
+first"` → 0 (provably a new addition — exactly what the card requires).
+Basis: spec §8 now aligns with the shipped implementation and README.
+
+### Step 11 — merge gate (deterministic merge check, all five criteria)
+
+Per features-deliver.md the human merge gate is the deterministic artifact
+check; executed mechanically, no discretion. Immediately pre-merge,
+re-read `gh pr checks 13 --json name,state,workflow` → `gates` workflow
+SUCCESS (two rows, keyed on the `workflow` field, not the job name), and
+`gh pr view 13 --json headRefOid` → aa655892ce80621ce461fa9b04ac78f85b020190
+= the exact SHA the Skeptic verified and the judge PASSed. Five criteria:
+(1) owner gates green in full — tsc exit 0, bun test 155/0, each re-run by
+the owner, the Skeptic, and the judge; (2) GitHub Actions `gates` workflow
+SUCCESS on the PR head SHA; (3) no blocking Skeptic objection (all
+closed-green); (4) judge verdict PASS; (5) no Needs Human state, no
+outstanding ruling. Merged via `gh pr merge 13 --merge --match-head-commit
+aa655892ce80621ce461fa9b04ac78f85b020190` (=head match enforced; a
+mismatch would have halted). PR #13 MERGED at 2026-09-01T02:16:30Z, merge
+commit **3c4e32b8fef91fc12239d2c5c5337b87acd6097e**. CI on the merged SHA:
+`gh api .../commits/3c4e32b.../check-runs` → `gates` completed,
+conclusion success (polled to green).
+
+### Step 12 — sync and reconcile
+
+`git fetch origin main` — ff-only refused: origin/main advanced 0a5629e..
+3c4e32b while local main carried this run's two unpushed council board
+commits (decbef7, 5806031), a benign divergence (local commits touch only
+council/; the merge touches only docs/PI-SPEC.md — disjoint). No forced
+resolution: `git rebase origin/main` replayed the two local-only commits
+onto the merge cleanly; verified `3c4e32b` IS an ancestor of the new HEAD
+(the merge was fully preserved — nothing discarded) and the rebased local
+commits still differ from 3c4e32b only under council/. Card set `Done` on
+frontmatter and board from the observed artifacts — merged (3c4e32b) with
+CI green on the merged SHA — never from a seat's report. validate.py clean;
+commit + push the reconciliation below.
+
+### Step 13 — follow-ups
+
+Nothing new surfaced undone: the card's own drift (spec §8 behind the
+while-live refusal) is closed by this merge; one objection category
+(README ahead of spec) existed only as this card's premise and is now
+converged across all three sources. No draft-then-confirm flow needed — no
+follow-up cards written; nothing requiring a human approval gate.
+
+### Step 14 — persist
+
+No durable wiki artifact was surfaced for vault/ in this run (the wiki is
+dry — the stub catalog has no module pages; nothing new to ingest).
+Nothing under vault/ was hand-edited — the wiki-ingest channel belongs to
+the orchestrator per the autonomy map.
