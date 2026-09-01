@@ -1,10 +1,21 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import {
+  buildWindowsAclArgv,
   clearCredential,
   credentialPath,
+  parseWhoamiUserSid,
   readCredential,
   saveCredential,
   saveCredentialAsync,
@@ -13,6 +24,13 @@ import {
 
 function tempConfigDir(): string {
   return mkdtempSync(join(tmpdir(), "ev7-cred-"));
+}
+
+/** Patch process.platform (skeptic pin: always restore — see callers' finally). */
+function setPlatform(p: NodeJS.Platform): NodeJS.Platform {
+  const orig = process.platform;
+  (process as unknown as { platform: NodeJS.Platform }).platform = p;
+  return orig;
 }
 
 function cred(overrides: Partial<EnrollmentCredential> = {}): EnrollmentCredential {
@@ -43,7 +61,7 @@ describe("EV-7 credential store", () => {
     rmSync(cfg, { recursive: true, force: true });
   });
 
-  test("J3 mode gate (test 13): persisted file is POSIX 0600", () => {
+  test.skipIf(process.platform === "win32")("J3 mode gate (test 13): persisted file is POSIX 0600", () => {
     const cfg = tempConfigDir();
     saveCredential(cred(), { configDir: cfg });
     const p = credentialPath({ configDir: cfg });
@@ -89,6 +107,182 @@ describe("EV-7 credential store", () => {
     writeFileSync(p, '{"serverUrl": "x"}', "utf8");
     expect(readCredential({ configDir: cfg })).toBeNull();
     rmSync(cfg, { recursive: true, force: true });
+  });
+
+  test("buildWindowsAclArgv: exact icacls argv — tmp, /inheritance:r, /grant:r *SID:(M)", () => {
+    expect(buildWindowsAclArgv("C:\\tmp\\cred.json.tmp-1", "S-1-5-21-1-2-3")).toEqual([
+      "C:\\tmp\\cred.json.tmp-1",
+      "/inheritance:r",
+      "/grant:r",
+      "*S-1-5-21-1-2-3:(M)",
+    ]);
+  });
+
+  test("parseWhoamiUserSid: extracts the (never-localized) SID column of whoami /user /fo csv", () => {
+    const csv =
+      '"UserName","SID"\r\n"DESKTOP\\alice","S-1-5-21-3623811015-3361044348-30300820-1013"\r\n';
+    expect(parseWhoamiUserSid(csv)).toBe(
+      "S-1-5-21-3623811015-3361044348-30300820-1013"
+    );
+    expect(parseWhoamiUserSid('"UserName","SID"\r\n')).toBeNull();
+    expect(parseWhoamiUserSid("")).toBeNull();
+  });
+
+  test("win32 fail-closed: ACL failure ⇒ {ok:false, acl_enforcement_failed}, nothing on disk, no tmp remains", () => {
+    const origPlatform = setPlatform("win32");
+    try {
+      const cfg = tempConfigDir();
+      const appliedPaths: string[] = [];
+      const result = saveCredential(cred(), {
+        configDir: cfg,
+        applyAcl: (path) => {
+          appliedPaths.push(path);
+          return { ok: false };
+        },
+      });
+      expect(result).toEqual({ ok: false, reason: "acl_enforcement_failed" });
+      // {ok:false} ⟺ nothing was left on disk (the load-bearing invariant).
+      expect(readCredential({ configDir: cfg })).toBeNull();
+      expect(existsSync(credentialPath({ configDir: cfg }))).toBe(false);
+      // tmp lives in dirname(credentialPath) = <cfg>/pi-remote/, NOT cfg itself.
+      const credDir = dirname(credentialPath({ configDir: cfg }));
+      expect(readdirSync(credDir).filter((e) => e.includes(".tmp-"))).toEqual([]); // no tmp remains
+      expect(appliedPaths).toHaveLength(1);
+      rmSync(cfg, { recursive: true, force: true });
+    } finally {
+      setPlatform(origPlatform);
+    }
+  });
+
+  test("win32 + successful ACL seam ⇒ {ok:true} and the credential is readable (no platform penalty)", () => {
+    const origPlatform = setPlatform("win32");
+    try {
+      const cfg = tempConfigDir();
+      const result = saveCredential(cred(), {
+        configDir: cfg,
+        applyAcl: () => ({ ok: true }),
+      });
+      expect(result).toEqual({ ok: true });
+      expect(readCredential({ configDir: cfg })).toEqual(cred());
+      rmSync(cfg, { recursive: true, force: true });
+    } finally {
+      setPlatform(origPlatform);
+    }
+  });
+
+  // --- SDDL trustee resolution (representation-independent) ---------------
+  //
+  // icacls /save may spell a trustee either as a raw SID or as an SDDL
+  // abbreviation (the runner's built-in RID-500 Administrator, for example,
+  // comes back as `LA`). Rather than enumerate representations, hand the
+  // whole SDDL string to the OS's own SDDL parser:
+  // System.Security.AccessControl.RawSecurityDescriptor(string) converts via
+  // the native ConvertStringSdToSd API, so every ACE comes back carrying the
+  // canonical SID its token denotes — however icacls chose to spell it.
+  function resolveSddlAces(
+    sddl: string
+  ): Array<{ sid: string; aceType: number; mask: number }> {
+    const script = [
+      "$ErrorActionPreference = 'Stop'",
+      "$sddl = [Console]::In.ReadToEnd().Trim()",
+      "$sd = New-Object System.Security.AccessControl.RawSecurityDescriptor($sddl)",
+      "foreach ($ace in $sd.DiscretionaryAcl) {",
+      "  $c = [System.Security.AccessControl.CommonAce]$ace",
+      "  '{0}|{1}|{2}' -f $c.SecurityIdentifier.Value, [int]$c.AceType, $c.AccessMask",
+      "}",
+    ].join("; ");
+    const r = Bun.spawnSync(
+      ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+      { stdin: Buffer.from(sddl, "utf8") }
+    );
+    // An unresolvable trustee token makes ConvertStringSdToSd fail — fail
+    // loudly here, never silently pass.
+    expect(r.exitCode).toBe(0);
+    const lines = r.stdout.toString().trim().split(/\r?\n/).filter(Boolean);
+    // The OS parser must have seen exactly the ACEs our SDDL regex sees.
+    expect(lines).toHaveLength(sddl.match(/\([^()]*\)/g)?.length ?? 0);
+    return lines.map((line) => {
+      const [sid, aceType, mask] = line.split("|");
+      return { sid: sid ?? "", aceType: Number(aceType), mask: Number(mask) };
+    });
+  }
+
+  // icacls /save output decoder. Observed reality (CI run 33540684331):
+  // on windows-latest it writes UTF-16LE *without* a BOM (older icacls writes with one) — tolerate both.
+  function decodeIcaclsSaveSddl(raw: Buffer): string {
+    const body = raw.subarray(0, 2).toString("hex") === "fffe" ? raw.subarray(2) : raw;
+    const text = body.toString("utf16le");
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    // First non-empty line is the file path; the SDDL is the line starting with "D:".
+    return lines.find((l) => /^D:/.test(l)) ?? lines[lines.length - 1] ?? "";
+  }
+
+  test("icacls /save decoder: identical SDDL with and without UTF-16LE BOM", () => {
+    const sample = "c:\\tmp\\cred.json\r\nD:AI(A;ID;FA;;;S-1-5-21-1-2-3)\r\n";
+    const expected = "D:AI(A;ID;FA;;;S-1-5-21-1-2-3)";
+    const withBom = Buffer.concat([Buffer.from("fffe", "hex"), Buffer.from(sample, "utf16le")]);
+    const withoutBom = Buffer.from(sample, "utf16le");
+    expect(decodeIcaclsSaveSddl(withBom)).toBe(expected);
+    expect(decodeIcaclsSaveSddl(withoutBom)).toBe(expected);
+  });
+
+  test.skipIf(process.platform !== "win32")("win32 ACL read-back (SDDL via icacls /save): no inherited ACEs, no well-known SIDs, current-user grant; re-enroll replaces", () => {
+    const cfg = tempConfigDir();
+    try {
+      const result = saveCredential(cred(), { configDir: cfg });
+      expect(result).toEqual({ ok: true });
+      const p = credentialPath({ configDir: cfg });
+
+      const who = Bun.spawnSync(["whoami", "/user", "/fo", "csv"]);
+      expect(who.exitCode).toBe(0);
+      const sid = parseWhoamiUserSid(who.stdout.toString());
+      expect(sid).not.toBeNull();
+
+      const sddlPath = join(cfg, "acl.sddl");
+      const saved = Bun.spawnSync(["icacls", p, "/save", sddlPath]);
+      expect(saved.exitCode).toBe(0);
+      const raw = readFileSync(sddlPath);
+      const sddl = decodeIcaclsSaveSddl(raw);
+      // Locale-independent: SIDs, never display names (Everyone/Users are localized).
+      expect(sddl).not.toContain("S-1-1-0"); // Everyone
+      expect(sddl).not.toContain("S-1-5-32-545"); // BUILTIN\Users
+      expect(sddl).not.toContain("S-1-5-11"); // Authenticated Users
+      expect(sddl).not.toContain(";ID;"); // inherited-ACE flag → inheritance stripped
+
+      // Semantic trustee check (binding ruling): the DACL grants Modify to
+      // exactly one trustee, and that trustee resolves to the current user —
+      // however icacls /save chose to represent it (raw SID, `LA`, or any
+      // other SDDL abbreviation). We compare resolved SIDs, never tokens.
+      const currentSid = sid as string;
+      const aces = resolveSddlAces(sddl);
+      for (const a of aces) {
+        expect(a.aceType).toBe(0); // access-allowed ACEs only
+        // Every resolved trustee must be free of the well-known broad groups.
+        expect(a.sid).not.toBe("S-1-1-0"); // Everyone
+        expect(a.sid).not.toBe("S-1-5-32-545"); // BUILTIN\Users
+        expect(a.sid).not.toBe("S-1-5-11"); // Authenticated Users
+      }
+      const mine = aces.filter((a) => a.sid === currentSid);
+      expect(mine).toHaveLength(1); // exactly one ACE for the current user
+      const myAce = mine[0]!; // length asserted directly above
+      const MODIFY = 0x1301bf; // the (M) rights template icacls grants
+      expect((myAce.mask & MODIFY) === MODIFY).toBe(true); // grants at least Modify
+
+      // The human icacls output shows no inherited marker either.
+      const shown = Bun.spawnSync(["icacls", p]);
+      expect(shown.exitCode).toBe(0);
+      expect(shown.stdout.toString()).not.toContain("(<I>)");
+
+      // Re-enrollment replaces over the protected target ((M) includes DELETE).
+      const again = saveCredential(cred({ accessToken: "at-2" }), { configDir: cfg });
+      expect(again).toEqual({ ok: true });
+      expect(readCredential({ configDir: cfg })?.accessToken).toBe("at-2");
+    } finally {
+      rmSync(cfg, { recursive: true, force: true });
+    }
   });
 
   test("saveCredentialAsync resolves to the same WriteResult", async () => {
