@@ -171,6 +171,67 @@ Environment: skeptic seat model repaired upstream (commit 788792b, now `deepseek
 
 Net: all mapping decisions survive with closed-green support. Two items ride into implementation: (a) O-1's caveat-scope correction + record correction (facilitator applies here; spec amendment scoped accordingly); (b) O-5's neither-case pinning fixture added to the owner's settled fixture list.
 
+### Step 5 — consolidator synthesis (runner 5, 2026-09-01; job-1.3, verbatim)
+
+## FLLWUP-3 — Consolidation Report
+
+### Agreed Design
+
+All three seats converged on the following as a shared baseline (verbatim from the round-3 FINAL mapping tables, reconciled across owner/principal/designer):
+
+| PiEvent | CUSTOM `name` | `value.pi` | `value.data` |
+|---|---|---|---|
+| `queue_update` | `pi.session.queue_update` | `"queue_update"` | `{ steering, followUp }` verbatim |
+| `bash_execution_update` | *see Open Judgment J-1* | `"bash_execution_update"` | `{ id?, delta }` verbatim |
+| `auto_retry_start` | `pi.session.retry_start` | `"auto_retry_start"` | `{ attempt, maxAttempts, delayMs, errorMessage }` verbatim |
+| `auto_retry_end` | `pi.session.retry_end` | `"auto_retry_end"` | `{ success, attempt, finalError? }` verbatim |
+| `tool_execution_update` (args present) | `pi.tool.update` | `"tool_execution_update"` | `{ toolCallId, args }` |
+| `tool_execution_update` (partialResult present) | `pi.tool.progress` | `"tool_execution_update"` | `{ toolCallId, partialResult }` |
+| JSONL `bash_execution` (replay, unchanged) | `pi.tool.bash_execution` | passthrough | unchanged |
+
+**Unanimously agreed structural decisions (all three seats, no dissent in round 3):**
+- Mapper-only, no `index.ts` wiring; manual PiEvent construction per FLLWUP-5 S-O2 when SDK bridge lands.
+- Conditional-emission split: emit `pi.tool.update` only when `args !== undefined`; emit `pi.tool.progress` only when `partialResult !== undefined`; when both present, emit `update` then `progress` in that order; `partialResult: ""` is present and emits.
+- `toolCallId` on both split frames.
+- O2 fixture (`test/translate.test.ts:170-185`) updated from 3→4 frames in the same commit; `startsWith("pi.tool.")` survives for both names.
+- `summarization_retry_*` in scope (majority owner+designer IN, 2-1; principal OUT as minority — recorded majority holds).
+- Purity gates: `bunx tsc --noEmit` exit 0; `bun test` exit 0 (155 baseline + new fixtures); G-11/G-12 grep guards green.
+- Spec amendment carries runtime-unreachability caveat; per O-1's correction, caveat scoped to four new families only (`queue_update`, `bash_execution_update`, `auto_retry_*`, `summarization_retry_*`), never covering `pi.tool.update`/`pi.tool.progress`.
+- Dead-wiring grep over all new event names in `index.ts` exits 1.
+
+**Settled disputes (each closed by a specific test result or unanimous convergence):**
+
+- **S-1.** SDK payload shapes match majority tables verbatim — closed by O-2 (closed-green): `agent-session.d.ts:46-103` read directly.
+- **S-2.** Four new families unreachable via `ExtensionAPI.on()` — closed by O-3 (closed-green): 35 typed `on()` names grepped, none match; forwarder whitelist confirmed.
+- **S-3.** `tool_execution_update` IS bridgeable at runtime (record correction) — closed by O-1 (closed-red): typed `on("tool_execution_update")` overload at `extensions/types.d.ts:935`; forwarder at `agent-session.js:537-546`. Consequence settled: spec caveat scoped to the four new families only, excluding `pi.tool.update`/`pi.tool.progress`. The split decision survives.
+- **S-4.** No fan-out anomaly ("5 frames from 1 event") — closed by O-4 (closed-green): the only 1-event→5-frame shape is `message_update` with `[thinking, text]` events; the dead fragment conflated the message lane.
+- **S-5.** Baseline gates confirmed — closed by O-7 (closed-green): tsc exit 0; bun test 155/0/869; purity guards included.
+- **S-6.** Today's state: nothing wired, nothing mapped — closed by O-8 (closed-green): all three greps exit 1.
+- **S-7.** Replay-asymmetry structurally impossible — closed by O-9 (closed-green): no `tool_execution_*` kind in `SessionEntry`.
+- **S-8.** No sub-category startsWith prefix dispatch exists — closed by O-6 (closed-green): only category-level idioms. Prefix-collision argument speculative as a codebase property.
+- **S-9.** O2 fixture mechanics: 3→4 real — closed by O-10 (closed-green): `startsWith("pi.tool.")` survives all four split names.
+- **S-10.** Retry names `pi.session.retry_start`/`pi.session.retry_end` — settled by unanimity in round 3 (all three seats hold; owner explicitly conceded); `value.pi` carries raw names so no information lost.
+
+**Open judgment — for product-owner, escalating to steward:**
+
+- **J-1. Bash name: `pi.tool.bash_execution_update` (long) vs `pi.tool.bash_update` (short).** Recorded majority 2-1 for LONG (owner+principal; designer minority for short). Positions: long = SDK taxonomy fidelity, live/replay distinction reads off `_update` suffix against JSONL `pi.tool.bash_execution`, maintainer greppability, prefix collision hypothetical (O-6); short = first-time-reader test, dispatch key carries the client-perceived concept. No test settles naming taste. Routes to product-owner. Either ruling pairs with a doc-comment serving the losing concern.
+- **J-2. `summarization_retry_*` scope: IN vs OUT.** Recorded majority 2-1 for IN (owner+designer; principal minority OUT). IN: the card's intent explicitly delegates the family-boundary call to this deliberation; `CustomFrame.value.data` typed `unknown` verbatim passthrough needs zero normalization; deferral costs a trivial card. OUT: union payload needs its own fixtures; one-name-vs-two-names sub-question unresolved; folding in muddies a homogeneous `retry_*` contract for zero user-visible gain (all dead at runtime). No test settles scope preference. Routes to product-owner. If IN, J-3 must also be settled; if OUT, a scoped follow-up card is filed.
+- **J-3. `summarization_retry_attempt_start` naming: one name vs two by `source`.** No majority (owner: one name, union verbatim, consistent with `queue_update` snapshot fidelity; designer: two names `summary_retry_branch`/`summary_retry_compaction`, dispatch-key clarity; principal: no lean recorded). 1-1-0 split. No test settles naming taste. Routes to product-owner (moot if J-2 resolves OUT).
+
+**Spec conventions — ride as stated contract, no PO routing needed:**
+
+- **C-1. `partialResult: ""` semantics.** Empty string is present and emits a `pi.tool.progress` frame; pinned in fixture. Unanimous. Stated convention.
+- **C-2. `queue_update` null-state UX.** Snapshot-faithful; no separate `queue_drained` event (SDK doesn't emit one); client filters at its layer. Unanimous. Stated convention.
+- **C-3. Doc-comment future-split trigger — MOOT** (the split landed; owner flagged the trigger text obsolete in round 3). The designer's surviving alternative is carried into implementation: the doc-comment at the split case site records the **conditional-emission rule and the H2/H7 rationale**. Settled consequence of the split, not a new judgment call.
+- **C-4. `bash_execution_update` buffering at the client layer.** Out of mapper scope; mapper preserves SDK delta order; `pi.tool.end` signals completion. Unanimous.
+
+**Open objections:**
+
+- **O-5 — open-UNTESTED (design gap, owner must close during implementation):** the conditional-emission matrix has no neither-field case; `{event:"tool_execution_update", toolCallId:"t"}` emits 0 frames silently. Closes by: owner adds a fixture asserting the neither-case emits exactly 0 frames (pinned as intended), OR tightens the union/transform to reject the neither-case at the type level. Implementation work, not a deliberation question; must not be skipped.
+- **O-1 consequence — settled by O-1's closed-red result, implementation required:** spec amendment caveat scoped to the four new families only, explicitly excluding `pi.tool.update`/`pi.tool.progress`. Rides with the implementation.
+
+**Handoff status:** blocked pending J-1, J-2, and (if IN) J-3 rulings — fixture names cannot lock until the bash name is pinned and summarization scope confirmed. Once ruled, remaining work is mechanical from the settled design.
+
 ## Acceptance
 
 - `queue_update`, `bash_execution_update`, and each `auto_retry_*` variant map
