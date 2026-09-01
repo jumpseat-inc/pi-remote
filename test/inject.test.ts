@@ -223,13 +223,13 @@ describe("EV-6 approval resolution", () => {
     expect(inj.registerPrompt({ promptId: "p1", kind: "confirm", prompt: "Delete file?" })).toEqual({ occurrence: 2 });
     // resolve occurrence 2 first
     const r2 = await inj.handle(env("d1", responseFrame({ promptId: "p1", occurrence: 2, response: "yes2" })));
-    expect(r2).toEqual({ kind: "resolved", promptId: "p1", direct: true, deviceId: "d1" });
+    expect(r2).toEqual({ kind: "resolved", promptId: "p1", occurrence: 2, direct: true, deviceId: "d1" });
     // occurrence 2 now consumed → stale
     const stale = await inj.handle(env("d2", responseFrame({ promptId: "p1", occurrence: 2, response: "yes2b" })));
     expect(stale.kind).toBe("stale");
     // occurrence 1 was NOT resolved by resolving occurrence 2 → still live
     const r1 = await inj.handle(env("d3", responseFrame({ promptId: "p1", occurrence: 1, response: "yes1" })));
-    expect(r1).toEqual({ kind: "resolved", promptId: "p1", direct: true, deviceId: "d3" });
+    expect(r1).toEqual({ kind: "resolved", promptId: "p1", occurrence: 1, direct: true, deviceId: "d3" });
   });
 
   test("live → resolved (fixture seam, R3): direct:true, no sendUserMessage, no R2 notice", async () => {
@@ -237,7 +237,7 @@ describe("EV-6 approval resolution", () => {
     const inj = createInjector(deps);
     inj.registerPrompt({ promptId: "p1", kind: "confirm", prompt: "P?" });
     const r = await inj.handle(env("dev1", responseFrame({ promptId: "p1", occurrence: 1, response: "yes" })));
-    expect(r).toEqual({ kind: "resolved", promptId: "p1", direct: true, deviceId: "dev1" });
+    expect(r).toEqual({ kind: "resolved", promptId: "p1", occurrence: 1, direct: true, deviceId: "dev1" });
     expect(calls).toHaveLength(0);
     expect(customs).toHaveLength(0); // not a fallback → no notice
   });
@@ -247,7 +247,7 @@ describe("EV-6 approval resolution", () => {
     const inj = createInjector(deps);
     inj.registerPrompt({ promptId: "p1", kind: "confirm", prompt: "P?" });
     const r = await inj.handle(env("dev1", responseFrame({ promptId: "p1", occurrence: 1, response: "yes" })));
-    expect(r).toEqual({ kind: "steered_fallback", promptId: "p1", text: "yes", direct: false, deviceId: "dev1", reason: "mode" });
+    expect(r).toEqual({ kind: "steered_fallback", promptId: "p1", occurrence: 1, text: "yes", direct: false, deviceId: "dev1", reason: "mode", tracked: true });
     expect(calls).toHaveLength(1);
     expect(calls[0]![0]).toBe("yes");
     expect(calls[0]![1]?.deliverAs).toBeUndefined(); // idle → no deliverAs
@@ -286,7 +286,7 @@ describe("EV-6 approval resolution", () => {
     const inj = createInjector(deps);
     inj.registerPrompt({ promptId: "p1", kind: "confirm", prompt: "P?" });
     const first = await inj.handle(env("win1", responseFrame({ promptId: "p1", occurrence: 1, response: "yes" })));
-    expect(first).toEqual({ kind: "resolved", promptId: "p1", direct: true, deviceId: "win1" });
+    expect(first).toEqual({ kind: "resolved", promptId: "p1", occurrence: 1, direct: true, deviceId: "win1" });
     const stale = await inj.handle(env("los1", responseFrame({ promptId: "p1", occurrence: 1, response: "late no" })));
     expect(stale).toEqual({ kind: "stale", promptId: "p1", deviceId: "los1" });
     expect(calls).toHaveLength(0); // not delivered
@@ -298,7 +298,7 @@ describe("EV-6 approval resolution", () => {
     const { deps, calls } = fakeDeps({ streaming: false });
     const inj = createInjector(deps);
     const r = await inj.handle(env("dev1", responseFrame({ promptId: "unknown-prompt", occurrence: 1, response: "yes" })));
-    expect(r).toEqual({ kind: "steered_fallback", promptId: "unknown-prompt", text: "yes", direct: false, deviceId: "dev1", reason: "mode" });
+    expect(r).toEqual({ kind: "steered_fallback", promptId: "unknown-prompt", occurrence: 1, text: "yes", direct: false, deviceId: "dev1", reason: "mode", tracked: false });
     expect(calls).toHaveLength(1);
     expect(calls[0]![0]).toBe("yes");
   });
@@ -325,6 +325,33 @@ describe("EV-6 approval resolution", () => {
     const r = await inj.handle(env(undefined, responseFrame({ promptId: "p1", occurrence: 1, response: "yes" })));
     expect(resolvedArgs).toEqual([["p1", "yes", undefined]]);
     expect((r as { deviceId?: string }).deviceId).toBeUndefined();
+  });
+
+  test("FLLWUP-5 S-O3: live-entry fallback tracked:true, unknown-entry tracked:false, occurrence round-trips on both; stale carries no occurrence", async () => {
+    const { deps } = fakeDeps({ streaming: false });
+    const inj = createInjector(deps);
+    // unknown entry: a prompt this host never raised — occurrence is the client's, tracked:false
+    const unknown = await inj.handle(env("dev-u", responseFrame({ promptId: "ghost", occurrence: 3, response: "hi" })));
+    expect(unknown).toEqual({
+      kind: "steered_fallback", promptId: "ghost", occurrence: 3, text: "hi",
+      direct: false, deviceId: "dev-u", reason: "mode", tracked: false,
+    });
+    // live entry: registered prompt resolved via steering fallback — tracked:true, occurrence from the registry key
+    inj.registerPrompt({ promptId: "p1", kind: "confirm", prompt: "P?" });
+    const live = await inj.handle(env("dev-l", responseFrame({ promptId: "p1", occurrence: 1, response: "yes" })));
+    expect(live).toEqual({
+      kind: "steered_fallback", promptId: "p1", occurrence: 1, text: "yes",
+      direct: false, deviceId: "dev-l", reason: "mode", tracked: true,
+    });
+    // direct resolution (fixture seam) also carries occurrence
+    const direct = fakeDeps({ resolvePendingPrompt: () => true });
+    const inj2 = createInjector(direct.deps);
+    inj2.registerPrompt({ promptId: "p2", kind: "confirm", prompt: "Q?" });
+    const resolved = await inj2.handle(env("dev-r", responseFrame({ promptId: "p2", occurrence: 1, response: "ok" })));
+    expect(resolved).toEqual({ kind: "resolved", promptId: "p2", occurrence: 1, direct: true, deviceId: "dev-r" });
+    // stale does NOT carry occurrence
+    const stale = await inj2.handle(env("dev-s", responseFrame({ promptId: "p2", occurrence: 1, response: "late" })));
+    expect(stale).toEqual({ kind: "stale", promptId: "p2", deviceId: "dev-s" });
   });
 
   test("malformed response values → ignored; no sendUserMessage, no emitCustom, no throw", async () => {

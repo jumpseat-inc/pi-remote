@@ -35,8 +35,8 @@ function validateName(name: unknown): DeliverAs | undefined {
 export type InjectResult =
   | { kind: "ignored" }
   | { kind: "injected"; deliverAs?: DeliverAs }
-  | { kind: "resolved"; promptId: string; direct: true; deviceId?: string }
-  | { kind: "steered_fallback"; promptId: string; text: string; direct: false; deviceId?: string; reason: "mode" }
+  | { kind: "resolved"; promptId: string; occurrence: number; direct: true; deviceId?: string }
+  | { kind: "steered_fallback"; promptId: string; occurrence: number; text: string; direct: false; deviceId?: string; reason: "mode"; tracked: boolean }
   | { kind: "stale"; promptId: string; deviceId?: string };
 
 export interface InjectDeps {
@@ -91,11 +91,17 @@ export function createInjector(deps: InjectDeps): Injector {
   }
 
   /** Steering fallback, never dropped: sendUserMessage then the R2 loud-once notice. */
-  function fallback(promptId: string, response: string, deviceId: string | undefined): InjectResult {
+  function fallback(
+    promptId: string,
+    occurrence: number,
+    response: string,
+    deviceId: string | undefined,
+    tracked: boolean
+  ): InjectResult {
     const deliverAs = deps.isStreaming() ? "steer" : undefined;
     void deps.sendUserMessage(response, { deliverAs }).catch(() => {});
     announceOnce(promptId);
-    return { kind: "steered_fallback", promptId, text: response, direct: false, deviceId, reason: "mode" };
+    return { kind: "steered_fallback", promptId, occurrence, text: response, direct: false, deviceId, reason: "mode", tracked };
   }
 
   async function handleApprovalResponse(value: unknown, deviceId: string | undefined): Promise<InjectResult> {
@@ -114,8 +120,8 @@ export function createInjector(deps: InjectDeps): Injector {
     const entry = byOccurrence?.get(occurrence);
     if (!entry) {
       // Unknown (promptId/occurrence) — belongs to another extension or never observed.
-      // Steering fallback, never dropped (R3 permanent).
-      return fallback(promptId, response, deviceId);
+      // Steering fallback, never dropped (R3 permanent). Untracked: a prompt this host never raised.
+      return fallback(promptId, occurrence, response, deviceId, false);
     }
     if (entry.settled) {
       // Stale: a late/losing race answer. Surface it, do NOT re-inject, no R2 notice.
@@ -128,9 +134,9 @@ export function createInjector(deps: InjectDeps): Injector {
     const direct = await deps.resolvePendingPrompt(promptId, response, deviceId);
     if (direct === true) {
       // Only reachable through the fixture seam in tests (R3) — production always falls back.
-      return { kind: "resolved", promptId, direct: true, deviceId };
+      return { kind: "resolved", promptId, occurrence, direct: true, deviceId };
     }
-    return fallback(promptId, response, deviceId);
+    return fallback(promptId, occurrence, response, deviceId, true);
   }
 
   async function handle(env: InboundEnvelope): Promise<InjectResult> {
