@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-5
 title: "Emit pi.human_input.resolved host-side completion event"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-1
 goal: A remote device that resolves an approval prompt receives a CUSTOM pi.human_input.resolved completion frame (promptId, deviceId, ts) confirming its resolution was applied, emitted via an added ui_prompt_end surface in translate.ts and wiring in the lifecycle layer.
@@ -162,3 +162,11 @@ Skeptic at branch head 96e2866 re-ran the full gate set and its own probes. All 
 ### Step 10 — judge (job-36.3, 15-min window)
 
 Judge evaluated the PR branch at the Skeptic-verified SHA 96e2866 (not main), per the standing step-10 rule. Re-ran the decisive gates itself: tsc exit 0; bun test 155 pass / 0 fail; source audit of `emitResolved()` (exactly {promptId, occurrence, deviceId, ts}, emitted only for resolved / steered_fallback-tracked:true, never untracked or stale, deviceId envelope-derived, ts from deps.now); all seven subscriptions manually constructed, no `as PiEvent` cast. **Verdict: PASS.**
+
+### Step 11 — deterministic merge, pinned to the criteria SHA
+
+All five deterministic-merge-check criteria satisfied at head 96e2866: (1) owner gates green in full (tsc 0, bun test 155/0 — owner, Skeptic, and judge each re-ran); (2) GitHub Actions `gates` workflow SUCCESS on the PR head (re-read immediately pre-merge: `gh pr checks 10` → gates/SUCCESS); (3) no blocking Skeptic objection (all closed-green); (4) judge PASS; (5) no Needs Human state, no outstanding ruling. PR #10 merged via `gh pr merge 10 --merge --match-head-commit 96e2866...` — head SHA match enforced (a mismatch would have halted). Merged at 2026-09-01T00:26:56Z, merge commit **b954457**.
+
+### Step 12 — sync, reconcile, Done
+
+`gates` workflow checked on the merged SHA b954457 directly via the API: completed **success** (CI green on the merged SHA). Local main was 2 ahead (this card's In-Review + steps 8-10 board records) / 7 behind (implementation + merge commit landed on origin/main via the PR ancestry); rebased onto origin/main b954457 — clean, zero conflicts (the two local-only commits touch only council card/board files unchanged between base and merged main). Card set Done on board + frontmatter, validate.py clean, committed to main, pushed.

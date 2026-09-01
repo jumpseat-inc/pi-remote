@@ -22,11 +22,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-- FLLWUP-5 — "Emit pi.human_input.resolved host-side completion event"
-
 ## Needs Human
 
 ## Done
+
+- FLLWUP-5 — "Emit pi.human_input.resolved host-side completion event"
 
 - EV-8 — "Command surface and lifecycle wiring"
 
