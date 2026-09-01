@@ -134,6 +134,15 @@ Environment repaired per the HALT's stated precondition: repo commit `d786c77` (
 
 Three-generator first pass produced TWO complete positions (principal, designer) and the owner seat failed to produce any position across its initial dispatch and its single permitted re-dispatch (dispatch discipline: no third dispatch; do not proceed past a seat that has not produced its output). Deliberation is INTACT for the resumed run but cannot proceed inside this container: the owner is the step-8 implementation seat and has demonstrated it cannot emit bounded output — routing around it is forbidden, and proceeding would fail step 8. Run halts per dispatch discipline; the run's durable state (principal + designer positions verbatim above, owner failure log) is on this card and the board for a resumed runner. Also recorded for the resumed run: principal's proposed mapping table and grep gate; designer's H1–H9 predictions and residuals (SDK bridge follow-up; summarization_retry_* in-scope question; queue null-state, partialResult:"" semantics, bash buffering, retry/info_change overlap).
 
+### Step 4 — skeptic dispatch attempts (runner 3, 2026-09-01) — BOTH DIED ON PROVIDER ERRORS, step 4 remains OPEN
+
+Two consecutive skeptic dispatches, both killed by provider connection errors, neither recorded any result on this card:
+
+- **job-2.1** (20-min window): ran 28 turns actively verifying claims (last visible finding, verbatim: "5 frames from 1 event — noting that. Now probing the `partialResult` typing against the real SDK payload."), then died on provider error `Request timed out.` Turns flat at 28 across two consecutive wait windows — dead, not slow. Cancelled per dispatch discipline.
+- **job-2.2** (re-dispatch, same input + resume fragment above): died at 8.9 min / turn 8 on provider error `Request timed out.` (state=done, stopReason=error). No deliverable.
+
+Per dispatch discipline (a seat that produces no output across its window and one re-dispatch is a halt; no third dispatch), the run halts here. NO skeptic objections or test results are recorded from these attempts — the resumed runner must re-run step 4 from a fresh skeptic dispatch. The "5 frames from 1 event" fragment suggests the dead instance may have found a fan-out anomaly (possibly the O2 fixture's `tool_execution_update` producing more frames than expected under some probe); treat it as an unverified lead, not a result.
+
 ## Acceptance
 
 - `queue_update`, `bash_execution_update`, and each `auto_retry_*` variant map
