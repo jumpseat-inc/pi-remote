@@ -146,3 +146,19 @@ ESCALATION returned; product-owner ruled on all seven items, no steward deferral
 7. **S-O4** — Does NOT fold into FLLWUP-5. Separate follow-up card (FLLWUP-typed-bridge → filed as FLLWUP-9, Backlog): replaces the local ExtensionAPI stand-in (index.ts:43-65, permissive on(event: string)) with the real SDK's typed exhaustive on(). Binding constraint for FLLWUP-5: the local type continues to hide the cast; FLLWUP-5's acceptance must pin the manual-construction fix as defense in depth — it is both the S-O2 fix and the S-O4 mitigation until FLLWUP-9 ships.
 
 The rulings resolve the four open-judgment items and three scope rulings. Step 7 proceeds on the settled design folded with the rulings. FLLWUP-8 and FLLWUP-9 filed at step 13 per the pre-confirmation.
+
+### Step 7 — spec + handoff
+
+Spec written to `docs/superpowers/specs/2026-08-31-FLLWUP-5-design.md` (sole handoff; folds the settled design with the seven rulings; scope split per ruling Item 5; wire shape {promptId, occurrence, deviceId, ts}; acceptance  rewritten fixture-green per Item 2). Committed (154ee89). Card → In Progress on board (4ef5567).
+
+### Step 8 — owner implementation (job-36.1, 45-min window)
+
+Owner implemented the spec in worktree `.worktrees/flluwp-5-resolved` (branch `flluwp-5-resolved`), six TDD commits, pushed, PR **#10** opened against main. Head SHA **96e2866ba894e43a712515dab5d5908ac472a7db**. Local gates recorded: tsc exit 0; bun test **155 pass / 0 fail** (146 baseline + 9 new fixtures). One design-necessity deviation documented by the owner: `translate()`'s JsonlEntry/live discriminator changed from `"kind" in input` to `"entryId" in input` because the new `ui_prompt_end` PiEvent legitimately carries `kind` (the probe-4 kind-collision class); behavior-identical for all pre-existing inputs (155-test suite confirms). Card → In Review on the board from the observed artifact (PR #10 open, `gates` workflow SUCCESS at head SHA) (60ee4a4).
+
+### Step 9 — Skeptic verification (job-36.2, 30-min window)
+
+Skeptic at branch head 96e2866 re-ran the full gate set and its own probes. All seven objections **closed-green**, no open objections: (1) contract (a) ui_prompt_end → pi.human_input.closed pure mapping, runtime probe confirms not pi.session.info_change; (2) contract (b) lifecycle emission, 4 tests incl. strict {promptId, occurrence, deviceId, ts} wire shape, untracked→no resolved, stale→no resolved; (3) S-O3 tracked:true/false + occurrence round-trip, stale has no occurrence; (4) S-O2 `grep 'as PiEvent' index.ts` → no matches, all seven subscriptions manual, forward() ui.confirm special-case preserved; (5) 155 pass / 0 fail, 870 expect() calls; (6) acceptance fixture-green, PI-SPEC §5.4 amendment ends "fixture-green today, runtime-observable once the raise path lands (FLLWUP-8)"; (7) discriminator probe closed-green — `"entryId" in input` sound (every JsonlEntry carries entryId, no PiEvent does), pre-existing JSONL dispatch identical. Gate-integrity self-checks run (tsc and test gates demonstrably fail when broken).
+
+### Step 10 — judge (job-36.3, 15-min window)
+
+Judge evaluated the PR branch at the Skeptic-verified SHA 96e2866 (not main), per the standing step-10 rule. Re-ran the decisive gates itself: tsc exit 0; bun test 155 pass / 0 fail; source audit of `emitResolved()` (exactly {promptId, occurrence, deviceId, ts}, emitted only for resolved / steered_fallback-tracked:true, never untracked or stale, deviceId envelope-derived, ts from deps.now); all seven subscriptions manually constructed, no `as PiEvent` cast. **Verdict: PASS.**
