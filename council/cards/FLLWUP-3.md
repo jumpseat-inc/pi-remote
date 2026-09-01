@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-3
 title: "Map EV-4's unmapped live pi events (queue_update, bash_execution_update, auto_retry_*)"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-1
 goal: translate.ts maps the remaining live pi events that EV-4's §4 table did not cover — queue_update, bash_execution_update, auto_retry_* — and decides the AG-UI representation of live tool-progress (partialResult), extending the EV-4 mapper without changing its pure fold shape.
@@ -645,3 +645,27 @@ No H predictions withdrawn outright in round3. H2 and H7 shift from "correctness
 ## Reading note for the consolidator
 
 All four 2-vs-1 disagreements have low implementation cost (one string, one new conditional `case` + one fixture update). The seat disagreement is design, not budget. The two positions where the owner is the minority — split and summarization-in — are also the two positions where my round-2 position (which I have now flipped) was the principal's round-2 minority. The consolidator should weigh implementation cost (low), rename-convention alignment (split + retry names), and owner-seat scope-discipline argument (out-of-scope) in that order. Full position artifact at `vault/raw/2026-09-02-design-fllwup-3-final.md`.
+
+### Step 6 — rulings (resumed runner 6, 2026-09-01; product-owner seat, binding)
+
+The three open-judgment items from the step-5 synthesis (J-1, J-2, J-3) were escalated by the previous runner's report; the orchestrator dispatched `product-owner`, which ruled on all three (no steward deferral). Deliberation is CLOSED — nothing ruled is reopened. Rulings appended verbatim below and treated as binding.
+
+--- RULINGS BEGIN ---
+
+## FLLWUP-3 rulings — product-owner seat (binding)
+
+**J-1 — bash live-delta dispatch name: RULED LONG — pi.tool.bash_execution_update.** The live/replay distinction must be readable without a translation table in the reader's head: JSONL replay emits pi.tool.bash_execution, live deltas emit pi.tool.bash_execution_update, and the _update suffix IS the distinction, consistent with how the SDK itself names the pair. When the SDK bridge lands (FLLWUP-8/9 class work), a maintainer greps the exact SDK event name and finds the mapping. Skeptic O-6 closed-green removed the only structural argument against the long name (no sub-category prefix dispatch exists to collide). The designer's first-time-reader concern is served at lower cost by the already-agreed doc-comment at the case site.
+
+**J-2 — summarization_retry_* scope: RULED IN.** The card's Intent explicitly delegates this boundary call to the deliberation, so inclusion requires no goal change and is a legitimate fold-in. CustomFrame.value.data is typed unknown with verbatim passthrough (translate.ts:88-92), so the union payload costs zero normalization; the four families share one mapper pattern and one runtime-deadness caveat (O-3 closed-green); the principal's "zero user-visible gain" objection applies identically to auto_retry_* itself, so it cannot discriminate between the families. Fixtures for the union payload are ordinary implementation work under the settled per-event single-frame fixture pattern.
+
+**J-3 — RULED TWO NAMES — pi.session.summary_retry_branch / pi.session.summary_retry_compaction, keyed on data.source.** This card already settled the governing doctrine for a payload-variant event in round 3, unanimously: tool_execution_update fans into pi.tool.update vs pi.tool.progress by payload content rather than forcing clients to discriminate fields under one key. name is the sole dispatch key (EV-4 Q1), so the key must carry the client-perceived concept; a branch-summary retry and a compaction retry are different concepts to a client (only one carries a reason). No information is lost: value.pi carries the raw event name and value.data passes the union verbatim. The fold inspects data.source to choose the name — deterministic, fixture-pinned, same class as the settled conditional-emission split.
+
+**General rule for FLLWUP-8 / FLLWUP-9:** The names ruled here and in the FLLWUP-3 consolidation are stable keys (EV-2 Item 2) — neither backlog card may relitigate them. When the SDK bridge work lands: (a) every new subscription for the four families uses manual PiEvent construction per FLLWUP-5 S-O2, never ev as PiEvent; (b) each mapping's acceptance re-opens from fixture-green to runtime-observable, the same re-open pattern FLLWUP-8 already carries, and the FLLWUP-3 spec amendment's runtime-unreachability caveat (scoped per O-1 to the four new families only) must be amended again in the same PR that makes it false; (c) FLLWUP-9's vendored typed on() union reflects the real SDK whitelist — until the SDK forwards a family, that family stays unwired regardless of the mapper, and FLLWUP-9 is not license to add dead subscriptions.
+
+O-5 (neither-field case) remains an implementation-time closure for the owner as recorded, and the O-1 caveat scoping is binding on the spec amendment.
+
+--- RULINGS END ---
+
+### Step 7 — design spec written (runner 6, 2026-09-01)
+
+Spec committed at `docs/superpowers/specs/2026-09-01-FLLWUP-3-design.md`, folding the three rulings, O-1's caveat scoping (S-3), O-5's implementation-time closure, and the FLLWUP-8/9 general rule into the settled round-3 design. Card set `In Progress`; proceeding to step 8 (owner implementation dispatch).
