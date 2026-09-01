@@ -143,7 +143,19 @@ export type PiEvent =
   | { event: "session_compact"; summary?: string }
   | { event: "model_select"; model: string }
   | { event: "thinking_level_select"; level: string }
-  | { event: "session_info_changed"; info: unknown };
+  | { event: "session_info_changed"; info: unknown }
+  // FLLWUP-3 — remaining live families (mapper-only; unreachable via ExtensionAPI.on()
+  // in the installed SDK — see the FLLWUP-3 design spec §1–§3 and PI-SPEC §4 caveat).
+  | { event: "queue_update"; steering: readonly string[]; followUp: readonly string[] }
+  | { event: "bash_execution_update"; id?: string; delta: string }
+  | { event: "auto_retry_start"; attempt: number; maxAttempts: number; delayMs: number; errorMessage: string }
+  | { event: "auto_retry_end"; success: boolean; attempt: number; finalError?: string }
+  | { event: "summarization_retry_scheduled"; attempt: number; maxAttempts: number; delayMs: number; errorMessage: string }
+  | {
+      event: "summarization_retry_attempt_start";
+      data: { source: "branchSummary" } | { source: "compaction"; reason: string };
+    }
+  | { event: "summarization_retry_finished" };
 
 // ---------------------------------------------------------------------------
 // JSONL entry surface (replay path) — normalized entries per spec §5/§2.
@@ -449,16 +461,45 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
       });
       break;
 
-    case "tool_execution_update":
-      frames.push({
-        type: "CUSTOM",
-        name: "pi.tool.update",
-        value: {
-          pi: "tool_execution_update",
-          data: { toolCallId: input.toolCallId, args: input.args, partialResult: input.partialResult },
-        },
-      });
+    case "tool_execution_update": {
+      // FLLWUP-3 conditional-emission split (design spec §4): presence means
+      // `!== undefined`; the two fields are independently optional on the
+      // PiEvent variant, so emission is conditional per field:
+      //   args present          → pi.tool.update   { toolCallId, args }
+      //   partialResult present → pi.tool.progress { toolCallId, partialResult }
+      //   both present          → both frames, update BEFORE progress
+      //   neither present       → zero frames (pinned by fixture, O-5)
+      // Empty-string partialResult is present and emits (C-1).
+      // Rationale (H2/H7): `name` is the sole dispatch key, so the dispatch
+      // name carries the lifecycle question — progress clients subscribe to
+      // pi.tool.progress and key on `toolCallId`; args consumers subscribe to
+      // pi.tool.update — and no client field-inspects the payload to
+      // discriminate streaming output from a static args snapshot. The
+      // update-before-progress order keeps the static-args mirror ahead of
+      // the streaming pane in the same batch (no flicker on ordered
+      // consumers). Never smuggled into TOOL_CALL_ARGS (pinned by fixture).
+      if (input.args !== undefined) {
+        frames.push({
+          type: "CUSTOM",
+          name: "pi.tool.update",
+          value: {
+            pi: "tool_execution_update",
+            data: { toolCallId: input.toolCallId, args: input.args },
+          },
+        });
+      }
+      if (input.partialResult !== undefined) {
+        frames.push({
+          type: "CUSTOM",
+          name: "pi.tool.progress",
+          value: {
+            pi: "tool_execution_update",
+            data: { toolCallId: input.toolCallId, partialResult: input.partialResult },
+          },
+        });
+      }
       break;
+    }
 
     case "tool_execution_end":
       frames.push({
@@ -526,6 +567,99 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
 
     case "session_info_changed":
       frames.push({ type: "CUSTOM", name: "pi.session.info_change", value: { pi: "session_info_changed", data: { info: input.info } } });
+      break;
+
+    case "queue_update":
+      // FLLWUP-3 row 1 — snapshot, not delta (C-2): the SDK payload is the
+      // whole queue state { steering, followUp } and there is no SDK
+      // queue_drained event; the client diffs snapshots at its layer.
+      frames.push({
+        type: "CUSTOM",
+        name: "pi.session.queue_update",
+        value: { pi: "queue_update", data: { steering: input.steering, followUp: input.followUp } },
+      });
+      break;
+
+    case "bash_execution_update":
+      // FLLWUP-3 row 2 (J-1): the JSONL replay cousin of this event is the
+      // existing name `pi.tool.bash_execution` (translateJsonl above); the
+      // `_update` suffix IS the live/replay distinction, consistent with the
+      // SDK's own naming of the pair — a maintainer greps the SDK event name
+      // and finds this mapping. Payload `{ id?, delta }` passes verbatim.
+      frames.push({
+        type: "CUSTOM",
+        name: "pi.tool.bash_execution_update",
+        value: { pi: "bash_execution_update", data: { id: input.id, delta: input.delta } },
+      });
+      break;
+
+    case "auto_retry_start":
+      // FLLWUP-3 row 3 — retry state; raw SDK name rides in value.pi.
+      frames.push({
+        type: "CUSTOM",
+        name: "pi.session.retry_start",
+        value: {
+          pi: "auto_retry_start",
+          data: { attempt: input.attempt, maxAttempts: input.maxAttempts, delayMs: input.delayMs, errorMessage: input.errorMessage },
+        },
+      });
+      break;
+
+    case "auto_retry_end":
+      // FLLWUP-3 row 4 — symmetric close of retry_start.
+      frames.push({
+        type: "CUSTOM",
+        name: "pi.session.retry_end",
+        value: {
+          pi: "auto_retry_end",
+          data: { success: input.success, attempt: input.attempt, finalError: input.finalError },
+        },
+      });
+      break;
+
+    case "summarization_retry_scheduled":
+      // FLLWUP-3 row 5 (J-2) — summarization family in scope; same shape as auto_retry_start.
+      frames.push({
+        type: "CUSTOM",
+        name: "pi.session.summary_retry_scheduled",
+        value: {
+          pi: "summarization_retry_scheduled",
+          data: { attempt: input.attempt, maxAttempts: input.maxAttempts, delayMs: input.delayMs, errorMessage: input.errorMessage },
+        },
+      });
+      break;
+
+    case "summarization_retry_attempt_start": {
+      // FLLWUP-3 rows 6a/6b (J-3) — fans out on data.source, the same class
+      // of payload-keyed dispatch as the tool_execution_update split: a
+      // branch-summary retry and a compaction retry are different client
+      // concepts (only one carries a reason), so the key carries the concept
+      // and value.data passes the union verbatim. Row 6c: a payload whose
+      // source is neither arm emits zero frames — the fold stays total and
+      // deterministic without inventing a third name (pinned by fixture).
+      if (input.data.source === "branchSummary") {
+        frames.push({
+          type: "CUSTOM",
+          name: "pi.session.summary_retry_branch",
+          value: { pi: "summarization_retry_attempt_start", data: input.data },
+        });
+      } else if (input.data.source === "compaction") {
+        frames.push({
+          type: "CUSTOM",
+          name: "pi.session.summary_retry_compaction",
+          value: { pi: "summarization_retry_attempt_start", data: input.data },
+        });
+      }
+      break;
+    }
+
+    case "summarization_retry_finished":
+      // FLLWUP-3 row 7 — empty SDK payload passes verbatim.
+      frames.push({
+        type: "CUSTOM",
+        name: "pi.session.summary_retry_finished",
+        value: { pi: "summarization_retry_finished", data: {} },
+      });
       break;
 
     default:

@@ -177,7 +177,10 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
     expect(frames.map((f) => f.type)).not.toContain("TOOL_CALL_START");
     expect(frames.map((f) => f.type)).not.toContain("TOOL_CALL_ARGS");
     expect(frames.map((f) => f.type)).not.toContain("TOOL_CALL_END");
-    expect(frames.map((f) => f.type)).toEqual(["CUSTOM", "CUSTOM", "CUSTOM"]);
+    // FLLWUP-3: the update fans out into pi.tool.update + pi.tool.progress → 4 frames.
+    expect(frames.map((f) => f.type)).toEqual(["CUSTOM", "CUSTOM", "CUSTOM", "CUSTOM"]);
+    const o2Names = frames.map((f) => (f as { type: "CUSTOM"; name: string }).name);
+    expect(o2Names).toEqual(["pi.tool.start", "pi.tool.update", "pi.tool.progress", "pi.tool.end"]);
     for (const f of frames) {
       if (f.type === "CUSTOM") {
         expect(f.name.startsWith("pi.tool.")).toBe(true);
@@ -427,5 +430,233 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
     await import("../src/translate");
     const after = (globalThis as Record<string, unknown>).__ev4_side_effect ?? "absent";
     expect(after).toBe(before);
+  });
+});
+
+describe("FLLWUP-3 — remaining live pi events + tool_execution_update split", () => {
+  type Customish = { type: "CUSTOM"; name: string; value: { pi: string; data: unknown } };
+
+  // §5 item 1 — per-event single-frame fixtures (rows 1–5, 7): exact name / value.pi / value.data.
+
+  test("queue_update → CUSTOM pi.session.queue_update, snapshot not delta (row 1)", () => {
+    const frames = runSequence(
+      [{ event: "queue_update", steering: ["steer-1"], followUp: ["follow-1"] }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.session.queue_update");
+    expect(f.value.pi).toBe("queue_update");
+    expect(f.value.data).toEqual({ steering: ["steer-1"], followUp: ["follow-1"] });
+  });
+
+  test("bash_execution_update → CUSTOM pi.tool.bash_execution_update (J-1, row 2)", () => {
+    const frames = runSequence(
+      [{ event: "bash_execution_update", id: "bash-1", delta: "out\\n" }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.tool.bash_execution_update");
+    expect(f.value.pi).toBe("bash_execution_update");
+    expect(f.value.data).toEqual({ id: "bash-1", delta: "out\\n" });
+  });
+
+  test("auto_retry_start → CUSTOM pi.session.retry_start (row 3)", () => {
+    const frames = runSequence(
+      [{ event: "auto_retry_start", attempt: 2, maxAttempts: 3, delayMs: 1000, errorMessage: "boom" }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.session.retry_start");
+    expect(f.value.pi).toBe("auto_retry_start");
+    expect(f.value.data).toEqual({ attempt: 2, maxAttempts: 3, delayMs: 1000, errorMessage: "boom" });
+  });
+
+  test("auto_retry_end → CUSTOM pi.session.retry_end (row 4)", () => {
+    const frames = runSequence(
+      [{ event: "auto_retry_end", success: true, attempt: 2, finalError: "still bad" }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.session.retry_end");
+    expect(f.value.pi).toBe("auto_retry_end");
+    expect(f.value.data).toEqual({ success: true, attempt: 2, finalError: "still bad" });
+  });
+
+  test("summarization_retry_scheduled → CUSTOM pi.session.summary_retry_scheduled (row 5)", () => {
+    const frames = runSequence(
+      [{ event: "summarization_retry_scheduled", attempt: 1, maxAttempts: 2, delayMs: 250, errorMessage: "ctx" }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.session.summary_retry_scheduled");
+    expect(f.value.pi).toBe("summarization_retry_scheduled");
+    expect(f.value.data).toEqual({ attempt: 1, maxAttempts: 2, delayMs: 250, errorMessage: "ctx" });
+  });
+
+  test("summarization_retry_attempt_start branchSummary → CUSTOM pi.session.summary_retry_branch (J-3, row 6a)", () => {
+    const frames = runSequence(
+      [{ event: "summarization_retry_attempt_start", data: { source: "branchSummary" } }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.session.summary_retry_branch");
+    expect(f.value.pi).toBe("summarization_retry_attempt_start");
+    expect(f.value.data).toEqual({ source: "branchSummary" });
+  });
+
+  test("summarization_retry_attempt_start compaction → CUSTOM pi.session.summary_retry_compaction (J-3, row 6b)", () => {
+    const frames = runSequence(
+      [{ event: "summarization_retry_attempt_start", data: { source: "compaction", reason: "tokens" } }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.session.summary_retry_compaction");
+    expect(f.value.pi).toBe("summarization_retry_attempt_start");
+    expect(f.value.data).toEqual({ source: "compaction", reason: "tokens" });
+  });
+
+  test("summarization_retry_finished → CUSTOM pi.session.summary_retry_finished with empty payload (row 7)", () => {
+    const frames = runSequence([{ event: "summarization_retry_finished" }], { sessionId: "s1", runId: "r1" });
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.type).toBe("CUSTOM");
+    expect(f.name).toBe("pi.session.summary_retry_finished");
+    expect(f.value.pi).toBe("summarization_retry_finished");
+    expect(f.value.data).toEqual({});
+  });
+
+  // §5 item 2 — conditional-emission matrix (§4).
+
+  test("tool_execution_update both fields → exactly [pi.tool.update, pi.tool.progress] in order, toolCallId on both (§4)", () => {
+    const frames = runSequence(
+      [{ event: "tool_execution_update", toolCallId: "t1", args: { cmd: "ls" }, partialResult: "a\\n" }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(2);
+    const update = frames[0] as Customish;
+    const progress = frames[1] as Customish;
+    expect(update.name).toBe("pi.tool.update");
+    expect(update.value.pi).toBe("tool_execution_update");
+    expect(update.value.data).toEqual({ toolCallId: "t1", args: { cmd: "ls" } });
+    expect(progress.name).toBe("pi.tool.progress");
+    expect(progress.value.pi).toBe("tool_execution_update");
+    expect(progress.value.data).toEqual({ toolCallId: "t1", partialResult: "a\\n" });
+    expect(frames.map((f) => f.type)).not.toContain("TOOL_CALL_ARGS");
+  });
+
+  test("tool_execution_update args-only → one update, zero progress (§4)", () => {
+    const frames = runSequence(
+      [{ event: "tool_execution_update", toolCallId: "t1", args: { cmd: "ls" } }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.name).toBe("pi.tool.update");
+    expect(f.value.data).toEqual({ toolCallId: "t1", args: { cmd: "ls" } });
+    expect(frames.map((fr) => fr.type)).not.toContain("TOOL_CALL_ARGS");
+  });
+
+  test("tool_execution_update partialResult-only → one progress, zero update (§4)", () => {
+    const frames = runSequence(
+      [{ event: "tool_execution_update", toolCallId: "t1", partialResult: "chunk" }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.name).toBe("pi.tool.progress");
+    expect(f.value.data).toEqual({ toolCallId: "t1", partialResult: "chunk" });
+    expect(frames.map((fr) => fr.type)).not.toContain("TOOL_CALL_ARGS");
+  });
+
+  test("tool_execution_update empty-string partialResult is present and emits progress (C-1, §4)", () => {
+    const frames = runSequence(
+      [{ event: "tool_execution_update", toolCallId: "t1", partialResult: "" }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.name).toBe("pi.tool.progress");
+    expect(f.value.data).toEqual({ toolCallId: "t1", partialResult: "" });
+  });
+
+  // §5 item 7 — O-5 neither-field closure: pinned as intended behavior.
+
+  test("tool_execution_update neither field → exactly 0 frames, pinned as intended (O-5)", () => {
+    const frames = runSequence([{ event: "tool_execution_update", toolCallId: "t1" }], {
+      sessionId: "s1",
+      runId: "r1",
+    });
+    expect(frames).toHaveLength(0);
+  });
+
+  // §5 item 8 — row 6c pin: out-of-union source emits 0 frames.
+
+  test("summarization_retry_attempt_start with neither in-union source → exactly 0 frames (row 6c)", () => {
+    // Deliberate out-of-union payload: the SDK union has only branchSummary/compaction,
+    // but the fold must stay total and deterministic against malformed payloads —
+    // no third frame name is invented, zero frames are emitted. Cast is the point.
+    const malformed = {
+      event: "summarization_retry_attempt_start",
+      data: { source: "midSummary" },
+    } as unknown as PiEvent;
+    const frames = runSequence([malformed], { sessionId: "s1", runId: "r1" });
+    expect(frames).toHaveLength(0);
+  });
+
+  // §5 item 4 — live/replay non-collapse (designer H3).
+
+  test("JSONL bash_execution entry → pi.tool.bash_execution, never the live _update name (H3)", () => {
+    const frames = runSequence([{ kind: "bash_execution", entryId: "e1", data: { cmd: "ls" } }], {
+      sessionId: "s1",
+      runId: "r1",
+    });
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.name).toBe("pi.tool.bash_execution");
+    expect(f.name).not.toBe("pi.tool.bash_execution_update");
+  });
+
+  test("live bash_execution_update → pi.tool.bash_execution_update, never the replay name (H3)", () => {
+    const frames = runSequence([{ event: "bash_execution_update", delta: "d" }], { sessionId: "s1", runId: "r1" });
+    expect(frames).toHaveLength(1);
+    const f = frames[0] as Customish;
+    expect(f.name).toBe("pi.tool.bash_execution_update");
+    expect(f.name).not.toBe("pi.tool.bash_execution");
+  });
+
+  // §5 item 9 — determinism: every new event, translated twice, byte-identical.
+
+  test("sequence containing every new event translated twice → byte-identical frames (§5 item 9)", () => {
+    const seq = (): (PiEvent | JsonlEntry)[] => [
+      { event: "queue_update", steering: ["s"], followUp: [] },
+      { event: "bash_execution_update", delta: "x" },
+      { event: "bash_execution_update", id: "b1", delta: "y" },
+      { event: "auto_retry_start", attempt: 1, maxAttempts: 3, delayMs: 500, errorMessage: "boom" },
+      { event: "auto_retry_end", success: false, attempt: 1, finalError: "e" },
+      { event: "summarization_retry_scheduled", attempt: 1, maxAttempts: 2, delayMs: 250, errorMessage: "ctx" },
+      { event: "summarization_retry_attempt_start", data: { source: "branchSummary" } },
+      { event: "summarization_retry_attempt_start", data: { source: "compaction", reason: "tokens" } },
+      { event: "summarization_retry_finished" },
+      { event: "tool_execution_update", toolCallId: "t1", args: { cmd: "ls" }, partialResult: "a\\n" },
+      { event: "tool_execution_update", toolCallId: "t2" },
+    ];
+    const a = runSequence(seq(), { sessionId: "s1", runId: "r1" });
+    const b = runSequence(seq(), { sessionId: "s1", runId: "r1" });
+    expect(a.length).toBeGreaterThan(0);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });
