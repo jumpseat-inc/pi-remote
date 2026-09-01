@@ -22,11 +22,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-- FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
-
 ## Needs Human
 
 ## Done
+
+- FLLWUP-1 — "Sync README with the OAuth2 enrollment reality"
 
 - FLLWUP-6 — "Remove or document the dead user_input PiEvent in translate.ts"
 

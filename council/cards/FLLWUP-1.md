@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-1
 title: "Sync README with the OAuth2 enrollment reality"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-1
 goal: README.md no longer references PI_REMOTE_HOST_KEY or env-var-based enrollment and documents /rc:login OAuth2 enrollment as the setup path, matching the spec as rewritten by EV-1.
@@ -132,3 +132,30 @@ command table has `/rc:login` with while-live refusal and `/rc:off`; no
 `/rc-off` anywhere. Basis: README matches the EV-1 rewritten spec §7.2/§8 —
 no legacy host-key or env-var enrollment, `/rc:login` is the sole documented
 enrollment path.
+
+### Step 11 — merge gate (deterministic merge check, all five criteria)
+
+Per features-deliver.md the human merge gate is the deterministic artifact
+check; executed mechanically, no discretion. Immediately pre-merge,
+re-read `gh pr checks 12 --json name,state,workflow` → `gates` workflow
+SUCCESS (two rows, keyed on the `workflow` field, not the job name), and
+`gh pr view 12 --json headRefOid` → 2cbfe4491e6a87793c2245e8864ab3c174a959b0
+= the exact SHA the Skeptic verified and the judge PASSed. Five criteria:
+(1) owner gates green in full — tsc exit 0, bun test 155/0, each re-run by
+the owner, the Skeptic, and the judge; (2) GitHub Actions `gates` workflow
+SUCCESS on the PR head SHA; (3) no blocking Skeptic objection (all
+closed-green); (4) judge verdict PASS; (5) no Needs Human state, no
+outstanding ruling. Merged via `gh pr merge 12 --merge --match-head-commit
+2cbfe4491e6a87793c2245e8864ab3c174a959b0` (=head match enforced; a mismatch
+would have halted). PR #12 MERGED at 2026-09-01T01:55:00Z, merge commit
+**0d6dd9725180686c97afc810df85013dbdabc760**. CI on the merged SHA:
+`gh api .../commits/0d6dd97.../check-runs` → `gates` completed, conclusion
+success.
+
+### Step 12 — sync and reconcile
+
+`git fetch origin main` + `git merge --ff-only origin/main` → clean
+fast-forward 055f4a9..0d6dd97 (README.md +34/−7). Card set `Done` on
+frontmatter and board from the observed artifacts — merged (0d6dd97) with
+CI green on the merged SHA — never from a seat's report. validate.py clean;
+commit + push the reconciliation.
