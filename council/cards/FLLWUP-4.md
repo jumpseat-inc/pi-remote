@@ -1,8 +1,8 @@
 ---
 id: FLLWUP-4
 title: "EV-2 localization seam: second (en→id) message lookup and resolver"
-state: Deliberating
-owner: null
+state: In Progress
+owner: feat/fllwup-4-id-localization
 epic: EPIC-1
 goal: A second message lookup plus a resolver ships alongside tunnel.ts's existing key-based reason-to-message table so tunnel error and status copy can resolve in a language other than English without touching any emission site.
 ---
@@ -133,4 +133,22 @@ Gate-integrity side-checks: `bunx tsc --noEmit` exit 0 (and demonstrably fails o
 
 **Facilitator correction to the synthesis (recorded, not decided):** the consolidator bucketed "`<serverUrl>` substitution at the two re-point sites is in scope" as settled (S3), stating "principal parked only the :462 re-point, not the :129/:443 substitution." That misstates the record: the principal's round-2 holding was "the `<serverUrl>`-literal gap … is a render-pipeline bug, not a localization bug — flag as a follow-up card, don't fold it in," with the substitution gap listed among its named follow-up cards. Designer ("in scope for this card … a card-scoped correctness fix") and owner (re-points "each must render() the resolved line with `{ serverUrl }`") fold substitution into this card. This is a live dispute, carried as **OJ5 — `<serverUrl>` print-side substitution: in-card at the re-point sites (owner + designer) vs follow-up card (principal)**. Skeptic facts for the packet: no existing test pins the `:129`/`:443` outputs (substitution there reds nothing); `test/index.test.ts:288` pins the verbatim `ALREADY_LIVE_COPY` at `:462` (substitution there would red it; `:462` is parked in the converged design either way).
 
-**Card state:** Deliberating, awaiting product-owner ruling on OJ1–OJ5 via the runner escalation contract (Phase 1 rulings: none — the human delegated open-judgment calls to the council).
+**Card state:** Deliberating, awaiting product-owner ruling on OJ1–OJ5 via the runner escalation contract (Phase 1 rulings: none — the human delegated open-judgment calls to the council). ESCALATION issued; product-owner ruled on all five items (no steward deferral). Rulings below are binding.
+
+### Product-owner rulings on OJ1–OJ5 (binding, verbatim)
+
+Filed at vault/raw/2026-09-02-po-fllwup4-ruling.md. Appended verbatim:
+
+> OJ1 — ALREADY_LIVE_COPY: follow-up card. EV-2 Item 3 ruled this exact string verbatim and fixed its semantics as a successful no-op; keying it introduces a net-new key and a re-point at index.ts:462 that reddens the green test at test/index.test.ts:288, none of which this card's goal requires. Work that needs a goal change to justify is not a fold-in. The follow-up (proposed key tunnel.alreadyLive, not tunnel.error.* per Item 3's not-an-error ruling, id row preserving /rc, the semicolon, and the <serverUrl> placeholder) is filed promptly — urgency does not convert out-of-goal work into in-goal work.
+>
+> OJ2 — coverage: 22 keys. The six rc.*/shutdown.closed/rc:login.refusal command-output lines are the command-output lines index.ts actually prints; shipping status.* in Indonesian while adjacent /rc refusals stay English would be a mixed-language seam at precisely the surface the goal claims. Sixteen satisfies the letter of the acceptance bullet but not the goal's surface sentence. Fifty is rejected — the 28 login-flow rows are a translation project re-introducing the unverified non-native Bahasa risk EV-2 Item 2 explicitly declined. Partial coverage is announced in the id-table module per FLLWUP-14's honest-boundaries discipline, and the announcement must also name the keyless inputPrompt literal at index.ts:542 as outside the keyed surface.
+>
+> OJ3 — locale source: env-over-setting — PI_REMOTE_LOCALE env → piRemote.locale setting → fail-open "en", anything unrecognized normalized to "en". The live entry-point precedent at index.ts:657-658 is pi.env("PI_REMOTE_SERVER_URL") ?? pi.getSetting(...) with env already winning; a second configuration knob that reverses that order hands the operator two mental models for one extension.
+>
+> OJ4 — tunnel.error.urlExpired remedy: /rc. Re-dial is createTunnel = POST /tunnels = exactly what /rc performs for an enrolled host; an expired tunnel URL is a dial-target problem, not an enrollment-credential problem; /rc:login sends the user through a consent flow they do not need. EV-2 Item 1 binds remedy clauses to name the real next step. Both the id row and the English row name /rc; the English row gains the named command in the same pass (owner retains wording freedom, e.g. "The tunnel URL expired — run /rc to re-dial") so the locales do not diverge in meaning. The English row was never ruled verbatim, so amending it overturns nothing.
+>
+> OJ5 — <serverUrl> substitution: in-card, scoped strictly to the two re-pointed sites at index.ts:129 and :443, each rendering the resolved line with { serverUrl }. A resolved line that still prints the literal <serverUrl> marker is not honestly resolved. index.ts:462 stays parked — the OJ1 follow-up owns that site and its pinning test.
+>
+> General rule for the remaining Backlog (FLLWUP-11 through 16): (1) copy or constants ruled verbatim by a prior ruling change only through their own card and ruling, never folded into an adjacent card however small the edit. (2) Where any card ships knowingly partial coverage of a surface, the partiality is announced at the surface itself — module comment, README, or spec row — not only in the card record. (3) New configuration follows the existing entry-point precedence of env over setting rather than inventing per-feature source orders; new key names are free at authoring time but become stable, non-relitigable contract from merge.
+
+**Rulings applied:** OJ1 → follow-up card drafted at step 13 (draft-then-confirm); OJ2 → 22-key coverage with announced partiality naming index.ts:542; OJ3 → env-over-setting resolver source; OJ4 → /rc remedy in both id and English rows; OJ5 → in-card substitution at the two re-point sites only. Proceeding to step 7.

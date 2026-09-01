@@ -17,9 +17,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Ready
 
 ## Deliberating
-- FLLWUP-4 — "EV-2 localization seam: second (en→id) message lookup and resolver"
 
 ## In Progress
+- FLLWUP-4 — "EV-2 localization seam: second (en→id) message lookup and resolver"
 
 ## In Review
 
