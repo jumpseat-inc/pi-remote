@@ -612,11 +612,6 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     if (!e || typeof e.promptKind !== "string" || typeof e.prompt !== "string") return;
     forward({ event: "ui.confirm", promptKind: e.promptKind, prompt: e.prompt });
   });
-  deps.on("user_input", (ev) => {
-    const e = ev as { messageId?: unknown; text?: unknown } | null | undefined;
-    if (!e || typeof e.messageId !== "string" || typeof e.text !== "string") return;
-    forward({ event: "user_input", messageId: e.messageId, text: e.text });
-  });
   deps.on("ui_prompt_end", (ev) => {
     const e = ev as { kind?: unknown; title?: unknown } | null | undefined;
     if (!e) return;
