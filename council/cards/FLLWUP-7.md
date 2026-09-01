@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-7
 title: "EV-7 Windows ACL for credential-file user-only readability"
-state: Backlog
+state: Ready
 owner: null
 epic: EPIC-1
 goal: On Windows, the pi-remote credential file at the agent config path is readable only by the host user, enforced via an NTFS ACL rather than the no-op chmod, closing the gap EV-7 documented.

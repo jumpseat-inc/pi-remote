@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-8
 title: "Wire the ui_prompt_start raise path end-to-end (runtime-observable acceptance for FLLWUP-5 contract b)"
-state: Backlog
+state: Ready
 owner: null
 epic: EPIC-1
 goal: Wire deps.on ui_prompt_start with manual PiEvent construction and registerPrompt on the canonical SDK payload so FLLWUP-5's pi.human_input.resolved becomes runtime-observable end to end

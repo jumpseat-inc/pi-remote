@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-4
 title: "EV-2 localization seam: second (en→id) message lookup and resolver"
-state: Backlog
+state: Ready
 owner: null
 epic: EPIC-1
 goal: A second message lookup plus a resolver ships alongside tunnel.ts's existing key-based reason-to-message table so tunnel error and status copy can resolve in a language other than English without touching any emission site.
