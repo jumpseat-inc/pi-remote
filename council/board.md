@@ -20,7 +20,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-## In Review
 
 ## Needs Human
 
