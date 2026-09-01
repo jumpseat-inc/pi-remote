@@ -23,11 +23,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## In Review
 
-- FLLWUP-6 — "Remove or document the dead user_input PiEvent in translate.ts"
-
 ## Needs Human
 
 ## Done
+
+- FLLWUP-6 — "Remove or document the dead user_input PiEvent in translate.ts"
 
 - FLLWUP-5 — "Emit pi.human_input.resolved host-side completion event"
 
