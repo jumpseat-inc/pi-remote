@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-8
 title: "Wire the ui_prompt_start raise path end-to-end (runtime-observable acceptance for FLLWUP-5 contract b)"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-1
 goal: Wire deps.on ui_prompt_start with manual PiEvent construction and registerPrompt on the canonical SDK payload so FLLWUP-5's pi.human_input.resolved becomes runtime-observable end to end
@@ -176,3 +176,9 @@ Judge evaluated the PR branch at the Skeptic-verified SHA 3aef894 (not main), pe
 ## Step 11 — deterministic merge check (replaces the human merge gate per features-deliver.md)
 
 Five criteria evaluated mechanically at head 3aef894d1dfacea3d7b2d41c9247aec52e01c1b9: (1) owner gates green in full — tsc 0 / bun 180-0-969, re-run independently by owner, skeptic, and judge; (2) GitHub Actions `gates` workflow state on the PR head — checked below keyed on the workflow field; (3) no blocking Skeptic objection (all ten closed-green); (4) judge PASS; (5) no Needs Human state, no outstanding ruling. Merge pinned with --match-head-commit.
+
+## Step 12 — sync, reconcile, Done
+
+All five deterministic-merge criteria were satisfied at head 3aef894 (gates workflow SUCCESS on the PR head, keyed on the workflow field); PR #16 merged via `gh pr merge 16 --merge --match-head-commit 3aef894d1dfacea3d7b2d41c9247aec52e01c1b9` — head SHA match enforced. Merge commit **45e9763** (45e9763e05a330393a892ea8340c455eea4ba92f). `gates` workflow checked on the merged SHA directly via the API: completed **success** (CI green on the merged SHA). Local main rebased onto origin/main 45e9763 — clean, zero conflicts (local-only commits touch only council card/board files). Card set Done on board + frontmatter from the observed artifacts (merge landed + CI green on merged SHA), validate.py clean, committed to main, pushed.
+
+FLLWUP-5 contract (b) is now runtime-observable: the raise path is wired end to end, and acceptance (b) stands re-opened from fixture-green to runtime-observable per the card face.
