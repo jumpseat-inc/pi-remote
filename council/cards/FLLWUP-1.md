@@ -159,3 +159,26 @@ fast-forward 055f4a9..0d6dd97 (README.md +34/−7). Card set `Done` on
 frontmatter and board from the observed artifacts — merged (0d6dd97) with
 CI green on the merged SHA — never from a seat's report. validate.py clean;
 commit + push the reconciliation.
+
+### Step 13 — follow-ups (drafted, presented — nothing written)
+
+One item surfaced but not done: the Skeptic's step-9 non-objection that the
+EV-8 J5 while-live refusal copy lives in README (line ~85) and src/login.ts
+("close the tunnel first with /rc:off") but spec §8's `/rc:login` row does
+not name it — README ahead of the spec, the two-sources-of-truth drift the
+Council has repeatedly flagged. Drafted as follow-up card **FLLWUP-10
+(proposed)**: goal — "docs/PI-SPEC.md §8's `/rc:login` row names the
+EV-8 J5 while-live refusal ('close the tunnel first with /rc:off'),
+bringing the spec in line with README and src/login.ts"; acceptance — the
+refusal sentence appears in §8's `/rc:login` row in the same register as
+README's; scope — PI-SPEC.md §8 row only. Per council.md step 13's
+hard draft-then-confirm gate, the card is presented to the orchestrator
+(human relationship holder) to approve, edit, or drop — **no file written
+under council/cards/ in this turn**; on approval the next runner writes it
+as FLLWUP-10 (highest existing FLLWUP id is 9).
+
+### Step 14 — persist
+
+No durable wiki artifact was surfaced for vault/ in this run (the wiki is
+dry; nothing new to ingest). Nothing under vault/ was hand-edited — the
+wiki-ingest channel belongs to the orchestrator per the autonomy map.
