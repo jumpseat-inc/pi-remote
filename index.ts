@@ -18,6 +18,7 @@
  */
 import { createTransport, type TransportHandle, type TransportStatusEvent, type InboundEnvelope, type AgUiFrameLike } from "./src/transport";
 import { createState, translate, type AssistantMessageEvent, type PiEvent, type ToolResultContentBlock, type TranslateState, type UIPromptKind } from "./src/translate";
+import { type DepsOnEvent, type PiEventHandler, type PiSDKOnEvent } from "./src/pi-sdk-on";
 import { createInjector } from "./src/inject";
 import {
   createTunnel,
@@ -43,7 +44,7 @@ import { replayActiveBranch, resyncDoneFrame } from "./src/history";
 /** Minimal structural stand-in for the pi ExtensionAPI (not vendored here). */
 export interface ExtensionAPI {
   registerCommand(name: string, opts: { description: string; handler: (args: string | undefined) => void | Promise<void> }): void;
-  on(event: string, handler: (...args: unknown[]) => void): void;
+  on(event: PiSDKOnEvent, handler: PiEventHandler): void;
   sendUserMessage(content: string, opts?: { deliverAs?: "steer" | "followUp" }): Promise<void>;
   /** Resolve a setting (e.g. `piRemote.serverUrl`) or return undefined. */
   getSetting(name: string): unknown;
@@ -94,7 +95,7 @@ export interface RemoteControllerDeps {
   /** N consecutive error-severity dialing events before footer → error (J4, default 10). */
   ERROR_DIAL_THRESHOLD?: number;
   command: (name: string, handler: (args: string | undefined) => void | Promise<void>) => void;
-  on: (event: string, handler: (...args: unknown[]) => void) => void;
+  on: (event: DepsOnEvent, handler: PiEventHandler) => void;
 }
 
 export interface FooterView {
@@ -664,7 +665,10 @@ export default function (pi: ExtensionAPI): void {
     fetch: globalThis.fetch,
     WebSocket,
     command: (name, handler) => pi.registerCommand(name, { description: "pi-remote", handler: (args) => handler(args) }),
-    on: (event, handler) => pi.on(event, handler),
+    on: (event, handler) => {
+      if (event === "ui.confirm") return; // fixture-only seam — never forwarded to the SDK
+      pi.on(event, handler);
+    },
   });
 
   // session_shutdown fires for every reason (quit/reload/new/resume/fork):
