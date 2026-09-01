@@ -27,10 +27,12 @@ import {
   isTunnelError,
   TunnelError,
   tunnelReasonCopy,
+  englishFor,
   ALREADY_LIVE_COPY,
   type CreateTunnelResult,
   type TunnelReason,
 } from "./src/tunnel";
+import { renderCopy, setLocale } from "./src/copy";
 import { readCredential, saveCredentialAsync, type EnrollmentCredential } from "./src/credential";
 import { createLoginCommand, loginEnglishFor } from "./src/login";
 import { mergeTransport, transportErrorKey, STATUS_KEYS, type FooterState } from "./src/merge";
@@ -120,18 +122,24 @@ export interface RemoteController {
 // Footer rendering (single writer path)
 // ---------------------------------------------------------------------------
 
-function errorSentence(source: ErrorSource): string {
+function errorSentence(source: ErrorSource, serverUrl: string | undefined): string {
   if (source.kind === "transport") {
     const key = transportErrorKey(source.reason as Parameters<typeof transportErrorKey>[0]);
     return key ? loginEnglishFor(key) : loginEnglishFor(STATUS_KEYS.error);
   }
   // Tunnel-side reasons already have closed copy in tunnel.ts (spec §8 note).
-  return tunnelReasonCopy[source.reason].userLine;
+  // FLLWUP-4 re-point: resolve through the locale-aware lookup and substitute
+  // `<serverUrl>` at print time (ruling OJ5) — the active dial target.
+  return renderCopy(englishFor(tunnelReasonCopy[source.reason].userLineKey), { serverUrl });
 }
 
-function renderFooter(footer: FooterState, errorSource: ErrorSource | null): string | undefined {
+function renderFooter(
+  footer: FooterState,
+  errorSource: ErrorSource | null,
+  serverUrl?: string
+): string | undefined {
   if (footer === "error") {
-    return errorSource ? errorSentence(errorSource) : loginEnglishFor(STATUS_KEYS.error);
+    return errorSource ? errorSentence(errorSource, serverUrl) : loginEnglishFor(STATUS_KEYS.error);
   }
   return loginEnglishFor(STATUS_KEYS[footer]);
 }
@@ -175,7 +183,7 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     } else {
       errorSource = null;
     }
-    deps.setStatus(renderFooter(footer, errorSource));
+    deps.setStatus(renderFooter(footer, errorSource, activeHttp?.serverUrl ?? deps.serverUrl));
   }
 
   function view(): FooterView {
@@ -436,11 +444,13 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     const id = currentTunnelId;
     currentTunnelId = null;
     if (id && activeHttp) {
+      const http = activeHttp;
       try {
-        await deleteTunnel(id, { serverUrl: activeHttp.serverUrl, accessToken: activeHttp.accessToken, fetch: deps.fetch, now, discoveryCache });
+        await deleteTunnel(id, { serverUrl: http.serverUrl, accessToken: http.accessToken, fetch: deps.fetch, now, discoveryCache });
       } catch {
         // Surfaced as teardown_failed but footer still lands on off (spec §4.2).
-        deps.print(tunnelReasonCopy.teardown_failed.userLine);
+        // FLLWUP-4 re-point: locale-aware resolution + `<serverUrl>` substitution (OJ5).
+        deps.print(renderCopy(englishFor(tunnelReasonCopy.teardown_failed.userLineKey), { serverUrl: http.serverUrl }));
       }
     }
     transportRef.handle = null;
@@ -656,6 +666,14 @@ export default function (pi: ExtensionAPI): void {
   const configDir = pi.configDir();
   const setting = pi.getSetting("piRemote.serverUrl");
   const serverUrl = (pi.env("PI_REMOTE_SERVER_URL") ?? (typeof setting === "string" ? setting : undefined)) as string | undefined;
+
+  // FLLWUP-4 (ruling OJ3): locale sourcing follows the entry-point precedence
+  // of env over setting; setLocale normalizes anything unrecognized to "en".
+  const localeSetting = pi.getSetting("piRemote.locale");
+  setLocale(
+    pi.env("PI_REMOTE_LOCALE") ??
+      (typeof localeSetting === "string" ? localeSetting : undefined)
+  );
 
   const controller = createRemoteController({
     configDir,
