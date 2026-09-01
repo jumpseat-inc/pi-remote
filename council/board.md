@@ -5,6 +5,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- FLLWUP-13 — "Clean up registerPrompt signature to {promptId}"
+- FLLWUP-14 — "Document remote raise-UI best-effort behavior for select, editor, and custom prompt kinds"
+- FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 - FLLWUP-11 — "Reconcile the ExtensionAPI stand-in's non-on members with the real SDK surface"
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 
