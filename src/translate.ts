@@ -123,6 +123,9 @@ export type ToolResultContentBlock =
   | { type: "text"; text: string }
   | { type: "image"; image: unknown };
 
+/** Closed 5-value union matching the installed pi SDK's UIPromptKind (types.d.ts:563). Local — the repo has no SDK dependency. */
+export type UIPromptKind = "select" | "confirm" | "input" | "editor" | "custom";
+
 export type PiEvent =
   | { event: "agent_start" }
   | { event: "agent_settled" }
@@ -136,6 +139,7 @@ export type PiEvent =
   | { event: "tool_execution_end"; toolCallId: string; result?: unknown; isError?: boolean }
   | { event: "tool_result"; messageId: string; toolCallId: string; content: ToolResultContentBlock[] }
   | { event: "ui.confirm"; promptKind: string; prompt: string }
+  | { event: "ui_prompt_end"; kind: UIPromptKind; title?: string }
   | { event: "session_compact"; summary?: string }
   | { event: "model_select"; model: string }
   | { event: "thinking_level_select"; level: string }
@@ -255,7 +259,12 @@ function closeThinking(
 // ---------------------------------------------------------------------------
 
 export function translate(input: Input, state: TranslateState): FoldResult {
-  if ("kind" in input) {
+  // FLLWUP-5 contract (a): JsonlEntry is discriminated by `entryId` (every JSONL
+  // entry carries it); PiEvent is discriminated by `event`. `kind` is NOT a safe
+  // discriminator: the ui_prompt_end PiEvent legitimately carries a `kind` field,
+  // and `"kind" in input` would misroute it to translateJsonl (probe-4
+  // kind-collision → wrong pi.session.info_change frame).
+  if ("entryId" in input) {
     return translateJsonl(input, state);
   }
   return translateLive(input, state);
@@ -486,6 +495,17 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
             promptId: fnv1a(`${input.promptKind}\u0000${input.prompt}`),
           },
         },
+      });
+      break;
+
+    case "ui_prompt_end":
+      // FLLWUP-5 spec §1.2 — informational passive mirror: carries only {kind, title};
+      // cannot be correlated to a promptId (schema gap), never merged with the
+      // lifecycle pi.human_input.resolved frame. Pure: no clock, no entropy.
+      frames.push({
+        type: "CUSTOM",
+        name: "pi.human_input.closed",
+        value: { pi: "ui_prompt_end", data: { kind: input.kind, title: input.title, schemaVersion: 1 } },
       });
       break;
 

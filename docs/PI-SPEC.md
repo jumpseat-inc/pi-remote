@@ -192,6 +192,23 @@ the first such fallback per session, silent thereafter. Already-resolved
 (stale) answers are surfaced as `pi.human_input.stale`, not delivered. This is
 permanent behavior, not a stopgap.
 
+**Human-input completion (FLLWUP-5).** When a resolution is applied to a
+prompt EV-6 tracked, the extension emits a single CUSTOM
+`pi.human_input.resolved` frame, `value.data: { promptId, occurrence,
+deviceId, ts }` — `promptId`/`occurrence` the compound key the raise
+established, `deviceId` the resolving device from the inbound envelope
+(never free text), `ts` the host clock at emission. It is emitted for a
+direct resolution and for a tracked steering fallback, and never for an
+untracked fallback (a prompt this host never raised — a phantom ack) or
+for a stale answer (already surfaced via `pi.human_input.stale`). The
+raise-side `ui_prompt_end` mapping is an informational passive mirror:
+`CUSTOM` `pi.human_input.closed`, `value.data: { kind, title,
+schemaVersion: 1 }`, a distinct dispatch name that cannot be correlated
+to a promptId and is never merged with `pi.human_input.resolved`. The
+resolved frame is lifecycle-emitted (no JSONL entry kind) and surfaces in
+the live stream after resync; it is fixture-green today, runtime-observable
+once the raise path lands (FLLWUP-8).
+
 ## 6. Transport & durability
 
 The pi-side responsibilities, pinned:

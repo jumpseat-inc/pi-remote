@@ -17,7 +17,7 @@
  * See docs/superpowers/specs/2026-08-31-EV-8-design.md and docs/PI-SPEC.md §8.
  */
 import { createTransport, type TransportHandle, type TransportStatusEvent, type InboundEnvelope, type AgUiFrameLike } from "./src/transport";
-import { createState, translate, type PiEvent, type TranslateState } from "./src/translate";
+import { createState, translate, type AssistantMessageEvent, type PiEvent, type ToolResultContentBlock, type TranslateState, type UIPromptKind } from "./src/translate";
 import { createInjector } from "./src/inject";
 import {
   createTunnel,
@@ -310,6 +310,17 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     }
   }
 
+  /** FLLWUP-5 contract (b): host-side completion frame for a tracked prompt resolution.
+   *  deviceId comes from the InjectResult (envelope-derived, never free text);
+   *  ts from the injected lifecycle clock (deps.now), not the fold. */
+  function emitResolved(promptId: string, occurrence: number, deviceId: string | undefined): void {
+    transportRef.handle?.send({
+      type: "CUSTOM",
+      name: "pi.human_input.resolved",
+      value: { pi: "pi.human_input.resolved", data: { promptId, occurrence, deviceId, ts: now() } },
+    });
+  }
+
   /** Start a fresh transport + dial (one createTransport per /rc, spec §1). */
   function startDial(initial: CreateTunnelResult): void {
     const transport = createTransport({
@@ -321,7 +332,16 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       rng: deps.rng,
       newId: deps.newId,
       onEvent: onTransportEvent,
-      onInbound: (env: InboundEnvelope) => void injector.handle(env),
+      onInbound: (env: InboundEnvelope) => {
+        void injector.handle(env).then((result) => {
+          if (result.kind === "resolved") {
+            emitResolved(result.promptId, result.occurrence, result.deviceId);
+          } else if (result.kind === "steered_fallback" && result.tracked) {
+            emitResolved(result.promptId, result.occurrence, result.deviceId);
+          }
+          // ignored / injected / stale / steered_fallback-with-tracked:false → no resolved
+        });
+      },
       onResync: (fromSeq) => void runReplay(fromSeq),
     });
     transportRef.handle = transport;
@@ -367,6 +387,11 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     if (!liveState) {
       liveState = createState({ sessionId: deps.sessionId(), runId: uuid() });
     }
+  }
+
+  const UI_PROMPT_KINDS = new Set<string>(["select", "confirm", "input", "editor", "custom"]);
+  function isUIPromptKind(k: unknown): k is UIPromptKind {
+    return typeof k === "string" && UI_PROMPT_KINDS.has(k);
   }
 
   function forward(input: PiEvent): void {
@@ -562,12 +587,45 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
   deps.on("agent_settled", () => forward({ event: "agent_settled" }));
   deps.on("turn_start", () => forward({ event: "turn_start" }));
   deps.on("turn_end", () => forward({ event: "turn_end" }));
-  deps.on("message_start", (ev) => forward(ev as PiEvent));
-  deps.on("message_update", (ev) => forward(ev as PiEvent));
-  deps.on("message_end", (ev) => forward(ev as PiEvent));
-  deps.on("tool_result", (ev) => forward(ev as PiEvent));
-  deps.on("ui.confirm", (ev) => forward(ev as PiEvent));
-  deps.on("user_input", (ev) => forward(ev as PiEvent));
+  deps.on("message_start", (ev) => {
+    const e = ev as { messageId?: unknown; role?: unknown } | null | undefined;
+    if (!e || typeof e.messageId !== "string" || (e.role !== "assistant" && e.role !== "user")) return;
+    forward({ event: "message_start", messageId: e.messageId, role: e.role });
+  });
+  deps.on("message_update", (ev) => {
+    const e = ev as { messageId?: unknown; events?: unknown } | null | undefined;
+    if (!e || typeof e.messageId !== "string" || !Array.isArray(e.events)) return;
+    forward({ event: "message_update", messageId: e.messageId, events: e.events as AssistantMessageEvent[] });
+  });
+  deps.on("message_end", (ev) => {
+    const e = ev as { messageId?: unknown } | null | undefined;
+    if (!e || typeof e.messageId !== "string") return;
+    forward({ event: "message_end", messageId: e.messageId });
+  });
+  deps.on("tool_result", (ev) => {
+    const e = ev as { messageId?: unknown; toolCallId?: unknown; content?: unknown } | null | undefined;
+    if (!e || typeof e.messageId !== "string" || typeof e.toolCallId !== "string" || !Array.isArray(e.content)) return;
+    forward({ event: "tool_result", messageId: e.messageId, toolCallId: e.toolCallId, content: e.content as ToolResultContentBlock[] });
+  });
+  deps.on("ui.confirm", (ev) => {
+    const e = ev as { promptKind?: unknown; prompt?: unknown } | null | undefined;
+    if (!e || typeof e.promptKind !== "string" || typeof e.prompt !== "string") return;
+    forward({ event: "ui.confirm", promptKind: e.promptKind, prompt: e.prompt });
+  });
+  deps.on("user_input", (ev) => {
+    const e = ev as { messageId?: unknown; text?: unknown } | null | undefined;
+    if (!e || typeof e.messageId !== "string" || typeof e.text !== "string") return;
+    forward({ event: "user_input", messageId: e.messageId, text: e.text });
+  });
+  deps.on("ui_prompt_end", (ev) => {
+    const e = ev as { kind?: unknown; title?: unknown } | null | undefined;
+    if (!e) return;
+    forward({
+      event: "ui_prompt_end",
+      kind: isUIPromptKind(e.kind) ? e.kind : "custom",
+      title: typeof e.title === "string" ? e.title : undefined,
+    });
+  });
 
   function reducer(action: FooterAction): FooterView {
     if (action.type === "transport") {

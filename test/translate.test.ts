@@ -277,6 +277,35 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
     ]);
   });
 
+  test("FLLWUP-5 (a): ui_prompt_end → CUSTOM pi.human_input.closed, informational mirror, no ts/deviceId/promptId (G-11 stays green)", () => {
+    const mk = () =>
+      runSequence([{ event: "ui_prompt_end", kind: "confirm", title: "Allow rm -rf?" }], { sessionId: "s1", runId: "r1" });
+    const frames = mk();
+    const c = frames[0] as { type: "CUSTOM"; name: string; value: { pi: string; data: Record<string, unknown> } };
+    expect(frames).toHaveLength(1);
+    expect(c.type).toBe("CUSTOM");
+    expect(c.name).toBe("pi.human_input.closed");
+    expect(c.name).not.toBe("pi.human_input.resolved"); // distinct dispatch key — never merged
+    expect(c.value.pi).toBe("ui_prompt_end");
+    expect(c.value.data).toEqual({ kind: "confirm", title: "Allow rm -rf?", schemaVersion: 1 });
+    // the fold carries ONLY kind/title/schemaVersion — no ts, no deviceId, no promptId
+    expect(Object.keys(c.value.data).sort()).toEqual(["kind", "schemaVersion", "title"]);
+    for (const k of ["ts", "deviceId", "promptId"] as const) {
+      expect(k in c.value.data).toBe(false);
+    }
+    // pure: deterministic across replay
+    expect(JSON.stringify(frames)).toBe(JSON.stringify(mk()));
+  });
+
+  test("FLLWUP-5 (a): title optional; all five UIPromptKind values map; unknown kind falls to custom", () => {
+    const noTitle = runSequence([{ event: "ui_prompt_end", kind: "input" }], { sessionId: "s1", runId: "r1" });
+    const d1 = (noTitle[0] as { value: { data: Record<string, unknown> } }).value.data;
+    expect(d1.kind).toBe("input");
+    expect(d1.schemaVersion).toBe(1);
+    expect(d1.title).toBeUndefined();
+    const custom = runSequence([{ event: "ui_prompt_end", kind: "custom" }], { sessionId: "s1", runId: "r1" });
+    expect((custom[0] as { value: { data: { kind: string } } }).value.data.kind).toBe("custom");
+  });
   test("every CUSTOM frame: type CUSTOM, name starts pi., value has pi and data (S7)", () => {
     const frames = runSequence(
       [
