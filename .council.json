@@ -1,11 +1,11 @@
 {
 	"council": {
 		"consolidator": {
-			"model": "openrouter/z-ai/glm-5.2",
+			"model": "openrouter/xiaomi/mimo-v2.5",
 			"thinking": "high"
 		},
 		"council-runner": {
-			"model": "openrouter/deepseek/deepseek-v4-flash-0731",
+			"model": "openrouter/z-ai/glm-5.3-flash",
 			"thinking": "medium"
 		},
 		"designer": {
@@ -17,7 +17,7 @@
 			"thinking": "medium"
 		},
 		"owner": {
-			"model": "openrouter/deepseek/deepseek-v4-flash-0731",
+			"model": "openrouter/z-ai/glm-5.3-flash",
 			"thinking": "high"
 		},
 		"principal": {
@@ -25,15 +25,15 @@
 			"thinking": "high"
 		},
 		"product-owner": {
-			"model": "openrouter/minimax/minimax-m3",
+			"model": "openrouter/moonshotai/kimi-k3",
 			"thinking": "high"
 		},
 		"skeptic": {
-			"model": "openrouter/deepseek/deepseek-v4-flash",
+			"model": "openrouter/qwen/qwen3.8-flash",
 			"thinking": "high"
 		},
 		"steward": {
-			"model": "openrouter/deepseek/deepseek-v4-pro",
+			"model": "openrouter/qwen/qwen3.8-max",
 			"thinking": "high"
 		}
 	},
