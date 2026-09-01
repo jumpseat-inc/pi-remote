@@ -36,7 +36,7 @@ the real SDK's typed exhaustive event union; an over-broad `on(event: string,
 …)` call anywhere in the codebase is a `bunx tsc --noEmit` error; the live
 subscription set (agent_start, agent_settled, turn_start, turn_end,
 message_start, message_update, message_end, tool_result, ui.confirm as wired,
-user_input as wired, ui_prompt_end, session_shutdown) still typechecks against
+ui_prompt_end, session_shutdown) still typechecks against
 the vendored union. Gates: `bunx tsc --noEmit` exit 0; `bun test` full suite
 green.
 ## Binding ruling rider (FLLWUP-3 general rule, product-owner — binding)
