@@ -170,6 +170,43 @@ describe("EV-7 credential store", () => {
     }
   });
 
+  // --- SDDL trustee resolution (representation-independent) ---------------
+  //
+  // icacls /save may spell a trustee either as a raw SID or as an SDDL
+  // abbreviation (the runner's built-in RID-500 Administrator, for example,
+  // comes back as `LA`). Rather than enumerate representations, hand the
+  // whole SDDL string to the OS's own SDDL parser:
+  // System.Security.AccessControl.RawSecurityDescriptor(string) converts via
+  // the native ConvertStringSdToSd API, so every ACE comes back carrying the
+  // canonical SID its token denotes — however icacls chose to spell it.
+  function resolveSddlAces(
+    sddl: string
+  ): Array<{ sid: string; aceType: number; mask: number }> {
+    const script = [
+      "$ErrorActionPreference = 'Stop'",
+      "$sddl = [Console]::In.ReadToEnd().Trim()",
+      "$sd = New-Object System.Security.AccessControl.RawSecurityDescriptor($sddl)",
+      "foreach ($ace in $sd.DiscretionaryAcl) {",
+      "  $c = [System.Security.AccessControl.CommonAce]$ace",
+      "  '{0}|{1}|{2}' -f $c.SecurityIdentifier.Value, [int]$c.AceType, $c.AccessMask",
+      "}",
+    ].join("; ");
+    const r = Bun.spawnSync(
+      ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+      { stdin: Buffer.from(sddl, "utf8") }
+    );
+    // An unresolvable trustee token makes ConvertStringSdToSd fail — fail
+    // loudly here, never silently pass.
+    expect(r.exitCode).toBe(0);
+    const lines = r.stdout.toString().trim().split(/\r?\n/).filter(Boolean);
+    // The OS parser must have seen exactly the ACEs our SDDL regex sees.
+    expect(lines).toHaveLength(sddl.match(/\([^()]*\)/g)?.length ?? 0);
+    return lines.map((line) => {
+      const [sid, aceType, mask] = line.split("|");
+      return { sid: sid ?? "", aceType: Number(aceType), mask: Number(mask) };
+    });
+  }
+
   // icacls /save output decoder. Observed reality (CI run 33540684331):
   // on windows-latest it writes UTF-16LE *without* a BOM (older icacls writes with one) — tolerate both.
   function decodeIcaclsSaveSddl(raw: Buffer): string {
@@ -214,7 +251,25 @@ describe("EV-7 credential store", () => {
       expect(sddl).not.toContain("S-1-5-32-545"); // BUILTIN\Users
       expect(sddl).not.toContain("S-1-5-11"); // Authenticated Users
       expect(sddl).not.toContain(";ID;"); // inherited-ACE flag → inheritance stripped
-      expect(sddl).toContain(sid as string); // the current user holds the grant
+
+      // Semantic trustee check (binding ruling): the DACL grants Modify to
+      // exactly one trustee, and that trustee resolves to the current user —
+      // however icacls /save chose to represent it (raw SID, `LA`, or any
+      // other SDDL abbreviation). We compare resolved SIDs, never tokens.
+      const currentSid = sid as string;
+      const aces = resolveSddlAces(sddl);
+      for (const a of aces) {
+        expect(a.aceType).toBe(0); // access-allowed ACEs only
+        // Every resolved trustee must be free of the well-known broad groups.
+        expect(a.sid).not.toBe("S-1-1-0"); // Everyone
+        expect(a.sid).not.toBe("S-1-5-32-545"); // BUILTIN\Users
+        expect(a.sid).not.toBe("S-1-5-11"); // Authenticated Users
+      }
+      const mine = aces.filter((a) => a.sid === currentSid);
+      expect(mine).toHaveLength(1); // exactly one ACE for the current user
+      const myAce = mine[0]!; // length asserted directly above
+      const MODIFY = 0x1301bf; // the (M) rights template icacls grants
+      expect((myAce.mask & MODIFY) === MODIFY).toBe(true); // grants at least Modify
 
       // The human icacls output shows no inherited marker either.
       const shown = Bun.spawnSync(["icacls", p]);
