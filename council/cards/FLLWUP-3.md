@@ -147,6 +147,10 @@ Per dispatch discipline (a seat that produces no output across its window and on
 
 Orchestrator probed the provider directly: both the skeptic's model and the other seats' models respond normally — the two step-4 deaths were transient. No deliberation content is redone; steps 1–3 stand as recorded above (round 3 FINAL, cap reached). A FRESH skeptic is dispatched with the full deliberation record (the card file itself). One unverified lead from the dead job-2.1's log fragment — "5 frames from 1 event" (possibly a fan-out anomaly around the O2 fixture's `tool_execution_update`) — is handed to the skeptic as an open question to settle or leave open with a named test, NOT as a finding.
 
+### Step 4 resume (runner 4, 2026-09-01) — skeptic dispatch log
+
+- **job-3.1** (20-min window): ran 15 turns / 11.5m, died on provider error `Request timed out.` (state=done, stopReason=error). No output recorded. Re-dispatching once per dispatch discipline.
+
 ## Acceptance
 
 - `queue_update`, `bash_execution_update`, and each `auto_retry_*` variant map
