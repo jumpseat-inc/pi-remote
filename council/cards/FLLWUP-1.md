@@ -93,3 +93,42 @@ base main, headRefOid 2cbfe449…, mergeable MERGEABLE; `gh pr checks 12` →
 clean (`git status --short` empty, no cached diff — no leaked deltas
 recurred). Step-8 condition met: branch exists with an open PR → `In
 Review` from the observed artifacts, per council.md step 8.
+
+### Step 9 — Skeptic verification (job-40.2, settled 3.2m, 14 turns)
+
+Skeptic verified the branch at head `2cbfe4491e6a87793c2245e8864ab3c174a959b0`
+(PR #12). **Verdict: no open objections.** Gates re-run on the branch: `bunx
+tsc --noEmit` exit 0; `bun test` 155 pass / 0 fail / 869 expect, exit 0.
+All acceptance probes closed-green, each actually run: `PI_REMOTE_HOST_KEY`
+absent (grep exit 1); `/rc-off` absent (colon namespace only); setup section
+names `/rc:login` attended (default) + `--headless` with PKCE/RFC 8252
+loopback and RFC 8628 device-flow semantics; seven footer states in lifecycle
+order (off → not enrolled → authorizing → dialing → resyncing → live →
+error); credential-storage section with POSIX 0600 tmp+fsync+rename AND
+Windows chmod-no-op caveat; `PI_REMOTE_SERVER_URL` sole env override with
+"Credentials are never carried in environment variables"; `/rc:login`
+while-live refusal and bare-`/rc` no-credential refusal naming `/rc:login`;
+scope — `gh pr diff 12 --name-only` lists README.md only. Gate integrity:
+injected `PI_REMOTE_HOST_KEY` caught on line 121 and `/rc-off` caught on
+lines 85/86/91, both restored; tsc/test measure TypeScript not content, so
+the grep assertions ARE the content gates and provably fail when they
+should. Contradiction sweep vs §7.2/§8 of the rewritten spec: no
+contradictions found. Skeptic explicitly noted (non-objection): the README
+now carries the EV-8 J5 while-live refusal copy, which spec §8's `/rc:login`
+row itself never gained — README ahead of spec, not a contradiction; carried
+to step 13 as a surfaced-but-undone item.
+
+### Step 10 — Judge stop condition (job-40.3, settled 0.4m, 10 turns)
+
+Judge dispatched per the binding step-10 rule (product-owner ruling,
+vault/raw/2026-08-31-po-ev1-step10-judge-object.md): object = the PR branch
+at the Skeptic-verified SHA 2cbfe44, not main. Input was the card's goal +
+the Skeptic's evidence, nothing else. **Verdict: PASS.** Judge independently
+re-ran the decisive checks at the SHA: `git show 2cbfe44:README.md | grep
+PI_REMOTE_HOST_KEY` exit 1, `PI_REMOTE_SERVER_URL` the only env var named
+(line 118) with "Credentials are never carried in environment variables";
+Install section documents `/rc:login` attended (default) + `--headless`;
+command table has `/rc:login` with while-live refusal and `/rc:off`; no
+`/rc-off` anywhere. Basis: README matches the EV-1 rewritten spec §7.2/§8 —
+no legacy host-key or env-var enrollment, `/rc:login` is the sole documented
+enrollment path.
