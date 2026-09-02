@@ -6,7 +6,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Backlog
 - FLLWUP-17 — "Key ALREADY_LIVE_COPY as tunnel.alreadyLive and localize it (OJ1 follow-up)"
-- FLLWUP-16 — "Give the Windows SDDL read-back test an explicit timeout sized for process cold start"
 - FLLWUP-13 — "Clean up registerPrompt signature to {promptId}"
 - FLLWUP-14 — "Document remote raise-UI best-effort behavior for select, editor, and custom prompt kinds"
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
@@ -15,6 +14,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 
 ## Ready
+- FLLWUP-16 — "Give the Windows SDDL read-back test an explicit timeout sized for process cold start"
 
 ## Deliberating
 

@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-16
 title: "Give the Windows SDDL read-back test an explicit timeout sized for process cold start"
-state: Backlog
+state: Ready
 owner: null
 epic: EPIC-1
 goal: The Windows SDDL read-back test in test/credential.test.ts carries an explicit per-test timeout sized for powershell.exe cold start on CI, so the gate no longer flakes on bun's 5s per-test default.
