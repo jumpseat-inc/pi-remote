@@ -40,6 +40,8 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Footer Merge Policy]] — kind-first mergeTransport; live clears error on verified open; N=10 consecutive error-severity dialing.
 - [[Retry Policy]] — two seams: transport dials forever; credential terminality stops with the rich reason preserved.
 - [[Gulf of Evaluation]] — the designer's lens: can the user perceive the system's state without archaeology?
+- [[AG-UI]] — the open event-based protocol pi-remote speaks; taxonomy, transports, CUSTOM escape hatch, external references.
+- [[RFC References]] — the four IETF RFCs the system builds on (2119, 6749, 8628, 8414) and what each governs here.
 - [[Self-Containment Audit]] — zero references to sibling specs or codebases; exactly one external link; run on the real artifact.
 - [[Normativity Test]] — a MUST/SHOULD must name its observation point; one-sided bounds are never normative; failures are defects.
 - [[RFC Conformance Posture]] — when shipped client behavior diverges from a published RFC, the client moves; the spec stays standards-accurate.
