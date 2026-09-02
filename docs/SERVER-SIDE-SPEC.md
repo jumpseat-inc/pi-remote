@@ -63,8 +63,14 @@ The responsibility has two parts, and the document names them consistently:
   multiple devices.
 - **The control plane** — a small REST surface over HTTPS through which hosts
   enroll, create and delete tunnels, and through which client devices are
-  registered and granted access. The control plane is where every security
-  decision is made; the data plane is where none are.
+  registered and granted access. The control plane is where grants are
+  adjudicated before any connection URL exists, and admission to a
+  data-plane connection is decided once, at the WebSocket handshake, by the
+  checks of §3.4 and §5.6 — signature verification, expiry, bindings, token
+  replay, and device revocation — each resolved strictly before the `101`.
+  Per-frame relay makes no security decisions: once a connection is
+  admitted, the server forwards frames by their binding alone and
+  adjudicates nothing about a relayed frame's payload or routing.
 
 **The negative invariant that guards this responsibility** — the single most
 important sentence in this document:
