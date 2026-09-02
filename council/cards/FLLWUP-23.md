@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-23
 title: "Fix §5.10's inverted RFC-2119 keyword: MUST where MUST NOT is meant in the cross-tenant grant sentence"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-2
 goal: docs/SERVER-SIDE-SPEC.md §5.10's sentence "there is no cross-tenant grant, and no conformant server MUST honor a grant request naming a subject outside the admin's tenant" is corrected so the keyword matches the intended normativity — a conformant server MUST NOT honor such a request — per the EV-12 rule that a normative keyword must bind the behavior it names.
