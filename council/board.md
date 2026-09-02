@@ -5,6 +5,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- EPIC-2 — "Server-side specification — a self-contained implementation spec for the pi-remote relay and control plane"
 - FLLWUP-17 — "Key ALREADY_LIVE_COPY as tunnel.alreadyLive and localize it (OJ1 follow-up)"
 - FLLWUP-13 — "Clean up registerPrompt signature to {promptId}"
 - FLLWUP-14 — "Document remote raise-UI best-effort behavior for select, editor, and custom prompt kinds"
@@ -14,6 +15,12 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 
 ## Ready
+- EV-9 — "Conformance framing — purpose, scope, invariants, normative keywords, reference-client link"
+- EV-10 — "Enrollment and identity spec — discovery, both grant flows, tokens and claims"
+- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
+- EV-12 — "Data-plane relay spec — envelope, seq/ack, resume and resync, fan-out"
+- EV-13 — "Device registry, grants, push reservation, and the server-side trust model"
+- EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 
 ## Deliberating
 
