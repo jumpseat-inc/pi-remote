@@ -54,3 +54,67 @@ Result: client AND spec are RFC-conformant; the document does not weaken.
 Terminal device-flow errors (`access_denied`, `expired_token`) vs retriable
 ones (`authorization_pending`, `slow_down`) are distinguished per the RFC —
 the deliberation owns the exact driver semantics within that boundary.
+
+## Deliberation record
+
+### Round 1 — independent first pass (owner job-31.1, principal job-31.2)
+
+**owner:** The error-dispatch table at `src/login.ts:724–757` is RFC-correct in every
+row; only its reachability is wrong (gated behind `res.ok` at `:716`). Fix is
+structural, not semantic: move `res.json()` parse (`:721`) and `error` extraction
+(`:723`) above the status check, gate the four-code table on
+`res.ok || res.status === 400`. Rows unchanged: `authorization_pending` → continue
+unchanged interval; `slow_down` → `interval += 5000`, continue; `expired_token` →
+terminal `expiredCode`; `access_denied` → terminal `deviceDenied`; `400` + unknown
+or absent error → `tokenExchangeFailed` (retain the `!res.ok` fallthrough after the
+table); any other non-2xx (401, 500…) → `tokenExchangeFailed` regardless of body
+(a 500 carrying `authorization_pending` is NOT dispatched; §2.7 status-selects-remedy
+doctrine); network throw unchanged (`unreachable`); client-clock `timedOut` distinct
+from server-sent `expired_token`. No reason vocabulary changes. 2xx-with-error-field
+stays accepted as a tolerated legacy shape — tightening would delete working
+tolerance beyond the ruling's boundary, zero security consequence (error checked
+before `access_token` at `:756`) — but tolerance must be pinned, not accidental: one
+new test. Fixtures: flip `:538` and `:633` to 400 (normative shape pins); new: 400
+slow_down asserting +5000ms gap via fake sleep seam (`:543` pattern) — interval
+adjustment currently untested anywhere; 400 expired_token → `expiredCode`; 400
+access_denied → `deviceDenied`; 400 unknown error and 400 absent error →
+`tokenExchangeFailed`; 500 → `tokenExchangeFailed` (pins the status gate); 200 +
+authorization_pending → still polls (tolerated-legacy pin). Harness already supports
+arbitrary statuses, no harness change. Open questions: 5xx-retry (proposes immediate
+failure, separate card if wanted); RFC 8628 connection-timeout unilateral-slowdown
+rule vs driver treating fetch throw as terminal `unreachable` — real divergence but
+out of this card's §2.3 boundary, flag follow-up card; `error_description` ignored —
+surfacing it touches verbatim-ruled copy, leave ignored; no cap on slow_down
+accumulation (expiresIn loop-top check bounds the flow). Minimal red→green proof:
+flip `:538` to 400, test 9 fails on current code, passes with the reorder.
+
+**principal:** Pure layer-implementation defect, not a framing dispute: the four-code
+dispatch (`:724–745`) is already correct and in the right order, simply unreachable
+on the one status the spec mandates. Reorder, don't redesign. Gate: parse body before
+the status gate; first gate becomes `if (!res.ok && res.status !== 400) →
+tokenExchangeFailed`. Same four rows as owner. 2xx-with-error stays accepted as
+tolerated legacy shape (spec constrains servers; a client rejecting a 2xx error body
+is stricter than the contract it consumes; bounded by the expiresIn cap). The one
+tightening in the other direction: all other non-2xx (500, 401, 429) →
+`tokenExchangeFailed`, body unread — a 500/401 must NOT be trusted to carry
+`access_denied`/`expired_token`; surfacing "user denied" on top of a server 500 is a
+Copy-Honesty violation. So the four codes are recognized only on 400 and 2xx. 400 +
+unknown error → `tokenExchangeFailed` (reuse `:743`, moved above the status
+fallback); 400 + absent error or unparseable body → `tokenExchangeFailed` via a
+second narrowed `if (!res.ok)` after the dispatch; 401 gets no special remedy (device
+flow presents `device_code`, not a §2.7 credential); 200 with no access_token →
+`invalidTokenResponse` unchanged. Net diff: narrow `:716` by 14 chars; add a 5-line
+`if (!res.ok)` before `:747`; move `:721`/`:723` above `:716`; one comment; one
+`res.status` comparison. Fixtures: flip `:538` and `:633` to 400; new per-code
+fixtures for slow_down (assert injected sleep receives 2000ms then 7000ms),
+expired_token (expiredCode, tail printed once, no credential written), access_denied
+(deviceDenied); 400 + unknown error; 400 + `{}`; test.each([500, 401, 429]) →
+`tokenExchangeFailed` including the honesty test `500 {"error":"access_denied"} →
+tokenExchangeFailed, NOT deviceDenied`; legacy 200-tolerance test. Blind spots
+named: pipeline view reads non-2xx-as-failure as a transport rule; render view sees
+only outcomes and cannot see that status-gate placement decides which message is
+reachable at all; own blind spot flagged — bounded-vs-lenient is an honesty-grounded
+design choice, both readings RFC-conformant, settle with the 500+access_denied
+fixture. Open questions: the terminal-code trust bound (position: bounded); 200
+carrying both error and token — error wins (four codes dispatched first); no new
+LoginReason, no copy change — any position proposing a new reason is scope creep.
