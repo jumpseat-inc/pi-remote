@@ -321,7 +321,7 @@ static key, never an environment variable.
   2. Server responds with `{ tunnelId, url, tokenTtl }` — a **signed,
      expiring `wss://` URL with a one-time token**
      (`wss://server/tunnelId?token=…`). The token is self-describing: it
-     embeds its claims (`tenantId`, `tunnelId`, `sessionId`, `exp`), so the
+     embeds its claims (`tenant_id`, `tunnel_id`, `session_id`, `exp`), so the
      server needs no lookup state to authenticate a dial.
   3. Extension dials the URL within the token TTL (default 60 s). The token
      is **single-use**: consumed on successful WS upgrade, then bound to that
@@ -373,7 +373,7 @@ points:
 | Contract point | Tenant identity | Extension behavior |
 |---|---|---|
 | Enrollment credential (§7.2) | token `sub` claim identifies the tenant-scoped account | opaque credential, presented as Bearer at `POST /tunnels` |
-| Tunnel token (§7.2) | `tenantId` claim inside the signed token | opaque, dialed as-is |
+| Tunnel token (§7.2) | `tenant_id` claim inside the signed token | opaque, dialed as-is |
 | Device grants (§7.3) | tenant-scoped device membership | never sees credentials; only `deviceId` in the envelope |
 
 The data-plane frame envelope carries **no** tenant identity: every WS
