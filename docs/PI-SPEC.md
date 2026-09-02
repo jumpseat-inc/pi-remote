@@ -442,3 +442,5 @@ The host user can always see that the session is remotely reachable.
 - MQTT transport swap (frame format stays transport-agnostic by §6).
 - Headless/RPC-mode gateway reuse (revisit after the interactive extension
   ships).
+- The full server-side specification (enrollment, tunnel lifecycle, data-plane
+  relay, device registry): `docs/SERVER-SIDE-SPEC.md`.

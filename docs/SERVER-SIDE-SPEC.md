@@ -5,6 +5,16 @@
 
 ---
 
+## Contents
+
+1. **Purpose, scope, and conformance framing** — 1.1 purpose and audience · 1.2 the server's single responsibility · 1.3 terminology · 1.4 system invariants (INV-1–INV-6) · 1.5 keyword convention · 1.6 document map · 1.7 reference implementation
+2. **Enrollment and identity** — 2.1 authorization server discovery · 2.2 attended flow (authorization code + PKCE) · 2.3 headless flow (device authorization grant) · 2.4 token refresh · 2.5 the scope `pi-remote:host` · 2.6 access-token claims and tenant binding · 2.7 error semantics: 401 and 403 · 2.8 the host-side credential
+3. **Tunnel lifecycle** — 3.1 tunnel objects and lifecycle · 3.2 tunnel creation (`POST /tunnels`) · 3.3 the signed one-time connection URL · 3.4 token consumption at the WebSocket upgrade · 3.5 tunnel deletion (`DELETE /tunnels/{tunnelId}`) · 3.6 error taxonomy
+4. **Data-plane relay** — 4.1 scope and the two streams · 4.2 the envelope, per direction · 4.3 sequence and acknowledgement · 4.4 the frame slot's closed set and the versioning escape hatch · 4.5 the resume/resync handshake · 4.6 fan-out (1:N) · 4.7 the ring buffer · 4.8 liveness and close codes · 4.9 guidance (non-normative)
+5. **Device registry, grants, push reservation, and the server-side trust model** — 5.1 the device object and identity · 5.2 device registration (`POST /devices`) · 5.3 device list (`GET /devices`) · 5.4 tenant membership is the base grant · 5.5 the mint surface (`POST /device/connections`) · 5.6 the device upgrade · 5.7 grants and the enforcement algorithm at fan-out · 5.8 revocation (`DELETE /devices/{deviceId}`) · 5.9 the reserved push record shape · 5.10 the admin surface · 5.11 multi-tenancy: the three credential contract points · 5.12 the trust summary · 5.13 guidance (non-normative) · 5.14 error vocabulary and closed partitions
+
+---
+
 ## 1. Purpose, scope, and conformance framing
 
 ### 1.1 Purpose and audience
@@ -1237,7 +1247,7 @@ replace-not-merge discipline.
 ### 5.2 Device registration — `POST /devices`
 
 Registration is **admin-minted**, not device self-enrollment: the registry
-surfaces are the ones client devices never call themselves (§5.0), and a
+surfaces are the ones client devices never call themselves (§5 introduction), and a
 self-enrolling device would have no admin-authenticated registration surface
 anywhere in this document. An operator calls this endpoint on the device's
 behalf and transfers the credential to the device out-of-band; the transfer
