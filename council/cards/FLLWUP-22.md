@@ -283,3 +283,64 @@ O1–O8 closed-green by actual test output (S6–S13); the `:633` flip is cosmet
 
 No open-judgment item requires `product-owner`; no open objection blocks.
 Steps 7 onward proceed.
+
+### Steps 7–8 — spec, owner implementation, PR (recorded on resume)
+
+Design spec committed to `docs/superpowers/specs/2026-09-02-FLLWUP-22-design.md`
+(commit `2c1f7ba`). Owner implemented on branch
+`fix/fllwup-22-poll-400-shape`, PR #26 opened, head `54fea4c`
+(`54fea4cf7007c0596f69b022ab8fc114b2c98ac0`): poll loop reordered to parse the
+body before the status gate, four-code RFC 8628 dispatch on `res.ok ||
+res.status === 400`, all other non-2xx → `tokenExchangeFailed`, 2xx-with-error
+kept as a pinned tolerated-legacy shape, fixtures flipped and added per the
+settled inventory. Card set `In Review` on the observed artifact (open PR,
+commit `c7284be`). CI on the PR head observed directly by the facilitator:
+`gh pr checks 26` → both `gates` and `gates-windows` workflows, state SUCCESS,
+keyed on the `workflow` field.
+
+### Step 9 — Skeptic verification (RESUMED RUN, fresh dispatch job-1.1; PASS)
+
+Two prior runner instances died at this step (skeptic freezes; no verdict
+produced — see the job-31.5/31.6 record above). A fresh bounded skeptic
+dispatch with explicit freeze mitigation (every bash call time-bounded, probe
+suites split into multiple small calls, no in-place probe debugging beyond two
+attempts) settled cleanly in 7.2 minutes (21 turns). Verified in a throwaway
+worktree at the PR head SHA; no branch modification, nothing pushed, no
+untracked files left.
+
+All six mandated checks **closed-green** by actual observed output:
+
+1. `bunx tsc --noEmit` exit 0 at head.
+2. `bun test` full suite green: **218 pass / 1 skip (win32 SDDL icacls
+   platform skip) / 0 fail**, including the flipped :538/:633 fixtures (now
+   status 400) and the new 11-test "FLLWUP-22: RFC 8628 poll error shape (400
+   window)" block.
+3. Diff confined to exactly the six declared files (src/login.ts,
+   test/login.test.ts, plans/, specs/, council/board.md,
+   council/cards/FLLWUP-22.md).
+4. `docs/SERVER-SIDE-SPEC.md` §2.3 untouched — no spec file in the diff at
+   all; Phase 1 ruling boundary respected.
+5. FLLWUP-7 SDDL assertions untouched — the SDDL read-back test lives in
+   `test/credential.test.ts`, not in the diff; the suite's single skip is the
+   win32 platform skip.
+6. Skeptic's own probes driving the real `runHeadlessLogin`: 400 pending →
+   400 slow_down → 200 success with `sleeps [2000, 2000, 7000]` (+5000ms bump
+   applied to the next sleep, correct); 400 expired_token → `expiredCode`, no
+   credential; 400 access_denied → `deviceDenied`, no credential; adversarial
+   401 carrying `authorization_pending` → `tokenExchangeFailed` with exactly
+   one token POST — dispatch confined to 400/2xx as designed.
+
+Gate integrity proven by injection: changing the gate to
+`res.status === 500` turned exactly the 400-recognition pins red (including
+the anti-false-denial and anti-silent-continue honesty pins and the flipped
+EV-7 test 9); restored → 31/31 green in test/login.test.ts. The gate
+demonstrably fails and names the defect.
+
+Skeptic verdict: **PASS — no blocking objection. No open-untested items.**
+The only red runs were the skeptic's own harness off-by-one (owned and
+corrected) and the deliberate failure-injection (reverted). Step-9 cycle
+counter: 1 of 3 used.
+
+### Step 10 — Judge dispatch
+
+See below (appended after the judge returns).
