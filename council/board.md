@@ -25,11 +25,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- EV-10 — "Enrollment and identity spec — discovery, both grant flows, tokens and claims"
 
 ## Needs Human
 
 ## Done
+- EV-10 — "Enrollment and identity spec — discovery, both grant flows, tokens and claims"
 - EV-9 — "Conformance framing — purpose, scope, invariants, normative keywords, reference-client link"
 
 - EPIC-1 — "pi-remote — remote control for a live pi session over AG-UI"
