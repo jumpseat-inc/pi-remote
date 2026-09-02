@@ -23,9 +23,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
+- EV-10 — "Enrollment and identity spec — discovery, both grant flows, tokens and claims"
 
 ## In Review
-- EV-10 — "Enrollment and identity spec — discovery, both grant flows, tokens and claims"
 
 ## Needs Human
 
