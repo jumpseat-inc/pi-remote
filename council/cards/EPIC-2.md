@@ -31,6 +31,34 @@ two-seam retry boundary.
 Delivered by children EV-9 through EV-14; EV-14's self-containment audit is the
 gate that makes the mandate real.
 
+## Phase 1 rulings (human, 2026-09-02 — binding on every seat for this run)
+
+- **R1 — Document workflow:** each card writes/appends its section directly
+  into `docs/SERVER-SIDE-SPEC.md` on its own PR; the document grows with every
+  merge; EV-14 integrates (order, TOC, reading paths) and audits the real
+  artifact. No section files.
+- **R2 — REST surface format:** prose plus request/response tables per
+  endpoint, in-page. No OpenAPI document; a server team may generate one
+  later, but the spec is the single markdown file.
+- **R3 — Non-normative guidance depth:** one recommended shape per concern
+  (storage sketch, state machine, deployment topology), clearly marked
+  non-normative, no alternatives enumeration.
+- **R4 — Stack neutrality:** the document is protocol-level; runtimes appear
+  at most as non-normative examples; no stack mandate.
+- **R5 — Self-containment audit blocklist (EV-14):** `PI-SPEC`, `docs/PI-SPEC`,
+  `src/`/`test/` paths, module file names (translate.ts, tunnel.ts, index.ts,
+  inject.ts, history.ts, login.ts, credential.ts, copy.ts, pi-sdk-on.ts),
+  card/decision ids (`EV-\d+`, `FLLWUP-\d+`, `EPIC-\d+`), plus a soft-phrase
+  read-through ("as the client", "the host spec"). The repo link is the
+  whitelisted sole exception.
+- **R6 — Server-initiated surface:** device registration, admin grant
+  operations, and other registry surfaces the client never calls are in the
+  document with their own admin/operator auth — out of client scope, in scope
+  for the spec.
+
+Build order (human-approved, dependency-forced): EV-9 → EV-10 → EV-11 →
+EV-12 → EV-13 → EV-14.
+
 ## Acceptance
 
 Observed as met when EV-9 through EV-14 are all Done, docs/SERVER-SIDE-SPEC.md
