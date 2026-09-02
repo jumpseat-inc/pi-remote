@@ -7,6 +7,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Backlog
 - EPIC-2 — "Server-side specification — a self-contained implementation spec for the pi-remote relay and control plane"
 - FLLWUP-17 — "Key ALREADY_LIVE_COPY as tunnel.alreadyLive and localize it (OJ1 follow-up)"
+- FLLWUP-18 — "Align the refresh request encoding with RFC 6749 form-encoding or document the divergence permanently (EV-10 follow-up)"
 - FLLWUP-13 — "Clean up registerPrompt signature to {promptId}"
 - FLLWUP-14 — "Document remote raise-UI best-effort behavior for select, editor, and custom prompt kinds"
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
