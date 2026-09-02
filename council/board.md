@@ -23,9 +23,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
-- EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 
 ## In Review
+- EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 
 ## Needs Human
 
