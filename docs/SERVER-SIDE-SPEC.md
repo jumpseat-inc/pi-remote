@@ -410,14 +410,17 @@ expires, further polls presenting it are rejected.
 ### 2.4 Token refresh
 
 There is **no separate refresh endpoint**. An enrolled host refreshes its
-access token at the `token_endpoint` discovered in §2.1, with body
-`application/x-www-form-urlencoded`:
+access token at the `token_endpoint` discovered in §2.1, with an
+`application/json` body of exactly two fields:
 
-| Parameter | Value |
+| Field | Value |
 | --- | --- |
 | `grant_type` | `refresh_token` |
 | `refresh_token` | the host's current refresh token |
-| `client_id` | `pi-remote` |
+
+Both fields are REQUIRED. The request carries no `client_id`: the client is
+public, the presented refresh token itself identifies the enrollment, and a
+conformant server MUST NOT require `client_id` on a refresh request.
 
 **Response (success)** — `200` with an `application/json` body:
 
