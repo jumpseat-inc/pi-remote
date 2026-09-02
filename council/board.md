@@ -23,9 +23,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
-- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 
 ## In Review
+- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 
 ## Needs Human
 
