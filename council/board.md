@@ -18,12 +18,12 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 
 ## Ready
-- EV-13 — "Device registry, grants, push reservation, and the server-side trust model"
 - EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 
 ## Deliberating
 
 ## In Progress
+- EV-13 — "Device registry, grants, push reservation, and the server-side trust model"
 
 ## In Review
 

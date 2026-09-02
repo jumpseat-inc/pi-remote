@@ -186,7 +186,7 @@ Each row names the section's content and the reader path it serves.
 | 2 | **Enrollment and identity** | Endpoint discovery from the server's authorization metadata; both authorization grant flows — the attended browser flow with PKCE for hosts with a browser, and the headless device flow for hosts without one; token issuance and refresh; credential storage requirements on the host side. | *Implementing enrollment:* read fully before writing any token code. The discovery metadata, grant flows, and token lifetimes here are what the rest of the document assumes. |
 | 3 | **Tunnel lifecycle** | Tunnel creation over the control plane; the signed, expiring, one-time WebSocket connection URL the creation response hands back; tunnel deletion; and the error taxonomy shared by clients and servers for every control-plane and connection failure. | *Implementing tunnel management:* read §2 first, then this section end to end before implementing the control-plane REST surface; the error taxonomy here is binding on both servers and clients. |
 | 4 | **Data-plane relay** | The frame envelope; sequence and acknowledgement accounting; resume and resync relaying; and fan-out to multiple connected client devices. | *Implementing the relay:* read after §3, with INV-1, INV-2, and INV-3 of §1.4 in view at all times; this is the section the negative invariant of §1.2 constrains most directly. |
-| 5 | **Device registry, grants, and the server-side trust model** | Client-device registration; tenant-scoped grants; the administrative grant operations that client devices never call themselves; and the closing trust summary — who holds what, and what each component can do. | *Operating and administering a deployment:* read after §4; registry and admin-surface implementers should read it fully, and it is the checklist against which a deployment's security posture is reviewed. |
+| 5 | **Device registry, grants, push reservation, and the server-side trust model** | Client-device registration and the device data-plane connection (a mint surface plus a WebSocket upgrade); tenant-scoped grants and revocation; the reserved `pushProvider` record shape; the administrative grant operations that client devices never call themselves; and the closing trust summary — who holds what, and what each component can do. | *Operating and administering a deployment:* read after §4; registry, admin-surface, and device-connection implementers should read it fully, and it is the checklist against which a deployment's security posture is reviewed. |
 
 ### 1.7 Reference implementation
 
@@ -1146,3 +1146,662 @@ no emit-ceiling enter the wire contract in any form.
 >    safe because the client's remedy ladder (§4.5) is total. The normative
 >    sentence above the block is the whole contract: no size bound of any
 >    kind enters the wire.
+
+---
+
+## 5. Device registry, grants, push reservation, and the server-side trust model
+
+This section specifies the client device as the server sees it: the device
+registry that assigns and holds device identity; the device data-plane
+connection, specified as a **two-surface model** — a credential-minting
+control-plane surface plus a WebSocket upgrade; the grant-enforcement
+algorithm the relay obeys at fan-out; the revocation semantics that make
+access control a control-plane act; the reserved push record shape; and the
+administrative surface that governs both the registry and scope grants. The
+registry and admin surfaces are precisely the surfaces a client device never
+calls itself — registration, listing, revocation, and scope granting are
+admin/operator surfaces, authenticated by an admin credential (§5.10).
+
+**What this section closes, stated precisely.** Four closures, and they are
+not all the same kind:
+
+1. **One literal forward reference.** §4.1 states: "The population of
+   *granted connected devices* is defined by the registry and grants section
+   (§5)." §5.1–§5.7 are that definition.
+2. **One undefined concept, now defined.** §4.2's "authenticated connection
+   identity" — the source of the server-stamped envelope `deviceId` — is
+   defined here for the first time (§5.6); the concept carried no pointer on
+   the page before this section.
+3. **The scope-grant debt.** §2.5, §2.7, and §3.6 each route the `403
+   insufficient_scope` remedy through "an administrator grant of the scope
+   (administrative surface in §5)"; §5.10 is that surface.
+4. **The distinct-surface statement.** §3.1's single-token/single-upgrade
+   rule and §3.4's handshake govern the **host** connection. Device
+   connections are a distinct, second data-plane surface, specified here. A
+   device MUST NOT attach over the host's §3.3 URL: the host's connection
+   token carries no device identity, so a device attaching over it would be
+   unattributable in exactly the way §4.2's trust rule forbids.
+
+This section carries its own closed status partitions and its own error
+vocabulary additions (§5.14), stated up front rather than inherited by
+implication. Three invariants of §1.4 govern everything below — INV-3
+(credentials carry tenancy; frames do not), INV-4 (the server is the
+enforcement point), and INV-5 (security tokens are short-lived, single-use,
+and self-describing where applicable) — and §1.2's control/data-plane split
+is the architectural rule the two-surface connection model exists to honor:
+every security decision is made on the control plane, before any URL exists.
+
+### 5.1 The device object and identity
+
+The registry holds one row per device, created by registration (§5.2):
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `deviceId` | REQUIRED | Server-assigned, opaque, URL-safe identifier. **Unique within its tenant (MUST); globally unique (MAY).** The wire never observes more: a host only sees `deviceId`s on its own tenant-bound streams, and §2.6's `sub` namespacing already supplies cross-tenant ambiguity-freedom. |
+| `tenantId` | REQUIRED | Immutable after registration. Fixed at registration; moving a device between tenants is revoke + re-register (§5.4). |
+| `displayName` | REQUIRED | Non-empty string, at most 256 characters (guidance-grade maximum, §1.5); informational; the server never interprets it. |
+| `status` | REQUIRED | `active` \| `revoked`. Terminal in the `revoked` direction: there is no un-revoke. |
+| `pushProvider` | REQUIRED | The reserved push record shape (§5.9); defaults to `"webpush"` at registration. |
+| `createdAt` | REQUIRED | Registration time. |
+
+**`deviceId` stability (normative).** `deviceId` MUST be stable for the
+registration's lifetime and MUST NOT be recycled after revocation — not
+re-assigned to a new registration, ever. This is load-bearing, not hygiene:
+the host tracks per-device acknowledgements keyed by the envelope `deviceId`
+(§4.3) and attributes `pi.human_input` by it (§4.2's trust rule); a server
+that re-assigned or recycled `deviceId`s would make per-device bookkeeping
+and audit identity meaningless — or worse, actively falsifiable. The
+no-recycle rule is a guard against audit laundering: a recycled `deviceId`
+would let a newer device's input inherit an older device's audit trail.
+Because §4.2 makes the server the only trust anchor for stamped `deviceId`s,
+the registry is the only decoder ring from envelope `deviceId` back to a
+device — which is why revocation retains the record (§5.8) instead of
+erasing it.
+
+**The device credential (normative shape).** Each registered device holds
+one credential: an **opaque, server-generated secret**. It is long-lived,
+revocable at the control plane, stored by the server only as a hash
+(`credential_hash` — never the credential itself), presented only to the
+control plane over TLS, and compared in constant time. It is **not** an
+OAuth token: no authorization-server round-trip, no `scope` claim, no
+refresh semantics — devices are enrolled subjects of the server, not clients
+of the authorization server, and §2's flows do not apply to them. The
+credential is the device side of the third INV-3 contract point (§5.11): it
+binds its bearer to exactly one tenant. It is presented only to the mint
+surface (§5.5), where it mints a short-lived, single-use connection token —
+the long-lived secret never rides a WebSocket URL (INV-5's shape, held at
+the data plane). A lost credential is unrecoverable: the remedy is revoke +
+re-register (§5.8, §5.2) — the device-side analogue of §2.8's
+replace-not-merge discipline.
+
+### 5.2 Device registration — `POST /devices`
+
+Registration is **admin-minted**, not device self-enrollment: the registry
+surfaces are the ones client devices never call themselves (§5.0), and a
+self-enrolling device would have no admin-authenticated registration surface
+anywhere in this document. An operator calls this endpoint on the device's
+behalf and transfers the credential to the device out-of-band; the transfer
+channel is a deployment concern (guidance, §5.13), not contract.
+
+- **Authentication:** an enrollment access token carrying the
+  `pi-remote:admin` scope (§5.10), per §2.6 and §2.7's semantics. Tenancy is
+  derived solely from the token's `tenant_id` claim (§2.6, restated): the
+  request carries no tenant field, and a server MUST ignore any tenant-like
+  request field an operator sends anyway.
+- **Request body** — `application/json`:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `displayName` | REQUIRED | Non-empty string, at most 256 characters (guidance-grade maximum, §1.5); informational. |
+| `pushProvider` | OPTIONAL | The reserved push record shape (§5.9); absent means the default `"webpush"`. |
+
+  A server MUST reject — with `400 invalid_request` — a missing or
+  unparseable body, or a missing or wrong-typed field. Unknown request
+  fields MUST be ignored.
+
+**Response (success)** — `200` with an `application/json` body. The status
+is `200`, not `201`: there is one response shape (§3.2's stated precedent).
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `deviceId` | REQUIRED | The new registry row's identity (§5.1). |
+| `deviceCredential` | REQUIRED | The opaque secret (§5.1). **Shown exactly once, never re-retrievable.** This REQUIRED-once response field is the only normative lever on the out-of-band handoff; no read surface of this document ever returns it (§5.3's obligation). |
+| `pushProvider` | REQUIRED | Echo of the stored value. |
+
+The registry record is created by this call; registration and credential
+issuance are one atomic act, and a failed call issues no credential.
+
+### 5.3 Device list — `GET /devices`
+
+Admin-authenticated (§5.10). Lists the admin token's own tenant's devices —
+the tenancy derivation of §2.6 applies unchanged, so the response never
+spans tenants.
+
+**Response (success)** — `200` with an `application/json` body: a JSON
+array, one element per device in the tenant, each carrying `deviceId`,
+`displayName`, `status`, `pushProvider`, and `createdAt`.
+
+**The response MUST NOT include `deviceCredential`.** The credential is
+shown exactly once, at registration (§5.2); the moment a read surface
+returns it, that property is violated. This is a MUST on the response shape,
+not a recommendation.
+
+This endpoint is one of the two observation points that make the
+`pushProvider` reservation enforceable rather than decorative: it is written
+at `POST /devices` (§5.2) and read here, both normative (§5.9).
+
+The status partition is closed: `{200, 401, 403, 5xx}` (§5.14).
+
+### 5.4 Tenant membership is the base grant
+
+Normative, restating INV-3 and INV-4 made concrete: every device belongs to
+exactly one tenant, fixed at registration (§5.2) and immutable thereafter.
+**Membership is the base grant**: a device may receive a tunnel's frames if
+and only if the device's tenant equals the tunnel's tenant.
+
+No grant ever widens beyond the base grant. Narrower restrictions MAY layer
+on top of it (§5.7), but they only ever reduce access below it — there is no
+mechanism in this document by which a device gains access to a tunnel
+outside its tenant, and a conformant server MUST NOT create one.
+
+Moving a device between tenants is revoke + re-register (§5.8, §5.2): there
+is no move operation. The registry row's `tenantId` is immutable after
+registration (§5.1), and the no-recycle rule (§5.1) means the re-registered
+device is a new `deviceId` with a new credential — the old identity's audit
+trail stays bound to the old, revoked row.
+
+### 5.5 The mint surface — `POST /device/connections`
+
+The device data-plane connection is a **two-surface model**, and the model
+is load-bearing. The long-lived device credential is presented over REST —
+where a browser's `fetch` can set an `Authorization` header; the browser
+`WebSocket` constructor cannot, a load-bearing fact of this design, since
+this document's first-class client device is a browser PWA. The REST surface
+mints a short-lived, single-use, signed connection URL; the WebSocket
+upgrade (§5.6) is §3.4-shaped. The model mirrors the host side exactly (§2
+enrollment → §3.3 URL → §3.4 upgrade) and keeps the long-lived secret out of
+WebSocket URLs, which end up in browser history and server logs — INV-5's
+shape, held at the data plane.
+
+**Request.** The path is fixed: `POST /device/connections` on the
+control-plane origin. The request MUST carry `Authorization: Bearer <device
+credential>` (§5.1); the body is `application/json`:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `tunnelId` | REQUIRED | The tunnel to attach to. |
+
+Unknown body fields MUST be ignored; a missing or unparseable body, or a
+missing or wrong-typed `tunnelId`, is `400 invalid_request`.
+
+**Ordered checks**, in order:
+
+1. **Extract and parse.** An absent or malformed credential header, an
+   unparseable body, or a missing `tunnelId` yields `400 invalid_request`.
+2. **Authenticate the device.** The presented credential's hash is compared
+   against the stored `credential_hash` in constant time (§5.1), and the
+   matched row's `status` is checked. Either disjunct — **no hash match**
+   (the credential never existed or is wrong) **or the matched row's
+   `status` is `revoked`** — yields `401 invalid_token`. The status
+   disjunct is required: a revoked row's stored hash still matches the
+   presented secret, so the comparison alone cannot kill a revoked
+   credential — the revocation check happens here, at the mint. No
+   existence leak: a revoked credential and a never-issued one are
+   byte-indistinguishable — same status, same `error` code
+   (`error_description` is diagnostic per §2.7's doctrine).
+3. **Grant coverage.** The device row's `tenantId` is compared with the
+   named tunnel's tenant. A mismatch is **`404 unknown_tunnel`, never
+   `403`**: under base-grant-only (§5.4), "does the tunnel exist *in the
+   device's tenant*?" is the same question as existence, and §3.5's
+   no-existence-leak prose transfers. A cross-tenant denial is
+   byte-indistinguishable from a genuinely unknown tunnel — same status,
+   same `error` code.
+4. **Live-tunnel existence.** An absent or deleted tunnel yields `404
+   unknown_tunnel`.
+5. **Layered denial (MAY path).** `403 tunnel_not_granted` is a **reserved
+   code, stated as reserved on this page: reachable by no MUST in v1**. No
+   wire surface for managing per-tunnel restrictions is specified (§5.7's
+   ceiling); a layered per-tunnel denial, if a server layers one, is
+   expressed only here, and this is the only observable it ever produces.
+
+**Response (success)** — `200` with an `application/json` body:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `url` | REQUIRED | The absolute `wss://` connection URL, specified below. |
+| `tokenTtl` | REQUIRED | Positive integer seconds, equal to the issued token's actual validity window (`exp` minus mint time) — the same shape discipline as §3.2. |
+
+- **URL shape:**
+
+```
+wss://<data-plane host>/<tunnelId>/devices?token=<token>
+```
+
+  This is the **distinct device path**, whose final segment is the literal
+  `devices` — not the `tunnelId`. The distinctness is structural: §3.4's
+  "final segment equals `tunnelId`" binding simply cannot be read onto this
+  URL, so the host's one-upgrade rule (§3.1) cannot be imported onto the
+  device handshake by a reader. The authority and `wss`-scheme rules of
+  §3.3 carry over: a device uses the URL verbatim and never reconstructs a
+  connection URL from its parts.
+- **Token:** a compact JWS — §3.3's grammar with one claim added. Claim
+  names are snake_case, consistent with §2.6 and §3.3:
+
+| Claim | Requirement | Meaning |
+| --- | --- | --- |
+| `tenant_id` | REQUIRED | MUST equal the device row's `tenantId` — the device-credential contract point of INV-3 (§5.11). |
+| `tunnel_id` | REQUIRED | MUST equal the URL path's **first** segment (§5.6). |
+| `device_id` | REQUIRED | The device row's `deviceId`; the source of the server-stamped envelope `deviceId` (§5.6, §4.2). |
+| `exp` | REQUIRED | Expiry, in seconds since the epoch. |
+| `jti` | REQUIRED | Unique per issued token; the single-use consumption identity (§5.6). |
+| `iat`, `iss`, `aud` | SHOULD | Standard JWT provenance claims. |
+
+  TTL bounds are identical to §3.3: a default validity window of 60 seconds
+  (SHOULD); an issued TTL MUST be at least 5 seconds and at most 300
+  seconds; a configured value outside the bounds clamps to the nearest
+  bound. Expiry is judged by the **server's clock**, at the upgrade (§5.6),
+  and only there.
+- **Single use:** the minted token is consumed atomically at the upgrade
+  (§5.6, step 5); a replayed token is rejected `409 token_consumed`.
+
+The status partition is closed: `{200, 400, 401, 403, 404, 5xx}`. **`403`
+lives only on this surface**: the mint surface is control plane, where every
+security decision is made (§1.2); the upgrade carries no `403` (§5.6).
+
+**Identifier, not capability (normative guard).** `tunnelId` is an
+identifier, not a capability. Possession of a `tunnelId` plus a valid device
+credential is not sufficient to attach: the mint surface's grant check
+(step 3) is the only gate, and it compares tenants the server holds, not
+bytes the caller presents. Device-facing tunnel discovery is out-of-band for
+v1 — a named non-decision, not an omission (§5.13(d)).
+
+### 5.6 The device upgrade — the data-plane connection for devices
+
+The device dials the minted URL and performs a WebSocket opening handshake
+against `wss://<data-plane host>/<tunnelId>/devices`. Authentication happens
+strictly before the `101`, exactly as §3.4 requires: a server MUST NOT
+accept the upgrade and reject the token afterwards.
+
+**Binding check wording.** The token's `tunnel_id` claim is checked against
+the URL path's **first segment** — the segment that names the tunnel. §3.4's
+"final segment equals `tunnelId`" wording does not transfer to this surface:
+here the final segment is the literal `devices`, and a server MUST NOT
+perform §3.4's binding check verbatim on it.
+
+**Ordered checks**, in order:
+
+1. **Extract the token.** URL-level malformation — a wrong scheme, a missing
+   or duplicated `token` query parameter, a path from which no first segment
+   can be read — yields `400 invalid_request`.
+2. **Verify the signature.** Failure yields `401 invalid_token`.
+3. **Check expiry.** The `exp` claim is compared against the server's clock;
+   an expired token yields `401 invalid_token`.
+4. **Verify the bindings.** The token's `tunnel_id` claim must equal the URL
+   path's **first segment**; a mismatch yields `401 invalid_token`. The
+   live-tunnel existence record must show the tunnel present and not
+   deleted; an absent or deleted tunnel yields `404 unknown_tunnel`.
+5. **Consume the token atomically.** The `jti` is marked consumed before the
+   `101` is sent. Two simultaneous upgrades presenting one token admit
+   exactly one `101`; the other receives `409 token_consumed`.
+6. **Device registry row.** The row keyed by the verified token's
+   `device_id` claim is looked up. A row that is absent, or present with
+   `status: revoked`, yields `401 invalid_token`. **This is a folded
+   branch, by design: on this surface `401 invalid_token` means token
+   invalid OR named device row revoked — one code, one meaning
+   (does-not-authenticate, §2.7's binding classification), and the closed
+   partition is unchanged.** Revocation is terminal (§5.1: retained record,
+   no un-revoke), so this branch can never fire on a device that will live
+   again. The branch also closes the mint→dial TTL window: a device revoked
+   after minting but before dialing is rejected here even though its token
+   is still validly signed and unexpired — and its credential is already
+   dead at the mint surface (§5.5, step 2).
+
+**REQUIRED lookup states, stated explicitly.** The device upgrade consults
+**three** server-side lookup states, named above with their check numbers:
+the consumed-`jti` set (step 5), the live-tunnel existence record (step 4), and
+the device registry row — existence plus `status` — keyed by the verified
+token's `device_id` claim (step 6). The contrast is stated in one sentence:
+§3.4's host handshake keeps its existing two (the consumed-`jti` set and the
+live-tunnel existence record); the third state is what makes mid-window
+revocation enforceable without adding a status code.
+
+The status partition is closed: `{101, 400, 401, 404, 409, 5xx}` — identical
+to §3.4's. **No `403` anywhere on the upgrade**: the mint surface has
+already adjudicated grants before any URL exists; a security decision on the
+data plane is what §1.2 forbids, and the folded branch of step 6 is what
+avoids duplicating one here.
+
+**On success**, the server binds the connection to `(tenant, tunnel,
+deviceId)`. This binding is the **only** source of the server-stamped
+envelope `deviceId`: the stamp is taken from the token's `device_id` claim,
+never from any device-supplied byte — §4.2's trust rule, with its mechanism
+now on the page. The in-frame `deviceId` of an inbound `resume` is validated
+against the binding's `deviceId` (§4.2's cross-device watermark-peek guard).
+
+**Reconnect, and the contrast with the host.** The device credential is
+**not** single-use: a device re-dials by minting a fresh URL — re-running
+§5.5 with its still-live credential — and there is no `409` on credential
+reuse, only on token replay. Unlike the host's §3.1 one-tunnel/one-upgrade
+rule, multiple device connections per tunnel are the expected steady state
+(§4.6's 1:N fan-out): each device connection is its own mint→dial cycle,
+and each mints its own short-lived token.
+
+### 5.7 Grants and the enforcement algorithm at fan-out
+
+**The floor (MUST, harness-observable).** The server MUST NOT deliver any
+data-plane frame for tunnel T to a device that is not a member of T's tenant
+— restated INV-4, made concrete by §5.4's base grant.
+
+**Enforcement at two points.** Grants are enforced at attach time (§5.5
+steps 3 and 5, §5.6) **and** re-checked at every delivery opportunity. The
+second check is what makes mid-connection revocation take effect without
+host cooperation: the device's socket may outlive its grant by only the
+interval between two delivery opportunities (INV-4; §4.6's "takes effect at
+the next delivery opportunity").
+
+**The algorithm, stated once.** Each line is a restated consequence of
+INV-1 and INV-4. On a host-produced frame F for tunnel T, for each attached
+device d (snapshot at delivery time):
+
+1. d revoked → detach; never deliver.
+2. d's tenant ≠ T's tenant → detach; never deliver.
+3. A layered per-tunnel policy denies d → skip (the MAY path of §5.5 step
+   5; reachable by no MUST in v1).
+4. Else deliver — same frames, same order, no per-device filtering of the
+   stream (§4.6 restated).
+
+**The uplink half (MUST, audit-critical).** After revocation the server MUST
+NOT merge any further uplink frame from that device into the host-bound
+stream. The host attributes input by the server-stamped `deviceId` (§4.2);
+delivering a revoked device's frame would launder an audit identity — the
+exact harm §5.1's no-recycle rule guards. Frames already merged before
+revocation are not recalled: the stream is append-only (INV-1).
+
+**The ceiling (MAY).** The server MAY layer narrower per-tunnel
+restrictions. They only ever reduce access below the base grant (§5.4), are
+never observable on the wire — a device presents only its credential and
+receives frames or does not, and nothing in the protocol requires a device
+to know which rule denied it — and require no device-side knowledge. Clients
+never depend on them; the base grant is the only grant any conformant host
+or device needs.
+
+### 5.8 Revocation — `DELETE /devices/{deviceId}`
+
+Revocation is a control-plane act, admin-authenticated (§5.10). It is
+**idempotent**: success is `204 No Content` with no body. A `deviceId` that
+is unknown, belongs to another tenant, or is already revoked is `404` with
+`unknown_device` — never `403`, so no cross-tenant existence leak exists
+(mirroring §3.5's rule), and a repeated delete is indistinguishable from a
+first success. The not-found treatment is `404`-only: no `410`. The status
+partition is closed: `{204, 401, 403, 404, 5xx}` (§5.14).
+
+**On success**, the server MUST do all of the following, in order:
+
+a. Set the registry row's `status` to `revoked`. The credential is dead:
+   subsequent `POST /device/connections` presentations of it are `401`
+   (§5.5, step 2).
+b. Stop fan-out to the device **immediately** (§4.6's MUST; the mechanism is
+   §5.7's delivery-time re-check).
+c. Discard the device's per-device bookkeeping and any outstanding catch-up
+   (§4.5). The host-bound stream and the other devices are unaffected; a
+   resync already triggered is not recalled.
+
+Outside that MUST list: the device's live socket, if one exists, **SHOULD**
+close promptly with `1000` (§4.8's deliberate close). The prompt close is a
+target set by the design, deliberately a SHOULD rather than a MUST — it is
+not one of the REQUIRED effects above.
+
+**The record is retained, not erased.** The envelope `deviceId` audit trail
+must remain interpretable: §4.2 makes the server the only trust anchor for
+stamped `deviceId`s, and the registry is the only decoder ring. This is a
+documented, reasoned difference from §3.5's no-tombstone rule — which is
+**tunnel-scoped** prose (a tunnel's identity has no audit afterlife) and
+does not transfer to devices. The corollary is normative: a revoked
+`deviceId` MUST NOT be recycled (§5.1's audit-laundering guard).
+
+**Without host cooperation (INV-4).** All of the above takes effect with
+zero host-side action. Restated in this document's own words: the host has
+no revocation logic; frames from a revoked device simply stop arriving, and
+the server is the only authority (§4.2's trust rule).
+
+### 5.9 The reserved push record shape (`pushProvider`)
+
+The registry reserves exactly one field for future push surfaces, normative
+and wire-observable at two observation points:
+
+- The registry field and the `POST /devices` request field `pushProvider`
+  MUST be exactly one of `"webpush" | "apns" | "fcm"`; absent at
+  registration means the default `"webpush"`; any other value is `400
+  invalid_request` at set time.
+- **Observation points:** written at `POST /devices` (§5.2) and read at
+  `GET /devices` (§5.3) — both REQUIRED for the reservation to be
+  enforceable rather than decorative.
+- **No push delivery behavior, endpoint, or payload is specified.** The
+  field is a reservation so the browser-PWA client — which needs no vendor
+  account — works first. It is settable at registration; mutation is
+  reserved for future push surfaces, which extend from this reservation.
+  Adding a vendor to the union later is closed-vocabulary growth and
+  requires a ruling — the documented route for growing a closed vocabulary
+  (the same discipline §1.5 applies to normative change).
+
+A `pushProvider` value on the wire is meaningful only as this stored shape;
+no conformant behavior of §1–§4 depends on it, and no surface in this
+document carries push payloads.
+
+### 5.10 The admin surface (scope grants; the §2.5/§2.7 debt)
+
+**Admin authentication (normative).** Administrative surfaces are
+authenticated by the `pi-remote:admin` scope, carried on the
+**enrollment-credential contract point**: an operator enrolls through §2's
+flows, requesting `pi-remote:admin` from the same authorization server the
+host uses. Tenancy is derived from the admin token's `tenant_id` claim
+exactly as §2.6 derives it — an admin is tenant-bound by credential like
+everything else. **No fourth tenancy mechanism exists; INV-3's list stays at
+three** (§5.11 maps all three to their mechanisms). §2.7's never-merge
+401/403 rule — `401 invalid_token` for a credential that does not
+authenticate, `403 insufficient_scope` for a valid credential lacking the
+scope — extends to every admin surface in this section verbatim, and §2.6's
+tenant-derivation rule applies to every request: tenancy comes from the
+token, never from a request field.
+
+**Endpoints:**
+
+- `GET /devices` — the device list (§5.3). Partition `{200, 401, 403, 5xx}`.
+- `DELETE /devices/{deviceId}` — revocation (§5.8). Partition
+  `{204, 401, 403, 404, 5xx}`.
+- `POST /subjects/{sub}/scopes` — the scope-grant surface. Body is
+  `application/json` with exactly one field:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `scope` | REQUIRED | The scope to grant; the closed union below. |
+
+  **The grantable scope is a closed union, exactly `{pi-remote:host,
+  pi-remote:admin}`.** `pi-remote:device` is deliberately NOT in the union:
+  the device credential is an opaque secret (§5.1) with no scope claim and
+  no authorization-server round-trip, so a grantable `pi-remote:device`
+  would name a grant nothing can bear. Devices obtain their credential
+  through `POST /devices` (§5.2), never through this endpoint; this
+  endpoint discharges the §2.5/§2.7/§3.6 debt for **enrolled subjects** —
+  hosts and admins — which devices are not. An unknown scope value is `400
+  invalid_request` (the union is closed). Re-adding a scope to the union
+  later is closed-vocabulary growth and requires a ruling.
+
+  The endpoint grants the named scope to an enrolled subject `sub` —
+  unique within and namespaced by a tenant (§2.6) — in the admin token's
+  own tenant. **Grants are explicitly scoped to the admin token's own
+  tenant:** there is no cross-tenant grant, and no conformant server MUST
+  honor a grant request naming a subject outside the admin's tenant. Success
+  is `204 No Content` with no body; an unknown or other-tenant `sub` is
+  `404` (no existence leak, mirroring §3.5's rule). Partition
+  `{204, 400, 401, 403, 404, 5xx}`.
+
+The grant complements re-consent: §2.7's `403 insufficient_scope` remedy is
+"re-consent plus an administrator grant of the scope" — re-consent is the
+user re-running §2's flows, and the grant half is this endpoint.
+
+### 5.11 Multi-tenancy: the three credential contract points, mapped to mechanisms
+
+INV-3 states that tenancy travels entirely in credentials, at three contract
+points. This table restates that requirement concretely and self-contained;
+each row maps one contract point to its credential and its server-side
+enforcement mechanism:
+
+| Contract point | Credential | Mechanism | Enforced at |
+| --- | --- | --- | --- |
+| Enrollment token | OAuth2 access token (§2.6) | The authorization server validates it; the `tenant_id` claim scopes all host control-plane state; tenancy is derived solely from the token, never from request fields | Every control-plane request (§2.6) |
+| Tunnel token | Signed one-time compact JWS in the URL (§3.3) | The server signs at tunnel creation; the `tenant_id` claim is read off the verified token; the tunnel-existence binding is checked at the upgrade | The host handshake (§3.4) |
+| Device grants | Opaque device credential (§5.1), minting a short-lived device connection token (§5.5) | The registry row's tenant binding is carried into the token's `tenant_id`/`device_id` claims; the mint surface checks tenant coverage; the upgrade checks the registry row; delivery re-checks at every fan-out | Mint (§5.5), upgrade (§5.6), and every fan-out delivery (§5.7) |
+
+Plus the INV-3 restatement, in this document's own words: the frame envelope
+carries **no tenant field anywhere** (§4.2's closed key set), and every
+data-plane connection — the host's and each device's — is bound to exactly
+one `(tenant, tunnel)` pair before a single frame flows. The server scopes
+all relaying, caching, and fan-out state by that binding, never by anything
+inside the frame envelope.
+
+### 5.12 The trust summary, from the server's side of the table
+
+This section's trust table is restated in full from the server's
+perspective; no row is defined by reference to another document. Each row
+names what the component holds, what it can do, and the consequence the
+server observes.
+
+**The server.**
+
+- **Holds:** the token-signing key(s); the authorization-server registry;
+  the device registry; the consumed-`jti` set; the live-tunnel records; the
+  ring buffers; and every envelope byte on every tunnel it hosts.
+- **Can do:** issue and revoke enrollment credentials; mint and consume
+  tunnel tokens; register, grant, and revoke devices; stamp `deviceId`;
+  enforce fan-out; relay.
+- **Frame visibility is total within its tunnels.** TLS terminates at the
+  server; no payload-level end-to-end encryption is specified anywhere in
+  this document.
+- **The compromise statement, stated honestly.** A compromised server
+  exposes every frame payload of every tunnel it serves, in the clear. It
+  can mint valid connection tokens for any tunnel of any tenant it hosts;
+  it can forge `deviceId` stamps — envelope audit identity is only as
+  trustworthy as the server; it can impersonate any host or device; it can
+  read both registries. **Its blast radius is total across the tenants it
+  hosts, and zero beyond them:** it cannot reach data or credentials for
+  tenants it does not host. INV-1's relaying-opaquely obligations are
+  behavioral constraints on a conformant server, **not** cryptographic
+  guarantees against a compromised one. There is no host↔device integrity
+  that excludes the server.
+
+**The host.**
+
+- **Holds:** its enrollment credential (§2.8) — one tenant's worth of
+  access; its session's local frame store.
+- **Can do:** enroll, refresh, create tunnels, dial the data plane, produce
+  downlink frames, replay history on `resync` (INV-2).
+- **Server-visible consequence of host compromise:** a compromised host
+  holds credentials for exactly one tenant, affects only its own tunnels,
+  cannot mint tokens, and cannot reach other tenants (INV-3's scoping). The
+  server observes only that one tenant's tunnels are being driven by
+  whoever holds the credential — the same wire shape as a legitimate host.
+
+**The client device.**
+
+- **Holds:** one device credential (§5.1) and, per connection, one
+  short-lived single-use minted token (§5.5).
+- **Can do:** present the credential at the mint surface, dial the minted
+  URL, receive downlink frames, send uplink frames, resume.
+- **Server-visible consequence of device compromise:** a leaked device
+  credential reaches only its tenant and only the tunnels its grant covers
+  (the base grant, §5.4); it is revocable at the control plane without host
+  cooperation (INV-4, §5.8). The blast radius of a leaked *minted token* is
+  bounded by its TTL and single use (§5.5). The server observes a revoked
+  device's frames simply stopping — there is no device-side mechanism to
+  distinguish revocation from a network failure, and none is needed.
+
+**The admin operator.**
+
+- **Holds:** an enrollment credential carrying `pi-remote:admin` (§5.10).
+- **Can do:** register, list, and revoke devices; grant scopes to enrolled
+  subjects in its own tenant.
+- **Server-visible consequence of admin compromise:** a compromised admin
+  credential reaches its own tenant's registry and scope-grant surfaces —
+  it can register and revoke devices and grant scopes within that tenant.
+  It cannot reach other tenants (§2.6's tenancy derivation; §5.10's
+  tenant-scoped grants).
+
+The summary is a restatement of what §1–§4 and this section already specify,
+gathered so an operator can read it as the deployment's security-posture
+checklist (§1.6). It adds no new capability and revokes none.
+
+### 5.13 Guidance (non-normative)
+
+> **Guidance (non-normative).** One recommended shape per concern, per §1.5:
+>
+> 1. **Registry storage sketch.** One row per device keyed by `deviceId`:
+>    `tenant_id`, `display_name`, `status`, `push_provider`,
+>    `credential_hash` (never the credential itself), `created_at`. Compare
+>    presented credentials against `credential_hash` in constant time.
+> 2. **Admin operations.** Bootstrap the first admin out-of-band per
+>    deployment (the grant endpoint of §5.10 presumes an admin already
+>    exists; tenant creation and the initial bootstrap are deployment-local
+>    concerns this document does not specify). The device lifecycle is
+>    register → revoke (§5.2, §5.8); a device that needs a new tenant or a
+>    lost credential is revoked and re-registered. Audit = the retained
+>    device rows plus the host-side attribution of envelope `deviceId`s.
+> 3. **Key ceremony.** Signing keys are generated on the server, never
+>    exported to hosts or devices; use an asymmetric pair with rotation, per
+>    §3.3's existing guidance, so token verification can be delegated to
+>    data-plane replicas without sharing the signing capability.
+> 4. **Device tunnel discovery.** Out-of-band for v1 — a **named
+>    non-decision**, not an omission: a device learns `tunnelId`s out-of-band
+>    (an operator, a QR code, a push channel to be specified later). The
+>    normative guard this decision rests on is §5.5's: possession of a
+>    `tunnelId` is not capability — the mint surface's grant check is the
+>    only gate.
+
+### 5.14 Error vocabulary and closed partitions
+
+This section's error bodies use §2.7's shape — `{"error": "<code>",
+"error_description": "<human-readable sentence>"}` — on every non-2xx
+response. The vocabulary additions, each defined **exactly once**:
+
+| `error` | Status | Surface | Meaning |
+| --- | --- | --- | --- |
+| `unknown_device` | `404` | Revoke (§5.8); also the mint surface's registry-row rejections | The named device is unknown, foreign-tenant, or already revoked — one code, no existence leak. |
+| `tunnel_not_granted` | `403` | Mint (§5.5, step 5) | **Reserved: reachable by no MUST in v1.** A layered per-tunnel denial, if a server layers one (§5.7's ceiling). |
+
+Naming note, kept honest: `tunnel_not_granted` and §3.6's `tunnel_not_found`
+are confusably close. They are distinct codes with disjoint surfaces and
+meanings — `tunnel_not_found` is the delete-surface code for a tunnel that
+does not exist (§3.5); `tunnel_not_granted` is the mint-surface code for a
+same-tenant layered denial. Neither merges into the other, and neither
+merges into `unknown_tunnel` (§3.4, §5.5), which is the no-leak code for
+"no such tunnel in your tenant." Codes **inherited without redefinition**
+from earlier sections: `invalid_request`, `invalid_token`,
+`insufficient_scope`, `unknown_tunnel`, `token_consumed`, `internal_error`.
+
+**Closed status partitions (normative):**
+
+| Surface | Partition |
+| --- | --- |
+| Register (`POST /devices`) | `{200, 400, 401, 403, 5xx}` |
+| List (`GET /devices`) | `{200, 401, 403, 5xx}` |
+| Revoke (`DELETE /devices/{deviceId}`) | `{204, 401, 403, 404, 5xx}` |
+| Scope grant (`POST /subjects/{sub}/scopes`) | `{204, 400, 401, 403, 404, 5xx}` |
+| Mint (`POST /device/connections`) | `{200, 400, 401, 403, 404, 5xx}` |
+| Device upgrade (`wss://…/<tunnelId>/devices`) | `{101, 400, 401, 404, 409, 5xx}` |
+
+A server emitting any other status on these surfaces is non-conformant.
+`429` is in none of them: §3.6's rule extends — a conformant server that
+rate-limits maps throttled requests onto members of the relevant partition,
+and a server that emits `429` on any of these surfaces is non-conformant.
+
+**Surface disambiguation of 401, extended.** A `401` at a §2/§3
+control-plane endpoint means the enrollment credential is dead — re-enroll
+(§3.6). A `401` at `POST /device/connections` means the device credential
+is dead or the device is revoked — revoke + re-register (§5.2). A `401` at
+the device upgrade means the connection token is unusable **or** the named
+device row is revoked — one folded meaning (§5.6, step 6); the remedy is a
+revoke + re-register for the operator, and a fresh mint→dial cycle is
+futile until the registry row is `active`. The same status, a different
+credential, a different remedy: the surface disambiguates them, and each
+surface individually keeps §2.7's rule that the status alone selects the
+remedy.
