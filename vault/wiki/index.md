@@ -42,6 +42,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Gulf of Evaluation]] — the designer's lens: can the user perceive the system's state without archaeology?
 - [[Self-Containment Audit]] — zero references to sibling specs or codebases; exactly one external link; run on the real artifact.
 - [[Normativity Test]] — a MUST/SHOULD must name its observation point; one-sided bounds are never normative; failures are defects.
+- [[RFC Conformance Posture]] — when shipped client behavior diverges from a published RFC, the client moves; the spec stays standards-accurate.
 - [[Win32 Test Timeout Convention]] — process-spawning Windows tests carry an explicit 30s per-test timeout; provenance is the council record, not vault/raw (deviation stated).
 
 ## Comparisons

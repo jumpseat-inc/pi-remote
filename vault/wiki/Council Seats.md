@@ -14,6 +14,8 @@ Provenance note worth keeping: the EV-1 ruling records that the product-owner se
 
 Two governance lessons the corpus demonstrates: recorded *preferences* are advisory (EV-8 J1 amended EV-2 Item 4's), and a seat's own out-of-scope call can be overruled by its ruling seat when the Skeptic's evidence changes the facts (FLLWUP-5 S-O2).
 
+**Operational diagnosis pattern (from the residual run):** a seat freezing mid-turn with turns AND cost frozen across two wait windows is a seat-level transient, not an environment hang — probe the environment first (e.g. run the suite directly; it completed in under a second), then re-dispatch fresh; two consecutive freezes at the same long-generation step indicates the generation length, not the model — mitigate with chunked writes (compose large documents in bounded tool calls) before routing a model change to the human.
+
 ## Related
 [[Judge Object Rule]], [[Verify Cycle Cap]], [[Spec Correction Governance]], [[EPIC-1 Decision Record]]
 
