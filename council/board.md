@@ -19,10 +19,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-21 — "Align §1.2's control/data-plane decision sentence with §5.6's device-upgrade admission checks"
 - FLLWUP-18 — "Align the refresh request encoding with RFC 6749 form-encoding or document the divergence permanently (EV-10 follow-up)"
 
-## Deliberating
-- FLLWUP-22 — "Resolve the §2.3 device-flow poll answer shape against the shipped headless driver (400 vs 2xx error body)"
-
 ## In Progress
+- FLLWUP-22 — "Resolve the §2.3 device-flow poll answer shape against the shipped headless driver (400 vs 2xx error body)"
 
 ## In Review
 

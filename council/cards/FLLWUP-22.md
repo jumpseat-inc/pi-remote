@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-22
 title: "Resolve the §2.3 device-flow poll answer shape against the shipped headless driver (400 vs 2xx error body)"
-state: Deliberating
+state: In Progress
 owner: null
 epic: EPIC-2
 goal: docs/SERVER-SIDE-SPEC.md §2.3's mandate that token-endpoint polls are answered `400` + `{"error":…}` is reconciled with the shipped headless driver's actual behavior — the client only recognizes the `error` field on a 2xx body and aborts polling on any non-2xx with `tokenExchangeFailed` — by correcting whichever side the ruling selects, so a server conformant to the document does not break the shipped headless flow.
