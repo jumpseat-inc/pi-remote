@@ -12,12 +12,12 @@ ok() { echo "OK: $*"; }
 
 # ---- Superpowers gate ----
 # The council depends on the superpowers skills package (TDD, planning,
-# debugging, ...). /council-init pins it project-locally (.pi/settings.json
-# plus a clone under .pi/git/...) — that is what makes it portable to
+# debugging, ...). /council-init pins it project-locally (@CONFIG_DIR@/settings.json
+# plus a clone under @CONFIG_DIR@/git/...) — that is what makes it portable to
 # teammates. A global-only install leaves the repo, so the instructor refuses
 # to start a council run without a project-local presence.
-SUPER_PKG=".pi/git/github.com/obra/superpowers"
-SUPER_PIN=".pi/settings.json"
+SUPER_PKG="@CONFIG_DIR@/git/github.com/obra/superpowers"
+SUPER_PIN="@CONFIG_DIR@/settings.json"
 if [ -d "$SUPER_PKG" ] && [ -f "$SUPER_PKG/package.json" ]; then
   ok "superpowers present (skills package under $SUPER_PKG)"
 elif [ -f "$SUPER_PIN" ] && grep -q 'superpowers' "$SUPER_PIN" 2>/dev/null; then
@@ -29,13 +29,13 @@ fi
 # ---- Ask-user-question extension gate ----
 # The council needs the rpiv-ask-user-question extension (a tool a seat can use
 # to interrupt for a human answer). /council-init pins it project-locally
-# (.pi/settings.json plus an install under
-# .pi/npm/node_modules/@juicesharp/rpiv-ask-user-question) — that is
+# (@CONFIG_DIR@/settings.json plus an install under
+# @CONFIG_DIR@/npm/node_modules/@juicesharp/rpiv-ask-user-question) — that is
 # what makes it portable to teammates. A global-only install leaves the repo,
 # so the instructor refuses to start a council run without a project-local
 # presence.
-ASK_PKG=".pi/npm/node_modules/@juicesharp/rpiv-ask-user-question"
-ASK_PIN=".pi/settings.json"
+ASK_PKG="@CONFIG_DIR@/npm/node_modules/@juicesharp/rpiv-ask-user-question"
+ASK_PIN="@CONFIG_DIR@/settings.json"
 if [ -d "$ASK_PKG" ] && [ -f "$ASK_PKG/package.json" ]; then
   ok "ask-user-question present (extension under $ASK_PKG)"
 elif [ -f "$ASK_PIN" ] && grep -q 'rpiv-ask-user-question' "$ASK_PIN" 2>/dev/null; then
@@ -44,16 +44,14 @@ else
   fail "ask-user-question is not installed project-locally — run /council-init (or run pi install -l npm:@juicesharp/rpiv-ask-user-question yourself), then run /reload. The council refuses to run without it."
 fi
 
-command -v bun >/dev/null 2>&1 || fail "bun is not on PATH (install via https://bun.sh)"
-ok "bun found: $(bun --version)"
-
-[ -f bun.lock ] || [ -f package.json ] || fail "not a project root (no package.json/bun.lock)"
-ok "project files present"
-
-if [ -f package.json ]; then
-  bun install --frozen-lockfile >/dev/null 2>&1 || fail "bun install failed (deps not installed)"
-  ok "dependencies installed"
-fi
+# ---- Project tooling gate (adapt to your project) ----
+# The council imposes no language, runtime, or package-manager requirement on
+# your project. Add your own checks here for whatever your project needs before
+# a run — e.g.:
+#   command -v <build-tool> >/dev/null 2>&1 || fail "<build-tool> is not on PATH"
+#   [ -f <project-marker> ] || fail "not a project root (no <project-marker>)"
+#   <install-cmd> || fail "dependencies not installed"
+ok "project tooling gate — extend with your project's checks (see council/preflight.sh)"
 
 if [ "${1:-}" != "" ]; then
   [ -f "council/cards/$1.md" ] || fail "card file council/cards/$1.md not found"
@@ -70,14 +68,14 @@ if [ "$branch" != "main" ]; then
 fi
 
 # ---- MCP gate (context7, tavily) ----
-# The scaffold writes .pi/council/mcp.json registering context7 and
+# The scaffold writes @CONFIG_DIR@/council/mcp.json registering context7 and
 # tavily. Structural check only: registration present + stored credentials
 # present for each. A real OAuth re-auth/live-token probe is out of scope for
-# preflight. Any FAIL: line must halt the run. (.pi is replaced with
+# preflight. Any FAIL: line must halt the run. (@CONFIG_DIR@ is replaced with
 # the real config-dir name by council-init at copy time; the agent-auth path
 # honors $PI_CODING_AGENT_DIR.)
 for c7 in context7 tavily; do
-  c7_mcp=".pi/council/mcp.json"
+  c7_mcp="@CONFIG_DIR@/council/mcp.json"
   if [ ! -f "$c7_mcp" ] || ! grep -q "\"$c7\"" "$c7_mcp" 2>/dev/null; then
     fail "$c7 not registered (missing or no entry in $c7_mcp) — run /council-init"
   fi
