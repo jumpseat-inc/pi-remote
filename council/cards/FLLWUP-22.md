@@ -163,3 +163,26 @@ table dispatched on 2xx-or-400; all other non-2xx → `tokenExchangeFailed`, bod
 effectively unread; no new reason; no copy change). One small test-inventory delta
 forwarded to the consolidator: plain-500 fixture kept (owner) vs dropped as a no-op
 guard (principal).
+
+### Step 4 — Skeptic dispatch (STALLED — card paused here)
+
+Two consecutive bounded `skeptic` dispatches failed to settle; per dispatch
+discipline no third dispatch is permitted and the card pauses mid-step-4.
+
+- **job-31.5** (first dispatch, 20 min window + 15 min extension): cancelled by
+  facilitator after two wait windows showed no progress (turns frozen at 21,
+  cost frozen at $0.0246). Its last visible output: "Probe had a shadowing bug
+  (helper named `deps` collides with destructured var). Rewriting cleanly:". It
+  left an untracked probe file, `test/flluwp22-skeptic-probe.test.ts`, which the
+  facilitator removed; the working tree is clean.
+- **job-31.6** (re-dispatch, same input, 20 min window + 15 min extension):
+  stalled with no activity across both windows (turns frozen at 3, cost frozen
+  at $0.0057; last output: "The code under attack is clear. Now let me examine
+  the pre-existing untracked probe file, the test harness (makeControl/makeFetch),
+  the exact fixture line numbers, and the wiki page — in parallel."). Cancelled
+  by facilitator after the second frozen window.
+
+Deliberation state preserved above (rounds 1–2 complete, positions stabilized).
+Step 4 (Skeptic attacks and runs tests), step 5 (consolidator), and steps 7–13
+have NOT run. A recovering runner re-dispatches the skeptic at this point with
+the full deliberation record.
