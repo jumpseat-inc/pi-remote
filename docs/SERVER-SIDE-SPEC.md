@@ -1233,3 +1233,79 @@ the long-lived secret never rides a WebSocket URL (INV-5's shape, held at
 the data plane). A lost credential is unrecoverable: the remedy is revoke +
 re-register (§5.8, §5.2) — the device-side analogue of §2.8's
 replace-not-merge discipline.
+
+### 5.2 Device registration — `POST /devices`
+
+Registration is **admin-minted**, not device self-enrollment: the registry
+surfaces are the ones client devices never call themselves (§5.0), and a
+self-enrolling device would have no admin-authenticated registration surface
+anywhere in this document. An operator calls this endpoint on the device's
+behalf and transfers the credential to the device out-of-band; the transfer
+channel is a deployment concern (guidance, §5.13), not contract.
+
+- **Authentication:** an enrollment access token carrying the
+  `pi-remote:admin` scope (§5.10), per §2.6 and §2.7's semantics. Tenancy is
+  derived solely from the token's `tenant_id` claim (§2.6, restated): the
+  request carries no tenant field, and a server MUST ignore any tenant-like
+  request field an operator sends anyway.
+- **Request body** — `application/json`:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `displayName` | REQUIRED | Non-empty string, at most 256 characters (guidance-grade maximum, §1.5); informational. |
+| `pushProvider` | OPTIONAL | The reserved push record shape (§5.9); absent means the default `"webpush"`. |
+
+  A server MUST reject — with `400 invalid_request` — a missing or
+  unparseable body, or a missing or wrong-typed field. Unknown request
+  fields MUST be ignored.
+
+**Response (success)** — `200` with an `application/json` body. The status
+is `200`, not `201`: there is one response shape (§3.2's stated precedent).
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `deviceId` | REQUIRED | The new registry row's identity (§5.1). |
+| `deviceCredential` | REQUIRED | The opaque secret (§5.1). **Shown exactly once, never re-retrievable.** This REQUIRED-once response field is the only normative lever on the out-of-band handoff; no read surface of this document ever returns it (§5.3's obligation). |
+| `pushProvider` | REQUIRED | Echo of the stored value. |
+
+The registry record is created by this call; registration and credential
+issuance are one atomic act, and a failed call issues no credential.
+
+### 5.3 Device list — `GET /devices`
+
+Admin-authenticated (§5.10). Lists the admin token's own tenant's devices —
+the tenancy derivation of §2.6 applies unchanged, so the response never
+spans tenants.
+
+**Response (success)** — `200` with an `application/json` body: a JSON
+array, one element per device in the tenant, each carrying `deviceId`,
+`displayName`, `status`, `pushProvider`, and `createdAt`.
+
+**The response MUST NOT include `deviceCredential`.** The credential is
+shown exactly once, at registration (§5.2); the moment a read surface
+returns it, that property is violated. This is a MUST on the response shape,
+not a recommendation.
+
+This endpoint is one of the two observation points that make the
+`pushProvider` reservation enforceable rather than decorative: it is written
+at `POST /devices` (§5.2) and read here, both normative (§5.9).
+
+The status partition is closed: `{200, 401, 403, 5xx}` (§5.14).
+
+### 5.4 Tenant membership is the base grant
+
+Normative, restating INV-3 and INV-4 made concrete: every device belongs to
+exactly one tenant, fixed at registration (§5.2) and immutable thereafter.
+**Membership is the base grant**: a device may receive a tunnel's frames if
+and only if the device's tenant equals the tunnel's tenant.
+
+No grant ever widens beyond the base grant. Narrower restrictions MAY layer
+on top of it (§5.7), but they only ever reduce access below it — there is no
+mechanism in this document by which a device gains access to a tunnel
+outside its tenant, and a conformant server MUST NOT create one.
+
+Moving a device between tenants is revoke + re-register (§5.8, §5.2): there
+is no move operation. The registry row's `tenantId` is immutable after
+registration (§5.1), and the no-recycle rule (§5.1) means the re-registered
+device is a new `deviceId` with a new credential — the old identity's audit
+trail stays bound to the old, revoked row.
