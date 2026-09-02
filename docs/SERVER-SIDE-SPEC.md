@@ -1480,3 +1480,102 @@ reuse, only on token replay. Unlike the host's §3.1 one-tunnel/one-upgrade
 rule, multiple device connections per tunnel are the expected steady state
 (§4.6's 1:N fan-out): each device connection is its own mint→dial cycle,
 and each mints its own short-lived token.
+
+### 5.7 Grants and the enforcement algorithm at fan-out
+
+**The floor (MUST, harness-observable).** The server MUST NOT deliver any
+data-plane frame for tunnel T to a device that is not a member of T's tenant
+— restated INV-4, made concrete by §5.4's base grant.
+
+**Enforcement at two points.** Grants are enforced at attach time (§5.5
+steps 3 and 5, §5.6) **and** re-checked at every delivery opportunity. The
+second check is what makes mid-connection revocation take effect without
+host cooperation: the device's socket may outlive its grant by only the
+interval between two delivery opportunities (INV-4; §4.6's "takes effect at
+the next delivery opportunity").
+
+**The algorithm, stated once.** Each line is a restated consequence of
+INV-1 and INV-4. On a host-produced frame F for tunnel T, for each attached
+device d (snapshot at delivery time):
+
+1. d revoked → detach; never deliver.
+2. d's tenant ≠ T's tenant → detach; never deliver.
+3. A layered per-tunnel policy denies d → skip (the MAY path of §5.5 step
+   5; reachable by no MUST in v1).
+4. Else deliver — same frames, same order, no per-device filtering of the
+   stream (§4.6 restated).
+
+**The uplink half (MUST, audit-critical).** After revocation the server MUST
+NOT merge any further uplink frame from that device into the host-bound
+stream. The host attributes input by the server-stamped `deviceId` (§4.2);
+delivering a revoked device's frame would launder an audit identity — the
+exact harm §5.1's no-recycle rule guards. Frames already merged before
+revocation are not recalled: the stream is append-only (INV-1).
+
+**The ceiling (MAY).** The server MAY layer narrower per-tunnel
+restrictions. They only ever reduce access below the base grant (§5.4), are
+never observable on the wire — a device presents only its credential and
+receives frames or does not, and nothing in the protocol requires a device
+to know which rule denied it — and require no device-side knowledge. Clients
+never depend on them; the base grant is the only grant any conformant host
+or device needs.
+
+### 5.8 Revocation — `DELETE /devices/{deviceId}`
+
+Revocation is a control-plane act, admin-authenticated (§5.10). It is
+**idempotent**: success is `204 No Content` with no body. A `deviceId` that
+is unknown, belongs to another tenant, or is already revoked is `404` with
+`unknown_device` — never `403`, so no cross-tenant existence leak exists
+(mirroring §3.5's rule), and a repeated delete is indistinguishable from a
+first success. The not-found treatment is `404`-only: no `410`. The status
+partition is closed: `{204, 401, 403, 404, 5xx}` (§5.14).
+
+**On success**, the server MUST do all of the following, in order:
+
+a. Set the registry row's `status` to `revoked`. The credential is dead:
+   subsequent `POST /device/connections` presentations of it are `401`
+   (§5.5, step 2).
+b. Stop fan-out to the device **immediately** (§4.6's MUST; the mechanism is
+   §5.7's delivery-time re-check).
+c. Close the device's live socket, if one exists, promptly with `1000`
+   (§4.8's deliberate close).
+d. Discard the device's per-device bookkeeping and any outstanding catch-up
+   (§4.5). The host-bound stream and the other devices are unaffected; a
+   resync already triggered is not recalled.
+
+**The record is retained, not erased.** The envelope `deviceId` audit trail
+must remain interpretable: §4.2 makes the server the only trust anchor for
+stamped `deviceId`s, and the registry is the only decoder ring. This is a
+documented, reasoned difference from §3.5's no-tombstone rule — which is
+**tunnel-scoped** prose (a tunnel's identity has no audit afterlife) and
+does not transfer to devices. The corollary is normative: a revoked
+`deviceId` MUST NOT be recycled (§5.1's audit-laundering guard).
+
+**Without host cooperation (INV-4).** All of the above takes effect with
+zero host-side action. Restated in this document's own words: the host has
+no revocation logic; frames from a revoked device simply stop arriving, and
+the server is the only authority (§4.2's trust rule).
+
+### 5.9 The reserved push record shape (`pushProvider`)
+
+The registry reserves exactly one field for future push surfaces, normative
+and wire-observable at two observation points:
+
+- The registry field and the `POST /devices` request field `pushProvider`
+  MUST be exactly one of `"webpush" | "apns" | "fcm"`; absent at
+  registration means the default `"webpush"`; any other value is `400
+  invalid_request` at set time.
+- **Observation points:** written at `POST /devices` (§5.2) and read at
+  `GET /devices` (§5.3) — both REQUIRED for the reservation to be
+  enforceable rather than decorative.
+- **No push delivery behavior, endpoint, or payload is specified.** The
+  field is a reservation so the browser-PWA client — which needs no vendor
+  account — works first. It is settable at registration; mutation is
+  reserved for future push surfaces, which extend from this reservation.
+  Adding a vendor to the union later is closed-vocabulary growth and
+  requires a ruling — the documented route for growing a closed vocabulary
+  (the same discipline §1.5 applies to normative change).
+
+A `pushProvider` value on the wire is meaningful only as this stored shape;
+no conformant behavior of §1–§4 depends on it, and no surface in this
+document carries push payloads.
