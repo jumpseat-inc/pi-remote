@@ -38,6 +38,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Footer Merge Policy]] — kind-first mergeTransport; live clears error on verified open; N=10 consecutive error-severity dialing.
 - [[Retry Policy]] — two seams: transport dials forever; credential terminality stops with the rich reason preserved.
 - [[Gulf of Evaluation]] — the designer's lens: can the user perceive the system's state without archaeology?
+- [[Win32 Test Timeout Convention]] — process-spawning Windows tests carry an explicit 30s per-test timeout; provenance is the council record, not vault/raw (deviation stated).
 
 ## Comparisons
 
