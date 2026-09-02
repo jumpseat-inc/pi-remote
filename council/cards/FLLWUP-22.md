@@ -247,3 +247,39 @@ design cleared for step 5. Probe-boundary honesty note: gate-level deltas were
 tested via a faithful model (validated against real outcomes at every shared
 branch) because the design attack could not modify `src/`; all motivating and
 preservation claims were driven against the real `runHeadlessLogin`.
+
+### Step 5 — Consolidator synthesis (job-32.2; settled)
+
+**Agreed design:** reorder the poll loop (parse + error extraction before the
+status gate; four-code RFC 8628 table on `res.ok || res.status === 400`; all
+other non-2xx → `tokenExchangeFailed`; no new `LoginReason`; no copy change;
+§2.3 untouched; 2xx-with-error kept as a pinned tolerated-legacy shape).
+
+**Settled (S1–S14):** branch (a) per the Phase 1 ruling (S1); table rows and
+semantics (S2); 2xx-with-error legacy tolerance (S3); no new reason / no copy
+change (S4); 5xx → immediate `tokenExchangeFailed`, no retry (S5); skeptic
+O1–O8 closed-green by actual test output (S6–S13); the `:633` flip is cosmetic
+— the normative pin is `:538` plus the new per-code fixtures (S14).
+
+**Open objections: none.**
+
+**Open-judgment items (J1–J3) — routed per the consolidator's own synthesis:**
+
+- **J1 (plain-500 fixture keep vs drop): CLOSED by skeptic test output
+  (S11/O6)** — `500 {}` produces the identical outcome with or without the
+  status-gate wrapper, so it pins nothing distinct; resolution toward the
+  principal's position (drop from the required inventory), with the owner's
+  alternative recorded as functionally harmless. No ruling seat needed — a
+  test settled it (council.md step 4: a dispute a test settled is closed by
+  that result).
+- **J2 (`500 {"error":"authorization_pending"}` → `tokenExchangeFailed`,
+  anti-silent-continue pin): not a dispute** — proposed by the principal in
+  R2, owner silent (not opposed), skeptic probe confirmed the outcome flips
+  under an ungated table. Carried into the spec as part of the fixture
+  inventory.
+- **J3 (optional non-JSON 400 fixture pinning the now-live `.catch` path):
+  not a dispute** — the skeptic's own informational note, no opposing
+  position. Carried into the spec as a recommended fixture.
+
+No open-judgment item requires `product-owner`; no open objection blocks.
+Steps 7 onward proceed.
