@@ -15,7 +15,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 
 ## Ready
-- EV-9 — "Conformance framing — purpose, scope, invariants, normative keywords, reference-client link"
 - EV-10 — "Enrollment and identity spec — discovery, both grant flows, tokens and claims"
 - EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 - EV-12 — "Data-plane relay spec — envelope, seq/ack, resume and resync, fan-out"
@@ -25,6 +24,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
+- EV-9 — "Conformance framing — purpose, scope, invariants, normative keywords, reference-client link"
 
 ## In Review
 

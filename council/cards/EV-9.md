@@ -1,7 +1,7 @@
 ---
 id: EV-9
 title: "Conformance framing — purpose, scope, invariants, normative keywords, reference-client link"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-2
 goal: docs/SERVER-SIDE-SPEC.md opens with a purpose-and-conformance section that defines the server's single responsibility as standardized-frame relay plus control plane, states the system invariants in the document's own words, establishes the normative keyword convention, and carries the one permitted external reference — a link to https://github.com/jumpseat-inc/pi-remote as the reference client implementation.
