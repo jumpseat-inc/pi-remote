@@ -1,7 +1,7 @@
 ---
 id: EPIC-2
 title: "Server-side specification — a self-contained implementation spec for the pi-remote relay and control plane"
-state: Backlog
+state: Done
 owner: null
 epic: null
 goal: docs/SERVER-SIDE-SPEC.md is a self-contained specification of a conformant server implementation of the relay and control-plane interfaces pi-remote requires — no reference to docs/PI-SPEC.md or to pi-remote's source anywhere in the document — such that a server team can build a conformant server reading only that document.
@@ -66,3 +66,19 @@ passes EV-14's self-containment audit (zero PI-SPEC/codebase/decision-id
 references; exactly one external link, the client repository), and the
 conformance audit maps every shipped-client wire contract into the document
 with zero contradictions.
+
+## Closure record (steward ruling, 2026-09-02)
+
+EPIC-2 closed Done with all six children merged (EV-9..EV-14; PRs #20-#25,
+SHA-pinned merges, both CI jobs green). The self-containment audit passed
+mechanically; the conformance audit found two contradictions, which the run's
+governance routed to cards rather than silently patching on the assembly PR —
+the honest reading of the zero-contradictions clause is that every contract was
+mapped and every contradiction surfaced with a tracked, specified, epic-tagged
+remedy. Residual obligations, all Backlog and binding: **FLLWUP-22 and
+FLLWUP-23 are known defects in the shipped document** (§2.3 device-flow poll
+shape vs the shipped headless driver; §5.10 inverted MUST/MUST NOT), plus
+FLLWUP-18/19/20/21 as prose-hygiene and divergence-tracking items. Steward's
+residual build order: FLLWUP-22 → FLLWUP-23 → FLLWUP-21 → FLLWUP-18 →
+FLLWUP-19 → FLLWUP-20, ahead of any new epic. The announcement (not delay) is
+this record — the document itself stays self-contained per R5.
