@@ -5,6 +5,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- FLLWUP-24 — "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
+- FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 - FLLWUP-19 — "Align PI-SPEC §7.2's no-lookup-state prose with the governing spec's server-state position"
 - FLLWUP-20 — "Align PI-SPEC §7.3's per-device lastAckedSeq sentence with the shipped single-watermark reality"
 - FLLWUP-17 — "Key ALREADY_LIVE_COPY as tunnel.alreadyLive and localize it (OJ1 follow-up)"
