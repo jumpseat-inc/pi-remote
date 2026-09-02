@@ -25,11 +25,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 
 ## Needs Human
 
 ## Done
+- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 - EV-10 — "Enrollment and identity spec — discovery, both grant flows, tokens and claims"
 - EV-9 — "Conformance framing — purpose, scope, invariants, normative keywords, reference-client link"
 
