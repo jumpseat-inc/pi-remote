@@ -30,3 +30,17 @@ binds positively), with no other §5.10 change. One sentence, docs-only.
   equivalent positive restatement naming the wire-observable consequence).
 - No other §5.10 change; the enforcement algorithm at §5.7 is untouched.
 - bunx tsc --noEmit exit 0; bun test exit 0 (docs-only; suite untouched).
+
+## Step 9 — Skeptic verification (job-2.2; PASS)
+
+Verified in a throwaway worktree at PR #27 head `6e94151419916c82238f4d1558b39e0b24eb59de`; no branch modification, no pushes, probe artifacts removed. All checks **closed-green** by actual observed output:
+
+1. PR #27 `state: OPEN` at head `6e941514…59de`, not merged.
+2. Diff confined: docs/SERVER-SIDE-SPEC.md changes exactly one hunk (`@@ -1640,8 +1640,8 @@`, 2 del/2 add — the one sentence); scope-union paragraph, the `404 (no existence leak…)` sentence, and the `Partition {204,…,5xx}` line byte-identical; §5.7 untouched; zero `src/`/`test/` files in the diff; no merge commits in range.
+3. Normativity: `MUST NOT honor` now binds non-honoring (honoring a cross-tenant grant ⇒ non-conformant) per the EV-12 Normativity Test; the descriptive "there is no cross-tenant grant" clause is kept separate; observation point is the unchanged wire consequence directly below (other-tenant `sub` → `404`). No residual ambiguity.
+4. Gates re-run at PR head (fresh bun install): `bunx tsc --noEmit` exit 0; `bun test` → `218 pass / 1 skip / 0 fail` (win32 ACL platform skip), exit 0. Both gates proven fail-capable by injection (type error → tsc exit 1; failing assertion → bun test exit 1), then restored.
+5. Plan file `docs/superpowers/plans/fllwup-23-must-not-cross-tenant.md` exists, matches the shipped diff verbatim, no placeholder text.
+
+Non-blocking note (closed-green): the PR branch carries the `Ready → In Progress` bookkeeping while the `In Progress → In Review` transition is main-side (`0573fcd`) — the normal branch-for-work-start / main-for-PR-open split, not a PR defect.
+
+**Verdict: PASS — no open objections, no open-untested items.** Step-9 cycle counter: 1 of 3 used.
