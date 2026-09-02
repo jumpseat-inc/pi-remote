@@ -164,10 +164,14 @@ effectively unread; no new reason; no copy change). One small test-inventory del
 forwarded to the consolidator: plain-500 fixture kept (owner) vs dropped as a no-op
 guard (principal).
 
-### Step 4 — Skeptic dispatch (STALLED — card paused here)
+### Step 4 — Skeptic dispatch (FIRST ATTEMPT — stalled; superseded below)
 
 Two consecutive bounded `skeptic` dispatches failed to settle; per dispatch
 discipline no third dispatch is permitted and the card pauses mid-step-4.
+(Resume note: the orchestrator probed the environment — `bun test` runs the
+full suite in under a second locally; the freezes were transient seat-level
+failures, not an environment defect. A fresh skeptic dispatch was permitted
+on resume.)
 
 - **job-31.5** (first dispatch, 20 min window + 15 min extension): cancelled by
   facilitator after two wait windows showed no progress (turns frozen at 21,
@@ -186,3 +190,60 @@ Deliberation state preserved above (rounds 1–2 complete, positions stabilized)
 Step 4 (Skeptic attacks and runs tests), step 5 (consolidator), and steps 7–13
 have NOT run. A recovering runner re-dispatches the skeptic at this point with
 the full deliberation record.
+
+### Step 4 — Skeptic attack (RESUMED RUN, job-32.1; settled)
+
+A fresh bounded `skeptic` dispatch (20-min window, one extension on visible
+progress) settled cleanly: 20 turns, probe files removed, working tree
+restored green (`bun test` → 207 pass / 1 skip / 0 fail; `bunx tsc --noEmit`
+exit 0). Both gates proven capable of failing by injection (deliberately
+false assertion → red; type error → red) before being restored. Full record:
+
+- **O1 — motivating claim: closed-green.** Drove the real `runHeadlessLogin`
+  with `{status:400, body:{error:"authorization_pending"}}` →
+  `tokenExchangeFailed`, no credential. A §2.3-conformant server genuinely
+  breaks the shipped flow today; the card's premise is grounded.
+- **O2 — reorder safety: closed-green.** Real-code probe over every edge
+  (204, non-JSON 2xx, 3xx, `res.ok` semantics) plus a model diff over
+  16 statuses × 9 bodies: **only status 400 changes outcome, and only
+  toward the four documented rows.** Everything else byte-identical.
+- **O3 — RFC 8628 §3.5 conformance: closed-green.** RFC-editor text fetched:
+  `slow_down` → interval "MUST be increased by 5 seconds"; any other error →
+  stop polling. Real-code probe: `200+slow_down` sleeps `[1000, 6000]` =
+  exactly +5000ms. Design row = RFC row = §2.3 row.
+- **O4 — error-wins honesty pin: closed-green.** Real code,
+  `200 + {access_denied, access_token}` → `deviceDenied`, credential null;
+  model confirms it also holds in the new 400 window.
+- **O5 — anti-false-denial: closed-green with reclassification.** Real code
+  already returns `tokenExchangeFailed` for `500 {"error":"access_denied"}`
+  (the `!res.ok` gate fires before the body is read). The planned honesty
+  fixture is a **regression guard against the reorder's
+  parse-then-dispatch-everywhere overcorrection**, not a current failure —
+  matching what round 2 already recorded.
+- **O6 — plain-500 fixture dispute (owner keep vs principal drop): SETTLED
+  BY TEST OUTPUT, toward the principal.** `500 {}` produces the same outcome
+  with or without the status-gate wrapper (both `tokenExchangeFailed`), and
+  even a forgot-trailing-gate bug flips all three 500 fixtures alike — the
+  plain-500 fixture pins nothing distinct. Dropping is defensible; keeping
+  is functionally harmless. Not blocking.
+- **O7 — non-JSON bodies fail closed: closed-green.** The
+  `res.json().catch(() => null)` catch is live at every status post-reorder;
+  planned non-JSON 500 fixture exercises it.
+- **O8 — no existing test can flip: closed-green.** Baseline 207 pass /
+  1 skip / 0 fail; every token fixture in the suite uses `status: 200`; the
+  reorder only changes 400 behavior. Test 9 (:538), test 11 (:633), and the
+  headless test stay green. The attended gate at `src/login.ts:547` is
+  outside the diff.
+- **Informational notes for step 7/8:** (a) flipping `:633` (the Ctrl-C test,
+  which never issues a token POST) to 400 is cosmetic — the normative pin is
+  `:538` plus the new per-code fixtures; (b) an optional non-JSON **400**
+  fixture would pin the same `.catch` line on the now-live 400 parse path.
+- **Deferred items re-confirmed out of scope:** connection-timeout slowdown
+  divergence (RFC real, correctly deferred), `error_description` ignored,
+  no 5xx retry.
+
+**Step-4 verdict: no open objections.** Nothing red, nothing ill-falsifiable;
+design cleared for step 5. Probe-boundary honesty note: gate-level deltas were
+tested via a faithful model (validated against real outcomes at every shared
+branch) because the design attack could not modify `src/`; all motivating and
+preservation claims were driven against the real `runHeadlessLogin`.
