@@ -17,11 +17,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 
 ## Ready
-- FLLWUP-23 — "Fix §5.10's inverted RFC-2119 keyword: MUST where MUST NOT is meant in the cross-tenant grant sentence"
 - FLLWUP-21 — "Align §1.2's control/data-plane decision sentence with §5.6's device-upgrade admission checks"
 - FLLWUP-18 — "Align the refresh request encoding with RFC 6749 form-encoding or document the divergence permanently (EV-10 follow-up)"
 
 ## In Progress
+- FLLWUP-23 — "Fix §5.10's inverted RFC-2119 keyword: MUST where MUST NOT is meant in the cross-tenant grant sentence"
 
 ## In Review
 

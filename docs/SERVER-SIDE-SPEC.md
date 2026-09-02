@@ -1640,8 +1640,8 @@ token, never from a request field.
   The endpoint grants the named scope to an enrolled subject `sub` —
   unique within and namespaced by a tenant (§2.6) — in the admin token's
   own tenant. **Grants are explicitly scoped to the admin token's own
-  tenant:** there is no cross-tenant grant, and no conformant server MUST
-  honor a grant request naming a subject outside the admin's tenant. Success
+  tenant:** there is no cross-tenant grant, and a conformant server MUST
+  NOT honor a grant request naming a subject outside the admin's tenant. Success
   is `204 No Content` with no body; an unknown or other-tenant `sub` is
   `404` (no existence leak, mirroring §3.5's rule). Partition
   `{204, 400, 401, 403, 404, 5xx}`.
