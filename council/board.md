@@ -14,11 +14,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 
 ## Ready
-- FLLWUP-16 — "Give the Windows SDDL read-back test an explicit timeout sized for process cold start"
 
 ## Deliberating
 
-## In Review
+## In Progress
+- FLLWUP-16 — "Give the Windows SDDL read-back test an explicit timeout sized for process cold start"
 
 
 ## Needs Human
