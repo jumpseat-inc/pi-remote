@@ -1631,3 +1631,94 @@ token, never from a request field.
 The grant complements re-consent: §2.7's `403 insufficient_scope` remedy is
 "re-consent plus an administrator grant of the scope" — re-consent is the
 user re-running §2's flows, and the grant half is this endpoint.
+
+### 5.11 Multi-tenancy: the three credential contract points, mapped to mechanisms
+
+INV-3 states that tenancy travels entirely in credentials, at three contract
+points. This table restates that requirement concretely and self-contained;
+each row maps one contract point to its credential and its server-side
+enforcement mechanism:
+
+| Contract point | Credential | Mechanism | Enforced at |
+| --- | --- | --- | --- |
+| Enrollment token | OAuth2 access token (§2.6) | The authorization server validates it; the `tenant_id` claim scopes all host control-plane state; tenancy is derived solely from the token, never from request fields | Every control-plane request (§2.6) |
+| Tunnel token | Signed one-time compact JWS in the URL (§3.3) | The server signs at tunnel creation; the `tenant_id` claim is read off the verified token; the tunnel-existence binding is checked at the upgrade | The host handshake (§3.4) |
+| Device grants | Opaque device credential (§5.1), minting a short-lived device connection token (§5.5) | The registry row's tenant binding is carried into the token's `tenant_id`/`device_id` claims; the mint surface checks tenant coverage; the upgrade checks the registry row; delivery re-checks at every fan-out | Mint (§5.5), upgrade (§5.6), and every fan-out delivery (§5.7) |
+
+Plus the INV-3 restatement, in this document's own words: the frame envelope
+carries **no tenant field anywhere** (§4.2's closed key set), and every
+data-plane connection — the host's and each device's — is bound to exactly
+one `(tenant, tunnel)` pair before a single frame flows. The server scopes
+all relaying, caching, and fan-out state by that binding, never by anything
+inside the frame envelope.
+
+### 5.12 The trust summary, from the server's side of the table
+
+This section's trust table is restated in full from the server's
+perspective; no row is defined by reference to another document. Each row
+names what the component holds, what it can do, and the consequence the
+server observes.
+
+**The server.**
+
+- **Holds:** the token-signing key(s); the authorization-server registry;
+  the device registry; the consumed-`jti` set; the live-tunnel records; the
+  ring buffers; and every envelope byte on every tunnel it hosts.
+- **Can do:** issue and revoke enrollment credentials; mint and consume
+  tunnel tokens; register, grant, and revoke devices; stamp `deviceId`;
+  enforce fan-out; relay.
+- **Frame visibility is total within its tunnels.** TLS terminates at the
+  server; no payload-level end-to-end encryption is specified anywhere in
+  this document.
+- **The compromise statement, stated honestly.** A compromised server
+  exposes every frame payload of every tunnel it serves, in the clear. It
+  can mint valid connection tokens for any tunnel of any tenant it hosts;
+  it can forge `deviceId` stamps — envelope audit identity is only as
+  trustworthy as the server; it can impersonate any host or device; it can
+  read both registries. **Its blast radius is total across the tenants it
+  hosts, and zero beyond them:** it cannot reach data or credentials for
+  tenants it does not host. INV-1's relaying-opaquely obligations are
+  behavioral constraints on a conformant server, **not** cryptographic
+  guarantees against a compromised one. There is no host↔device integrity
+  that excludes the server.
+
+**The host.**
+
+- **Holds:** its enrollment credential (§2.8) — one tenant's worth of
+  access; its session's local frame store.
+- **Can do:** enroll, refresh, create tunnels, dial the data plane, produce
+  downlink frames, replay history on `resync` (INV-2).
+- **Server-visible consequence of host compromise:** a compromised host
+  holds credentials for exactly one tenant, affects only its own tunnels,
+  cannot mint tokens, and cannot reach other tenants (INV-3's scoping). The
+  server observes only that one tenant's tunnels are being driven by
+  whoever holds the credential — the same wire shape as a legitimate host.
+
+**The client device.**
+
+- **Holds:** one device credential (§5.1) and, per connection, one
+  short-lived single-use minted token (§5.5).
+- **Can do:** present the credential at the mint surface, dial the minted
+  URL, receive downlink frames, send uplink frames, resume.
+- **Server-visible consequence of device compromise:** a leaked device
+  credential reaches only its tenant and only the tunnels its grant covers
+  (the base grant, §5.4); it is revocable at the control plane without host
+  cooperation (INV-4, §5.8). The blast radius of a leaked *minted token* is
+  bounded by its TTL and single use (§5.5). The server observes a revoked
+  device's frames simply stopping — there is no device-side mechanism to
+  distinguish revocation from a network failure, and none is needed.
+
+**The admin operator.**
+
+- **Holds:** an enrollment credential carrying `pi-remote:admin` (§5.10).
+- **Can do:** register, list, and revoke devices; grant scopes to enrolled
+  subjects in its own tenant.
+- **Server-visible consequence of admin compromise:** a compromised admin
+  credential reaches its own tenant's registry and scope-grant surfaces —
+  it can register and revoke devices and grant scopes within that tenant.
+  It cannot reach other tenants (§2.6's tenancy derivation; §5.10's
+  tenant-scoped grants).
+
+The summary is a restatement of what §1–§4 and this section already specify,
+gathered so an operator can read it as the deployment's security-posture
+checklist (§1.6). It adds no new capability and revokes none.
