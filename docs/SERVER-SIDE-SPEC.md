@@ -1339,11 +1339,16 @@ missing or wrong-typed `tunnelId`, is `400 invalid_request`.
 1. **Extract and parse.** An absent or malformed credential header, an
    unparseable body, or a missing `tunnelId` yields `400 invalid_request`.
 2. **Authenticate the device.** The presented credential's hash is compared
-   against the stored `credential_hash` in constant time (§5.1). No match —
-   whether the credential never existed or was revoked — yields `401
-   invalid_token`. No existence leak: a revoked credential and a
-   never-issued one are byte-indistinguishable — same status, same `error`
-   code (`error_description` is diagnostic per §2.7's doctrine).
+   against the stored `credential_hash` in constant time (§5.1), and the
+   matched row's `status` is checked. Either disjunct — **no hash match**
+   (the credential never existed or is wrong) **or the matched row's
+   `status` is `revoked`** — yields `401 invalid_token`. The status
+   disjunct is required: a revoked row's stored hash still matches the
+   presented secret, so the comparison alone cannot kill a revoked
+   credential — the revocation check happens here, at the mint. No
+   existence leak: a revoked credential and a never-issued one are
+   byte-indistinguishable — same status, same `error` code
+   (`error_description` is diagnostic per §2.7's doctrine).
 3. **Grant coverage.** The device row's `tenantId` is compared with the
    named tunnel's tenant. A mismatch is **`404 unknown_tunnel`, never
    `403`**: under base-grant-only (§5.4), "does the tunnel exist *in the
@@ -1452,8 +1457,8 @@ perform §3.4's binding check verbatim on it.
    dead at the mint surface (§5.5, step 2).
 
 **REQUIRED lookup states, stated explicitly.** The device upgrade consults
-**three** server-side lookup states, named in the order above: the
-consumed-`jti` set (step 5), the live-tunnel existence record (step 4), and
+**three** server-side lookup states, named above with their check numbers:
+the consumed-`jti` set (step 5), the live-tunnel existence record (step 4), and
 the device registry row — existence plus `status` — keyed by the verified
 token's `device_id` claim (step 6). The contrast is stated in one sentence:
 §3.4's host handshake keeps its existing two (the consumed-`jti` set and the
@@ -1471,7 +1476,7 @@ deviceId)`. This binding is the **only** source of the server-stamped
 envelope `deviceId`: the stamp is taken from the token's `device_id` claim,
 never from any device-supplied byte — §4.2's trust rule, with its mechanism
 now on the page. The in-frame `deviceId` of an inbound `resume` is validated
-against the binding's `deviceId` (§4.5's cross-device watermark-peek guard).
+against the binding's `deviceId` (§4.2's cross-device watermark-peek guard).
 
 **Reconnect, and the contrast with the host.** The device credential is
 **not** single-use: a device re-dials by minting a fresh URL — re-running
@@ -1537,11 +1542,14 @@ a. Set the registry row's `status` to `revoked`. The credential is dead:
    (§5.5, step 2).
 b. Stop fan-out to the device **immediately** (§4.6's MUST; the mechanism is
    §5.7's delivery-time re-check).
-c. Close the device's live socket, if one exists, promptly with `1000`
-   (§4.8's deliberate close).
-d. Discard the device's per-device bookkeeping and any outstanding catch-up
+c. Discard the device's per-device bookkeeping and any outstanding catch-up
    (§4.5). The host-bound stream and the other devices are unaffected; a
    resync already triggered is not recalled.
+
+Outside that MUST list: the device's live socket, if one exists, **SHOULD**
+close promptly with `1000` (§4.8's deliberate close). The prompt close is a
+target set by the design, deliberately a SHOULD rather than a MUST — it is
+not one of the REQUIRED effects above.
 
 **The record is retained, not erased.** The envelope `deviceId` audit trail
 must remain interpretable: §4.2 makes the server the only trust anchor for
