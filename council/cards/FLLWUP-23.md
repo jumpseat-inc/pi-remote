@@ -44,3 +44,9 @@ Verified in a throwaway worktree at PR #27 head `6e94151419916c82238f4d1558b39e0
 Non-blocking note (closed-green): the PR branch carries the `Ready → In Progress` bookkeeping while the `In Progress → In Review` transition is main-side (`0573fcd`) — the normal branch-for-work-start / main-for-PR-open split, not a PR defect.
 
 **Verdict: PASS — no open objections, no open-untested items.** Step-9 cycle counter: 1 of 3 used.
+
+## Step 10 — Judge dispatch (job-2.3; PASS)
+
+Judge dispatched with exactly the card's `goal` plus the Skeptic's step-9 evidence — nothing else — and framed per the standing step-10 rule (product-owner general rule, vault/raw/2026-08-31-po-ev1-step10-judge-object.md, wiki: Judge Object Rule): it evaluates the PR branch at the Skeptic-verified SHA (PR #27, head `6e941514`), not main. Settled in 1.6 minutes. Verdict: **PASS**.
+
+Basis (summary): (1) the new `MUST NOT` is a prohibition — it names the observation point (whether a server honors a cross-tenant grant request) and binds non-honoring as a requirement, satisfying the EV-12 rule; the descriptive clause remains a separate factual statement; (2) scope confined — exactly one hunk in one file, §5.7 untouched, no source/test files; (3) wire consistency preserved — the unchanged downstream observable (other-tenant `sub` → `404`) aligns with the new norm.
