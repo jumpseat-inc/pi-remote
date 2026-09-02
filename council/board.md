@@ -21,6 +21,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 
 ## Deliberating
+
+## In Progress
 - EV-12 — "Data-plane relay spec — envelope, seq/ack, resume and resync, fan-out"
 
 ## In Progress
