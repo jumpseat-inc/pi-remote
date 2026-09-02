@@ -1409,3 +1409,74 @@ credential is not sufficient to attach: the mint surface's grant check
 (step 3) is the only gate, and it compares tenants the server holds, not
 bytes the caller presents. Device-facing tunnel discovery is out-of-band for
 v1 — a named non-decision, not an omission (§5.13(d)).
+
+### 5.6 The device upgrade — the data-plane connection for devices
+
+The device dials the minted URL and performs a WebSocket opening handshake
+against `wss://<data-plane host>/<tunnelId>/devices`. Authentication happens
+strictly before the `101`, exactly as §3.4 requires: a server MUST NOT
+accept the upgrade and reject the token afterwards.
+
+**Binding check wording.** The token's `tunnel_id` claim is checked against
+the URL path's **first segment** — the segment that names the tunnel. §3.4's
+"final segment equals `tunnelId`" wording does not transfer to this surface:
+here the final segment is the literal `devices`, and a server MUST NOT
+perform §3.4's binding check verbatim on it.
+
+**Ordered checks**, in order:
+
+1. **Extract the token.** URL-level malformation — a wrong scheme, a missing
+   or duplicated `token` query parameter, a path from which no first segment
+   can be read — yields `400 invalid_request`.
+2. **Verify the signature.** Failure yields `401 invalid_token`.
+3. **Check expiry.** The `exp` claim is compared against the server's clock;
+   an expired token yields `401 invalid_token`.
+4. **Verify the bindings.** The token's `tunnel_id` claim must equal the URL
+   path's **first segment**; a mismatch yields `401 invalid_token`. The
+   live-tunnel existence record must show the tunnel present and not
+   deleted; an absent or deleted tunnel yields `404 unknown_tunnel`.
+5. **Consume the token atomically.** The `jti` is marked consumed before the
+   `101` is sent. Two simultaneous upgrades presenting one token admit
+   exactly one `101`; the other receives `409 token_consumed`.
+6. **Device registry row.** The row keyed by the verified token's
+   `device_id` claim is looked up. A row that is absent, or present with
+   `status: revoked`, yields `401 invalid_token`. **This is a folded
+   branch, by design: on this surface `401 invalid_token` means token
+   invalid OR named device row revoked — one code, one meaning
+   (does-not-authenticate, §2.7's binding classification), and the closed
+   partition is unchanged.** Revocation is terminal (§5.1: retained record,
+   no un-revoke), so this branch can never fire on a device that will live
+   again. The branch also closes the mint→dial TTL window: a device revoked
+   after minting but before dialing is rejected here even though its token
+   is still validly signed and unexpired — and its credential is already
+   dead at the mint surface (§5.5, step 2).
+
+**REQUIRED lookup states, stated explicitly.** The device upgrade consults
+**three** server-side lookup states, named in the order above: the
+consumed-`jti` set (step 5), the live-tunnel existence record (step 4), and
+the device registry row — existence plus `status` — keyed by the verified
+token's `device_id` claim (step 6). The contrast is stated in one sentence:
+§3.4's host handshake keeps its existing two (the consumed-`jti` set and the
+live-tunnel existence record); the third state is what makes mid-window
+revocation enforceable without adding a status code.
+
+The status partition is closed: `{101, 400, 401, 404, 409, 5xx}` — identical
+to §3.4's. **No `403` anywhere on the upgrade**: the mint surface has
+already adjudicated grants before any URL exists; a security decision on the
+data plane is what §1.2 forbids, and the folded branch of step 6 is what
+avoids duplicating one here.
+
+**On success**, the server binds the connection to `(tenant, tunnel,
+deviceId)`. This binding is the **only** source of the server-stamped
+envelope `deviceId`: the stamp is taken from the token's `device_id` claim,
+never from any device-supplied byte — §4.2's trust rule, with its mechanism
+now on the page. The in-frame `deviceId` of an inbound `resume` is validated
+against the binding's `deviceId` (§4.5's cross-device watermark-peek guard).
+
+**Reconnect, and the contrast with the host.** The device credential is
+**not** single-use: a device re-dials by minting a fresh URL — re-running
+§5.5 with its still-live credential — and there is no `409` on credential
+reuse, only on token replay. Unlike the host's §3.1 one-tunnel/one-upgrade
+rule, multiple device connections per tunnel are the expected steady state
+(§4.6's 1:N fan-out): each device connection is its own mint→dial cycle,
+and each mints its own short-lived token.
