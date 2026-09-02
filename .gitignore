@@ -13,3 +13,6 @@ smoke/.artifacts/*
 
 # git worktrees (superpowers isolation)
 .worktrees/
+
+# transient runner worktrees under the pi harness
+.pi/worktrees/
