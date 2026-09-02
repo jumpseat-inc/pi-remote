@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-22
 title: "Resolve the §2.3 device-flow poll answer shape against the shipped headless driver (400 vs 2xx error body)"
-state: Backlog
+state: Ready
 owner: null
 epic: EPIC-2
 goal: docs/SERVER-SIDE-SPEC.md §2.3's mandate that token-endpoint polls are answered `400` + `{"error":…}` is reconciled with the shipped headless driver's actual behavior — the client only recognizes the `error` field on a 2xx body and aborts polling on any non-2xx with `tokenExchangeFailed` — by correcting whichever side the ruling selects, so a server conformant to the document does not break the shipped headless flow.
@@ -44,3 +44,13 @@ document side currently matches the RFC and the client side diverges from it.
   `400 + {"error": …}` shape (both 2xx and 400 error bodies, or 400 only).
 - The other side is untouched; no drive-by edits elsewhere in §2.3 or login.ts.
 - bunx tsc --noEmit exit 0; bun test exit 0 with the updated fixtures.
+
+## Phase 1 ruling (human, 2026-09-02 — binding for this run)
+
+**Q1 ruled: branch (a) — the client adapts to the spec; obey RFC 8628.** The
+driver's poll handling is corrected to recognize `400` + `{"error": …}` bodies
+per RFC 8628 (client code + fixtures change); the spec's §2.3 stays as written.
+Result: client AND spec are RFC-conformant; the document does not weaken.
+Terminal device-flow errors (`access_denied`, `expired_token`) vs retriable
+ones (`authorization_pending`, `slow_down`) are distinguished per the RFC —
+the deliberation owns the exact driver semantics within that boundary.

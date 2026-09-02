@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-21
 title: "Align §1.2's control/data-plane decision sentence with §5.6's device-upgrade admission checks"
-state: Backlog
+state: Ready
 owner: null
 epic: EPIC-2
 goal: docs/SERVER-SIDE-SPEC.md §1.2's sentence placing security decisions on the control plane is amended so it cannot read as a universal cap against §5.6's device-upgrade admission check, which folds the revoked-device status check into the existing 401 invalid_token branch with three REQUIRED lookup states.

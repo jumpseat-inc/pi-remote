@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-18
 title: "Align the refresh request encoding with RFC 6749 form-encoding or document the divergence permanently (EV-10 follow-up)"
-state: Backlog
+state: Ready
 owner: null
 epic: EPIC-2
 goal: Resolve the deliberate divergence between the merged spec's §2.4 refresh request (JSON body) and RFC 6749 §2.3.1 (form-encoding) — either migrate the client and spec together to form-encoding in one PR, or promote the JSON-body divergence from PR-body disclosure to a stated, permanent exception in docs/SERVER-SIDE-SPEC.md.
@@ -37,3 +37,11 @@ Either:
 - If documented exception: docs/SERVER-SIDE-SPEC.md §2.4 states the divergence
   from RFC 6749 §2.3.1 as a permanent, normative exception with its rationale,
   so the contract no longer depends on the merged PR body's disclosure.
+
+## Phase 1 ruling (human, 2026-09-02 — binding for this run)
+
+**Q2 ruled: follows Q1's posture — the client and spec migrate to RFC 6749
+§2.3.1 form-encoding in one PR** (client refresh body + spec §2.4 amended
+together per the governance precedent); the JSON-body divergence is not
+promoted to a permanent exception. Client conformance to the RFCs is the
+run's standing posture (Q1: obey RFC 8628).
