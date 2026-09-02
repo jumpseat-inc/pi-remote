@@ -554,3 +554,338 @@ host's responsibility: the server-facing requirement is only that the
 credential is persisted in user-private storage, not in any shared,
 global, or environment-variable location, and that re-running enrollment
 replaces the stored credential in full rather than merging with it.
+
+---
+
+## 3. Tunnel lifecycle
+
+This section specifies how an enrolled host creates a tunnel, how the create
+response hands back the one connection URL that tunnel will ever accept, how
+the data plane consumes that URL's token at the WebSocket upgrade, how a
+tunnel is deleted, and the error taxonomy that binds every failure on these
+surfaces. It builds directly on §2: every request in it is made with an
+enrollment access token (§2.6), authorized by the `pi-remote:host` scope
+(§2.5), and answered under the error-body and 401/403 contract of §2.7.
+
+### 3.1 Tunnel objects and lifecycle
+
+A **tunnel** is a (tenant, host session instance) pair carrying a
+server-assigned identifier, `tunnelId`: an opaque, URL-safe string, globally
+unique across all tenants. A tunnel is not a configuration object and not a
+session record; it exists to admit exactly one data-plane connection.
+
+The lifecycle is normative and linear:
+
+> *created* (the create request of §3.2 succeeds) → *live* (its single
+> connection token is consumed at a successful WebSocket upgrade, §3.4) →
+> *spent* (that connection has ended) or *deleted* (§3.5).
+
+Exactly one connection token is issued per tunnel, and exactly one successful
+upgrade is ever admitted per tunnel. A spent tunnel is never re-connectable:
+any further connection — a reconnect, a retry, a second dial — requires a new
+create request and a new token.
+
+**"Live" is a socket state, not a record.** A tunnel is live if and only if
+its host data-plane WebSocket is currently connected. The server's judgment
+of liveness MUST be made on this socket state, never on the existence of a
+stored tunnel row: a socket that has closed, or that fails the server's
+liveness detection, MUST be treated as not live. This definition is what
+makes the no-double-create rule of §3.2 implementable without deadlocking a
+host that crashed and restarted: its fresh create arrives with no prior
+delete on the wire (its best-effort teardown notification was lost with the
+crash), and it succeeds precisely because the crashed tunnel's socket is no
+longer connected.
+
+**The connection token is self-describing in one precise sense: no lookup is
+required to interpret the token's claims.** The tenant, tunnel, session,
+expiry, and single-use identity are read off the verified token itself
+(§3.3). Two bounded pieces of server state are nevertheless REQUIRED, and
+they are not exceptions to that sentence: the set of consumed token
+identifiers (`jti` values), which enforces single-use consumption (§3.4),
+and the live-tunnel existence record, which rejects dials to absent or
+deleted tunnels (§3.4) and answers delete requests (§3.5). Neither is
+consulted to interpret a claim; each enforces a stateful rule that a signed
+claim cannot express by itself.
+
+### 3.2 Tunnel creation — `POST /tunnels`
+
+The path is fixed: `POST /tunnels` on the configured control-plane origin
+(the origin against which discovery in §2.1 was performed). Control-plane
+endpoints are not discovered; only the authorization-server endpoints of
+§2.1 are. The request MUST carry `Authorization: Bearer <access token>` with
+an enrollment access token; the semantics of §2.6 and §2.7 govern. Tenancy
+is derived solely from the token's `tenant_id` claim (§2.6): the request
+carries no tenant field, and a server MUST ignore any tenant-like request
+field a host sends anyway.
+
+**Request body** — `application/json`. All four fields are REQUIRED, with
+these exact wire names:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `sessionId` | REQUIRED | Non-empty string; the host session's stable identifier. Treated as opaque by the server. |
+| `sessionName` | REQUIRED | Non-empty string; display name; informational. |
+| `cwd` | REQUIRED | Non-empty string; informational; the server MUST NOT interpret it. |
+| `hostMetadata` | REQUIRED | JSON object with string keys and string values; MAY be empty; informational. |
+
+A server MUST reject — with `400 invalid_request` — a missing or unparseable
+body, a missing or wrong-typed field, or a `hostMetadata` that is not an
+object. A server MUST accept all values within the following maxima and MAY
+reject values beyond them with `400 invalid_request`: `sessionId` at most
+128 characters, `sessionName` at most 256, `cwd` at most 1024, and
+`hostMetadata` at most 32 entries with keys and values at most 256
+characters. (The accept-within/reject-beyond rule is normative; these
+specific maxima are guidance-grade, per §1.5.) Unknown request fields MUST
+be ignored. The request carries **no TTL field**: the connection token's
+lifetime is the server's choice (§3.3), and a conformant server MUST NOT
+honor any TTL supplied in the body.
+
+`sessionId`, `sessionName`, `cwd`, and `hostMetadata` are retained as tunnel
+metadata and made available to the client devices granted access to the
+tunnel; the server never interprets them — the same opacity the data plane
+owes frame payloads (INV-1), extended to creation-time metadata.
+
+**Response (success)** — `200` with an `application/json` body. All three
+fields are REQUIRED. The status is `200`, not `201`: there is one response
+shape.
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `tunnelId` | REQUIRED | Server-assigned tunnel identifier: opaque, globally unique, and URL-safe — unreserved URL characters only. |
+| `url` | REQUIRED | The absolute `wss://` connection URL, specified in §3.3. |
+| `tokenTtl` | REQUIRED | Positive integer seconds, equal to the issued token's actual validity window: the token's `exp` minus its mint time. |
+
+**No double create.** The rule is normative on both sides, and asymmetric.
+
+- *Host-side expectation (normative).* A host MUST NOT issue a second create
+  request while a tunnel it created is live. Its correct behavior, on
+  deciding it wants a connection it already has, is a local no-op plus a
+  notification that a tunnel is already active — not a second create.
+- *Server-side enforcement (MUST).* A server MUST reject with
+  `409 tunnel_already_live` a create that would produce a second **live**
+  tunnel for the same (tenant, `sessionId`) pair — live per §3.1's
+  socket-state definition. A tunnel that was never connected and a tunnel
+  whose connection has ended MUST NOT block a create.
+- *Rationale.* Issuing a fresh tunnel on collision would let a crashed and
+  restarted host fork the single ordered frame stream across two live
+  sockets, violating INV-1's requirement that frames be delivered in the
+  order the host produced them.
+- *Deadlock freedom.* Because the key is socket state, the reachable
+  collision cases self-heal: a crashed host's stale socket is no longer
+  connected (or fails liveness detection), so its fresh create succeeds even
+  though its teardown delete never arrived; a half-open socket is reaped by
+  the same liveness detection. A host that still receives
+  `409 tunnel_already_live` — for example, against a briefly stale half-open
+  socket — treats it as retryable: it re-creates with backoff, per §3.6.
+- *Prior tokens.* A new create for a session MAY supersede (invalidate) any
+  prior connection token for that session that was never consumed. Because
+  tokens are single-use and short-lived (§3.3), superseding is a
+  server-internal detail: it is never observable on the wire, and no host
+  behavior depends on whether the server does it.
+
+> **Guidance (non-normative).** Reap unresponsive data-plane sockets
+> promptly: an idle-timeout ping well under the connection token's TTL
+> bounds the window in which a crashed host's socket still counts as live —
+> and with it, the duration of `409 tunnel_already_live` collisions.
+
+### 3.3 The signed one-time connection URL
+
+The create response's `url` field has the shape:
+
+```
+wss://<data-plane host>/<tunnelId>?token=<token>
+```
+
+The following are normative:
+
+- The scheme MUST be `wss`. A server MUST NOT issue a `ws://` URL.
+- The token rides in exactly one query parameter, named `token`.
+- The final segment of the URL path MUST equal the `tunnelId` returned in
+  the same response.
+- The authority (the data-plane host) MAY differ from the control-plane
+  origin: a dedicated data-plane host is permitted. A host uses the URL
+  verbatim; it never reconstructs a connection URL from its parts.
+- The URL carries no userinfo and no fragment.
+
+The token is a **compact JWS**: three dot-separated base64url segments,
+signed with a key held by the server. Hosts never hold signing keys. Because
+the token is signed, its claims are read directly off the verified token —
+claim verification requires no lookup (§3.1). Claim names are snake_case,
+consistent with the access-token claim table of §2.6:
+
+| Claim | Requirement | Meaning |
+| --- | --- | --- |
+| `tenant_id` | REQUIRED | MUST equal the creating enrollment token's `tenant_id` — the connection-token contract point of INV-3. |
+| `tunnel_id` | REQUIRED | MUST equal the final segment of the URL path. |
+| `session_id` | REQUIRED | Echo of the create request's `sessionId`. |
+| `exp` | REQUIRED | Expiry, in seconds since the epoch. |
+| `jti` | REQUIRED | Unique per issued token; the single-use consumption identity (§3.4). |
+| `iat`, `iss`, `aud` | SHOULD | Standard JWT provenance claims. |
+
+**TTL.** The default validity window is 60 seconds (SHOULD). The normative
+bounds: an issued TTL MUST be at least 5 seconds and at most 300 seconds. A
+configured value outside the bounds clamps to the nearest bound — a
+misconfigured value yields a workable token, not a boot failure. The
+`tokenTtl` returned in the create response MUST equal the issued token's
+actual validity window (`exp` minus mint time). Expiry is judged by the
+**server's clock**, at the upgrade, and only there; a server MUST NOT rely
+on any host clock. A host's own pre-dial expiry check is advisory — a local
+convenience that avoids a doomed request, never a server-reported fact.
+
+> **Guidance (non-normative).** Sign with an asymmetric key pair and rotate
+> it, so token verification can be delegated to data-plane replicas without
+> sharing the signing capability. The consumed-`jti` record need only live
+> until the token's `exp` plus a small leeway; past that point, expiry
+> rejection alone covers the token, and the store garbage-collects itself.
+
+### 3.4 Token consumption at the WebSocket upgrade
+
+The upgrade is the WebSocket opening handshake: an HTTP `GET` issued against
+the connection URL of §3.3. Authentication happens strictly before the
+`101` response: a server MUST NOT accept the upgrade and reject the token
+afterwards — by then the capability has already been spent.
+
+The server performs the checks below, in order, and then consumes the token
+atomically. The first check is a question about the request's shape; every
+later check is a question about whether the credential authenticates. That
+is the `400`/`401` boundary, stated crisply: a request from which no token
+can be extracted is `400 invalid_request`; a request carrying a token that
+fails any authentication step is `401 invalid_token`.
+
+1. **Extract the token.** URL-level malformation — a wrong scheme, a missing
+   or duplicated `token` query parameter, a path whose final segment cannot
+   be read — yields `400 invalid_request`.
+2. **Verify the signature.** Failure yields `401 invalid_token`.
+3. **Check expiry.** The `exp` claim is compared against the server's clock;
+   an expired token yields `401 invalid_token`.
+4. **Verify the bindings.** The tunnel identifier in the URL path must equal
+   the token's `tunnel_id` claim, and the live-tunnel existence record must
+   show the tunnel present and not deleted. A binding mismatch yields
+   `401 invalid_token`; an absent or deleted tunnel yields
+   `404 unknown_tunnel`.
+5. **Consume the token.** The `jti` is marked consumed **atomically** before
+   the `101` is sent. Two simultaneous upgrades presenting one token admit
+   exactly one `101`; the other receives the replay rejection.
+
+**The handshake's status partition is closed:** `{101, 400, 401, 404, 409,
+5xx}`. A server emitting any other status on this surface is
+non-conformant.
+
+| Status | `error` | Failure |
+| --- | --- | --- |
+| `400` | `invalid_request` | No extractable token: the URL is malformed at the request-shape level. |
+| `401` | `invalid_token` | The single code for every does-not-authenticate case: bad signature, expired, malformed token, binding mismatch. |
+| `404` | `unknown_tunnel` | The token authenticates, but the tunnel is deleted or never existed. No existence leak: a dialer without a valid signature is rejected `401` before any tunnel lookup occurs. |
+| `409` | `token_consumed` | Replay: the token's consumed state conflicts with the single-use rule. (`403` is pinned to exactly one meaning — insufficient scope, §2.7 — and a spent token is not that; `409` is the state-conflict status uniformly, here as in `tunnel_already_live`.) |
+
+These statuses are diagnostic for operators. The dialing side treats any
+non-`101` result as a failed handshake with one uniform remedy — create a
+fresh tunnel and dial again — and does not parse handshake statuses or
+response bodies. The handshake's 401/403 axis *mirrors* §2.7's (401 = does
+not authenticate; 403 would mean authenticates-but-lacks-authorization), but
+this is the data plane's own contract with its own codes: §2.7's
+`insufficient_scope` meaning is never read onto this surface, and `403` is
+not in the handshake's partition. Post-upgrade socket close codes are the
+data plane's business (§4) and are out of scope here.
+
+### 3.5 Tunnel deletion — `DELETE /tunnels/{tunnelId}`
+
+Deletion is bearer-authenticated with the enrollment access token; tenancy
+is derived from the token (§2.6). Deletion is **idempotent**.
+
+**Success** is `204 No Content` with no body. A tunnel id that is unknown,
+already deleted, or belongs to another tenant is `404` — never `403`, so no
+cross-tenant existence leak exists, and a repeated delete is
+indistinguishable from a first success. The not-found treatment is
+`404`-only: no `410`, and no deletion tombstone. The absence of the
+live-tunnel existence record **is** the `404`; discarding token state means
+literal discard.
+
+On success the server MUST do all of the following:
+
+a. Invalidate any un-consumed connection token for that tunnel; subsequent
+   upgrade attempts presenting it are rejected per §3.4's ordered checks.
+b. Close the live data-plane connection, if one exists, with a normal
+   WebSocket close (the close code is §4's business).
+c. Release tunnel-scoped relay state: the cached recent frame window and any
+   fan-out registrations for the tunnel.
+
+No retained record of a deleted tunnel is required. Deletion is permanent:
+the same session returns only via a fresh create request. The status
+partition is closed: `{204, 401, 403, 404, 5xx}`.
+
+A failed delete notification is safe to ignore. A server SHOULD expire spent
+and abandoned tunnels itself, so a host that proceeds with local teardown
+despite a failed notification leaves no orphan behind.
+
+### 3.6 Error taxonomy
+
+The error-body shape of §2.7 — `{"error": "<code>",
+"error_description": "<human-readable sentence>"}` — and its never-merge
+401/403 rule extend to every non-2xx response in this section, on both
+surfaces. The vocabulary: `invalid_token` and `insufficient_scope` are
+inherited from §2.7; this section defines `invalid_request` (`400`),
+`tunnel_not_found` (`404`, delete), `unknown_tunnel` (`404`, handshake),
+`tunnel_already_live` (`409`, create), `token_consumed` (`409`, handshake),
+and `internal_error` (`5xx`).
+
+**Closed status partitions (normative):**
+
+| Surface | Partition |
+| --- | --- |
+| Create (`POST /tunnels`) | `{200, 400, 401, 403, 409, 5xx}` |
+| Delete (`DELETE /tunnels/{tunnelId}`) | `{204, 401, 403, 404, 5xx}` |
+| Handshake (§3.4) | `{101, 400, 401, 404, 409, 5xx}` |
+
+A server emitting any other status on these surfaces is non-conformant.
+`429` is in none of them: a conformant server that rate-limits maps
+throttled requests onto members of the relevant partition above, and a
+server that emits `429` on any of these surfaces is non-conformant.
+
+**The two credential failure classes — never merged:**
+
+| Status | `error` | Meaning | Remedy |
+| --- | --- | --- | --- |
+| `401` | `invalid_token` | The credential is invalid, expired, or revoked — it does not authenticate. | **Re-enrollment.** No retry, refresh, or re-consent recovers the credential. |
+| `403` | `insufficient_scope` | The credential is valid but lacks the `pi-remote:host` scope. | **Re-consent** — re-run enrollment so the user sees the scope request — plus an administrator grant of the scope (administrative surface in §5). |
+
+A server that returns `401` for a scope problem, or `403` for an invalid,
+expired, or revoked credential, is non-conformant — §2.7's rule, restated
+here and extended to this section.
+
+**Surface disambiguation of 401.** A `401` at a control-plane tunnel endpoint
+means the enrollment credential is dead — the remedy is re-enrollment. A
+`401` at the data-plane handshake means the connection token is unusable —
+the remedy is to re-create the tunnel. The same status, a different
+credential, a different remedy: the surface disambiguates them, and each
+surface individually keeps §2.7's rule that the status alone selects the
+remedy.
+
+**The failure classes a dialing side distinguishes, restated in this
+document's own words:**
+
+1. **Invalid, expired, or revoked credential** — a control-plane `401`
+   (`invalid_token`): the remedy is re-enrollment.
+2. **Valid credential, insufficient scope** — `403` (`insufficient_scope`):
+   the remedy is re-consent plus an administrator grant.
+3. **Connection-layer failure** — DNS, TCP, or TLS failure; the request
+   never completes, so no HTTP status exists and no server obligation can be
+   stated: the remedy is to check the network and retry.
+4. **Response-shape defense** — a 2xx body deviating from §3.2's or §3.5's
+   shapes is emitted only by a non-conformant server. A conformant server
+   MUST NOT emit partial success: a 2xx response MUST never carry an error
+   body, and a 4xx or 5xx response MUST never carry a usable tunnel.
+5. **Failed delete notification** — on the delete surface, only `5xx` can
+   produce it; the host reports the failure and proceeds with local teardown
+   regardless, which is safe by §3.5's expiry rule.
+6. **Handshake failure** — any non-`101` result in §3.4's closed set; one
+   uniform remedy: re-create the tunnel and dial again.
+
+**Coarse grouping on the host side.** The taxonomy carries an asymmetry
+between the two control-plane surfaces. On create, `400`, `409`, and `5xx`
+all land in one generic retryable class: correcting the request is *not* a
+distinct remedy rendered for `invalid_request`, and the remedy for
+`tunnel_already_live` — for a conformant host — is the same retry with
+backoff. On delete, `5xx` lands in a distinct, non-blocking teardown-failure
+class: the host reports the notification failure and proceeds with local
+teardown, and never retries the delete.
