@@ -24,10 +24,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
-- EV-9 — "Conformance framing — purpose, scope, invariants, normative keywords, reference-client link"
 
 ## In Review
-
+- EV-9 — "Conformance framing — purpose, scope, invariants, normative keywords, reference-client link"
 
 ## Needs Human
 
