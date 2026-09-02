@@ -1722,3 +1722,78 @@ server observes.
 The summary is a restatement of what §1–§4 and this section already specify,
 gathered so an operator can read it as the deployment's security-posture
 checklist (§1.6). It adds no new capability and revokes none.
+
+### 5.13 Guidance (non-normative)
+
+> **Guidance (non-normative).** One recommended shape per concern, per §1.5:
+>
+> 1. **Registry storage sketch.** One row per device keyed by `deviceId`:
+>    `tenant_id`, `display_name`, `status`, `push_provider`,
+>    `credential_hash` (never the credential itself), `created_at`. Compare
+>    presented credentials against `credential_hash` in constant time.
+> 2. **Admin operations.** Bootstrap the first admin out-of-band per
+>    deployment (the grant endpoint of §5.10 presumes an admin already
+>    exists; tenant creation and the initial bootstrap are deployment-local
+>    concerns this document does not specify). The device lifecycle is
+>    register → revoke (§5.2, §5.8); a device that needs a new tenant or a
+>    lost credential is revoked and re-registered. Audit = the retained
+>    device rows plus the host-side attribution of envelope `deviceId`s.
+> 3. **Key ceremony.** Signing keys are generated on the server, never
+>    exported to hosts or devices; use an asymmetric pair with rotation, per
+>    §3.3's existing guidance, so token verification can be delegated to
+>    data-plane replicas without sharing the signing capability.
+> 4. **Device tunnel discovery.** Out-of-band for v1 — a **named
+>    non-decision**, not an omission: a device learns `tunnelId`s out-of-band
+>    (an operator, a QR code, a push channel to be specified later). The
+>    normative guard this decision rests on is §5.5's: possession of a
+>    `tunnelId` is not capability — the mint surface's grant check is the
+>    only gate.
+
+### 5.14 Error vocabulary and closed partitions
+
+This section's error bodies use §2.7's shape — `{"error": "<code>",
+"error_description": "<human-readable sentence>"}` — on every non-2xx
+response. The vocabulary additions, each defined **exactly once**:
+
+| `error` | Status | Surface | Meaning |
+| --- | --- | --- | --- |
+| `unknown_device` | `404` | Revoke (§5.8); also the mint surface's registry-row rejections | The named device is unknown, foreign-tenant, or already revoked — one code, no existence leak. |
+| `tunnel_not_granted` | `403` | Mint (§5.5, step 5) | **Reserved: reachable by no MUST in v1.** A layered per-tunnel denial, if a server layers one (§5.7's ceiling). |
+
+Naming note, kept honest: `tunnel_not_granted` and §3.6's `tunnel_not_found`
+are confusably close. They are distinct codes with disjoint surfaces and
+meanings — `tunnel_not_found` is the delete-surface code for a tunnel that
+does not exist (§3.5); `tunnel_not_granted` is the mint-surface code for a
+same-tenant layered denial. Neither merges into the other, and neither
+merges into `unknown_tunnel` (§3.4, §5.5), which is the no-leak code for
+"no such tunnel in your tenant." Codes **inherited without redefinition**
+from earlier sections: `invalid_request`, `invalid_token`,
+`insufficient_scope`, `unknown_tunnel`, `token_consumed`, `internal_error`.
+
+**Closed status partitions (normative):**
+
+| Surface | Partition |
+| --- | --- |
+| Register (`POST /devices`) | `{200, 400, 401, 403, 5xx}` |
+| List (`GET /devices`) | `{200, 401, 403, 5xx}` |
+| Revoke (`DELETE /devices/{deviceId}`) | `{204, 401, 403, 404, 5xx}` |
+| Scope grant (`POST /subjects/{sub}/scopes`) | `{204, 400, 401, 403, 404, 5xx}` |
+| Mint (`POST /device/connections`) | `{200, 400, 401, 403, 404, 5xx}` |
+| Device upgrade (`wss://…/<tunnelId>/devices`) | `{101, 400, 401, 404, 409, 5xx}` |
+
+A server emitting any other status on these surfaces is non-conformant.
+`429` is in none of them: §3.6's rule extends — a conformant server that
+rate-limits maps throttled requests onto members of the relevant partition,
+and a server that emits `429` on any of these surfaces is non-conformant.
+
+**Surface disambiguation of 401, extended.** A `401` at a §2/§3
+control-plane endpoint means the enrollment credential is dead — re-enroll
+(§3.6). A `401` at `POST /device/connections` means the device credential
+is dead or the device is revoked — revoke + re-register (§5.2). A `401` at
+the device upgrade means the connection token is unusable **or** the named
+device row is revoked — one folded meaning (§5.6, step 6); the remedy is a
+revoke + re-register for the operator, and a fresh mint→dial cycle is
+futile until the registry row is `active`. The same status, a different
+credential, a different remedy: the surface disambiguates them, and each
+surface individually keeps §2.7's rule that the status alone selects the
+remedy.
