@@ -25,11 +25,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 
 ## Needs Human
 
 ## Done
+- EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 - EV-13 — "Device registry, grants, push reservation, and the server-side trust model"
 - EV-12 — "Data-plane relay spec — envelope, seq/ack, resume and resync, fan-out"
 
