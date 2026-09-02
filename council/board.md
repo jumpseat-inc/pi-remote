@@ -22,11 +22,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-22 — "Resolve the §2.3 device-flow poll answer shape against the shipped headless driver (400 vs 2xx error body)"
 
 ## Needs Human
 
 ## Done
+- FLLWUP-22 — "Resolve the §2.3 device-flow poll answer shape against the shipped headless driver (400 vs 2xx error body)"
 - EPIC-2 — "Server-side specification — a self-contained implementation spec for the pi-remote relay and control plane"
 - EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 - EV-13 — "Device registry, grants, push reservation, and the server-side trust model"

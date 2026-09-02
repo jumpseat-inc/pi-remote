@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-22
 title: "Resolve the §2.3 device-flow poll answer shape against the shipped headless driver (400 vs 2xx error body)"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-2
 goal: docs/SERVER-SIDE-SPEC.md §2.3's mandate that token-endpoint polls are answered `400` + `{"error":…}` is reconciled with the shipped headless driver's actual behavior — the client only recognizes the `error` field on a 2xx body and aborts polling on any non-2xx with `tokenExchangeFailed` — by correcting whichever side the ruling selects, so a server conformant to the document does not break the shipped headless flow.
@@ -360,4 +360,22 @@ window block pinning every code path; diff confined to `src/login.ts`,
 
 ### Step 11 (autonomous form) — deterministic merge check
 
-See below (appended after the merge lands).
+All five criteria confirmed against the PR head SHA `54fea4cf7007c0596f69b022ab8fc114b2c98ac0`:
+
+1. Owner gates green in full — skeptic-verified (`tsc --noEmit` exit 0, `bun test` 218/1/0).
+2. GitHub Actions green on the PR head SHA — `gh pr checks 26 --json name,state,workflow` keyed on the `workflow` field: both `gates` and `gates-windows` workflows present with `state: SUCCESS` (re-read immediately before merging).
+3. No blocking Skeptic objection — step 9 PASS, none.
+4. Judge verdict `PASS` — step 10.
+5. No `Needs Human` state or outstanding ruling — card `In Review`, Phase 1 ruling applied and binding.
+
+**Merge executed and pinned:** `gh pr merge 26 --merge --match-head-commit 54fea4cf7007c0596f69b022ab8fc114b2c98ac0` → succeeded, PR state MERGED, merge commit `784200cf3b5a93c0db22d5af20ee6fd0ec761f94`.
+
+**Merge result noted explicitly — steward flagged this PR for human attention.** The flag does not alter any of the five criteria (none is blocked by it) and the deterministic check was applied without discretion, but the merge is surfaced here for the steward's review: PR #26, merged as `784200c`, changing `src/login.ts` (poll-loop reorder, four-code dispatch on 2xx-or-400, other non-2xx → `tokenExchangeFailed`) and `test/login.test.ts` (fixtures flipped to the RFC 8628 400 shape + 11-test 400-window block).
+
+### Step 12 — Sync and reconcile
+
+`git pull --ff-only` reported local main diverged from origin/main: three council bookkeeping commits (In Review state, step-9 and step-10 records) existed only locally, while origin/main held the PR merge. Reconciled by `git rebase origin/main` per this step's own prescription — the rebase preserves the merge commit untouched (nothing was forced or reset). Post-rebase verification: merge commit `784200c` present in history; `git diff 54fea4c HEAD -- src/login.ts test/login.test.ts` is empty (the merged implementation is byte-identical to the PR head the criteria were checked against); card state coherent; board shows FLLWUP-22 exactly once.
+
+CI on the merged SHA observed directly: `gates` workflow `conclusion: success`, `status: completed` at `784200cf3b5a93c0db22d5af20ee6fd0ec761f94` (on main push). The PR head additionally passed `gates-windows` on identical src/test content.
+
+Card set **Done** on both the card face and the board from these observed artifacts. Reconciliation committed to main and pushed.
