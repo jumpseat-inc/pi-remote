@@ -20,13 +20,14 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-16 — "Give the Windows SDDL read-back test an explicit timeout sized for process cold start"
 
 
 ## Needs Human
 
 ## Done
 - EPIC-1 — "pi-remote — remote control for a live pi session over AG-UI"
+
+- FLLWUP-16 — "Give the Windows SDDL read-back test an explicit timeout sized for process cold start"
 
 - FLLWUP-4 — "EV-2 localization seam: second (en→id) message lookup and resolver"
 
