@@ -21,7 +21,7 @@ EPIC-1 delivered pi-remote (see [[pi-remote]]) across two autonomous runs: 18 me
 **Process lessons.** The [[Judge Object Rule]] was the single unblock for the whole run; [[Fixture-Green Honesty]] came from nearly shipping an acceptance the scope couldn't deliver; the Skeptic's machine-gate probes found defects neither deliberation nor implementation would (the BOM, the SID abbreviation, the kind-collision misroute).
 
 ## Related
-[[pi-remote]], [[Council Seats]], [[Copy Honesty Doctrine]], [[Spec Correction Governance]], [[Footer Merge Policy]]
+[[EPIC-2 Decision Record]] (the follow-on run: the server-side implementation spec), [[pi-remote]], [[Council Seats]], [[Copy Honesty Doctrine]], [[Spec Correction Governance]], [[Footer Merge Policy]]
 
 ## Sources
 [[EV-1 Ruling]], [[EV-1 Step-10 Judge-Object Ruling]], [[EV-2 Ruling]], [[EV-3 Ruling]], [[EV-4 Ruling]], [[EV-5 Ruling]], [[EV-7 Ruling]], [[EV-8 Ruling]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], and the six design-position pages.

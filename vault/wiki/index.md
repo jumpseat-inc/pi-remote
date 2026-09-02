@@ -6,10 +6,12 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 ## Overviews
 
 - [[EPIC-1 Decision Record]] — synthesis of the two autonomous delivery runs on pi-remote: 18 PRs, the converged doctrine, and the doors left open.
+- [[EPIC-2 Decision Record]] — synthesis of the run that produced docs/SERVER-SIDE-SPEC.md: the self-contained server-side spec, the normativity test, and the open cross-artifact contradictions.
 
 ## Entities
 
 - [[pi-remote]] — the pi-side extension exposing a live session over AG-UI; the product every ruling governs.
+- [[Server-Side Spec]] — docs/SERVER-SIDE-SPEC.md: the self-contained relay/control-plane implementation spec (§1-§5); closed with FLLWUP-18..23 tracked.
 - [[Seven Footer States]] — off, not enrolled, authorizing, dialing, resyncing, live, error — the authoritative lifecycle-ordered set.
 - [[Reason Taxonomy]] — the transport's closed five-value reason set; honest metadata, never terminal.
 - [[Council Seats]] — ruling, verification, and working seats, with the authority map and provenance note.
@@ -38,6 +40,8 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Footer Merge Policy]] — kind-first mergeTransport; live clears error on verified open; N=10 consecutive error-severity dialing.
 - [[Retry Policy]] — two seams: transport dials forever; credential terminality stops with the rich reason preserved.
 - [[Gulf of Evaluation]] — the designer's lens: can the user perceive the system's state without archaeology?
+- [[Self-Containment Audit]] — zero references to sibling specs or codebases; exactly one external link; run on the real artifact.
+- [[Normativity Test]] — a MUST/SHOULD must name its observation point; one-sided bounds are never normative; failures are defects.
 - [[Win32 Test Timeout Convention]] — process-spawning Windows tests carry an explicit 30s per-test timeout; provenance is the council record, not vault/raw (deviation stated).
 
 ## Comparisons

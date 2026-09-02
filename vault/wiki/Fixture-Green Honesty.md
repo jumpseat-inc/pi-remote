@@ -12,6 +12,8 @@ Born in FLLWUP-5: the Skeptic proved the entire raise path was dead in productio
 
 Two generalizations (FLLWUP-4 ruling): **partial coverage is announced at the surface itself** — the id-table module comment names the 22-key boundary and the keyless `inputPrompt` literal, not just the card record (FLLWUP-14's honest-boundaries discipline moved from docs to code); and **a spec row documents the contract, not runtime reachability**. The companion discipline is S-O5's discovery (FLLWUP-9): stand-in surfaces that diverge from the real SDK are latent runtime defects even when every fixture is green — filed as FLLWUP-11 with a load-time TypeError severity flag.
 
+**Closure corollary (EPIC-2, steward's ruling).** The principle generalizes from modules to epic closure: an audit that can only pass by finding nothing is an audit incentivized to find nothing. EV-14's conformance audit found two contradictions in the shipped server spec; the run's governance routed them to Backlog cards (FLLWUP-22, FLLWUP-23) instead of silently patching them on the assembly PR, and steward closed the epic `Done` with the residuals **announced at the closure record** — the surface-equivalent of the module-level partial-coverage announcement, because the document itself must stay self-contained (R5). Surfaced-and-carded beats suppressed.
+
 ## Related
 [[Spec Correction Governance]], [[Stable Keys]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], FLLWUP-11
 
