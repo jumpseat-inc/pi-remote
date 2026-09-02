@@ -341,6 +341,23 @@ The only red runs were the skeptic's own harness off-by-one (owned and
 corrected) and the deliberate failure-injection (reverted). Step-9 cycle
 counter: 1 of 3 used.
 
-### Step 10 — Judge dispatch
+### Step 10 — Judge dispatch (job-1.2; PASS)
 
-See below (appended after the judge returns).
+Judge dispatched with exactly the card's `goal` plus the Skeptic's step-9
+evidence — nothing else — and framed per the standing step-10 rule: it
+evaluates the PR branch at the Skeptic-verified SHA (PR #26, head `54fea4c`),
+not main. Settled in 2.8 minutes. Verdict: **PASS**.
+
+Basis (verbatim summary): (1) client corrected — body parsed before the status
+gate, four-code RFC 8628 dispatch on `res.ok || res.status === 400`, all other
+non-2xx → `tokenExchangeFailed` with the body effectively unread — exactly the
+Phase 1 ruling; (2) spec untouched — `docs/SERVER-SIDE-SPEC.md` has zero lines
+changed, §2.3's `400 + {"error":…}` mandate stands as written; (3) build and
+tests clean — `bunx tsc --noEmit` exit 0, `bun test` 218 pass / 1 skip / 0
+fail, both pre-existing fixtures flipped to `status: 400`, new 11-test 400
+window block pinning every code path; diff confined to `src/login.ts`,
+`test/login.test.ts`, and docs artifacts; FLLWUP-7 SDDL tests untouched.
+
+### Step 11 (autonomous form) — deterministic merge check
+
+See below (appended after the merge lands).
