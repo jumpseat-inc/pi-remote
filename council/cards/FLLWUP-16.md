@@ -122,3 +122,62 @@ No files modified; no git touched.
 
 ### Step 3 — bounded exchange
 Round 1 only. Positions stabilised: both converge on (a) per-test third-arg timeout as the only correct scope, (b) `30_000` ms, (c) the single read-back test, (d) transitive icacls-spawners stay on the 5s default (owner scoped to one test; principal states it as an explicit ruling). Sole factual delta — spawn count 4 (owner) vs 6–8 (principal) — does not change any design point and is routed to the Skeptic's grep (step 4). No round 2 dispatched.
+
+### Step 4 — skeptic (verbatim)
+
+## Skeptic report — FLLWUP-16 (pre-implementation attack)
+
+### Objections
+
+**O1 — Owner's spawn count ("4 spawns in the read-back body").**
+Target: owner claim that the read-back test executes 4 spawns; principal's 6–8 correction.
+Settling test: read `src/credential.ts` `defaultApplyAcl`/`writeAtomic` (done) + map every spawn in the test body.
+Result: **closed-green for principal / closed-red for owner.** Success path on win32 = **8 spawns**, not 4:
+1. `saveCredential` (:234) → win32 branch (credential.ts:144-152) → `defaultApplyAcl` → `spawnSync("whoami")` (credential.ts:111, node:child_process)
+2. same call → `spawnSync("icacls", …)` (credential.ts:120)
+3. `Bun.spawnSync(["whoami", …])` (:239)
+4. `Bun.spawnSync(["icacls", ..., "/save"])` (:245)
+5. `resolveSddlAces` → `Bun.spawnSync(["powershell", …])` (:194)
+6. `Bun.spawnSync(["icacls", p])` (:275)
+7. re-enroll `saveCredential` (:279) → `defaultApplyAcl` → whoami (credential.ts:111)
+8. same → icacls (credential.ts:120)
+
+Design impact: **none** — bun's per-test timeout is one wall-clock budget for the whole body, so the 30s covers all 8 spawns. The re-enroll's hidden spawns are inside the timed test, not outside it.
+
+**O2 — Principal's transitive-spawn inventory ("three OTHER tests").**
+Target: correction (ii) listing exactly round-trip :56, full-replace :68, saveCredentialAsync :293.
+Settling test: enumerate every `saveCredential`/`saveCredentialAsync` call in `test/credential.test.ts` on real win32 (no `applyAcl` seam). `saveCredentialAsync` is literally `saveCredential` (credential.ts:226-229), confirmed.
+Result: **closed-red for principal's enumeration.** The three named tests do transitively spawn (round-trip :58; full-replace :70 + :81 → 4 spawns; async :295), but a **fourth** does too: "readCredential returns null when absent; clear removes it" (:95) calls `saveCredential` at :97 → 2 spawns. The set is **4 tests, not 3**. Design impact: none (the "leave on 5s default" rule applies identically to all four; the "native tools, never flaked" rationale is a CI-history claim, below). Factual correction, not a blocker.
+
+**O3 — Owner claim 1: skipIf preserves the third-arg timeout on bun 1.4.0 (runtime).**
+Settling test (run): `/tmp/fllwup16/skipif-timeout.test.ts` — control `test(..., 100)` on a hang, target `test.skipIf(false)(..., 100)` on a hang, plus `test.skipIf(true)(..., 100)`; discriminate 100ms-vs-5000ms by failure message and wall time.
+Result: **closed-green.** Actual output: `(fail) control-timeout-100 [100.02ms] ^ this test timed out after 100ms.` / `(fail) skipif-timeout-100 [100.00ms] ^ this test timed out after 100ms.` / `(skip) skipif-true-skipped`; total run 210ms. The skipIf variant died at 100ms like the control — the arg is preserved on `bun test v1.4.0 (34cbb9a40)`, not silently dropped to 5000ms. This doubles as the gate-integrity injection: the mechanism went red with the precise diagnosis ("timed out after 100ms") when driven to failure.
+
+**O4 — Principal's typecheck claim: `options?: number | TestOptions` on the skipIf result.**
+Settling test: read `node_modules/bun-types/test.d.ts` (the `@types/bun` 1.4.0 index is just a reference to `bun-types`), then compile the exact proposed shape.
+Result: **closed-green.** Declaration at test.d.ts:542 `skipIf(condition: boolean): Test<T>`; `Test<T>` callable (test.d.ts:475-505) takes `options?: number | TestOptions`. Scratch compile with the repo's tsc 7.0.2 + typeRoots: `tsc --ignoreConfig --noEmit … /tmp/fllwup16/shape.ts` (both `…, 30_000` and `…, { timeout: 30_000 }`) → exit 0, "SHAPE-TYPECHECK: PASS".
+
+**O5 — Baseline gates on the unmodified tree ("207 green").**
+Settling test (run): `bunx tsc --noEmit`; `bun test`.
+Result: **closed-green.** `tsc --noEmit` exit 0. `bun test`: **207 pass / 1 skip / 0 fail, 1227 expect() calls, 208 tests across 11 files** (1.0s). The single skip is the win32 read-back test — correct on ubuntu. Baseline `expect()` count 1227 recorded; the card's "count unchanged" is trivially true (working tree clean, no diff yet).
+
+**O6 — Owner claim 3, 30s covers cold-start-scale delays; principal's "never flaked" CI history.**
+Settling test: none executable here — the win32-gated test skips on ubuntu and powershell.exe cold-start delay is a windows-latest CI artifact. The settling observation is a green windows-latest run on the branch.
+Result: **open-untested (CI-only), accepted per card terms.** Same term applies to O2's four tests' no-flake history.
+
+**O7 (my own attack, stated for the record) — 30s budget lengthens hang-detection latency.** If a save inside the read-back test genuinely hangs on win32, the suite now fails after 30s instead of 5s. That's a latency cost of the mechanism, not a correctness defect; falsifiable only by a CI-observed hang. **open-untested (CI-only)**, not a block.
+
+### What I ran (actual)
+```
+grep spawn/powershell/icacls/whoami across test/ → spawn sites only in credential.test.ts
+read src/credential.ts (defaultApplyAcl :108-126, writeAtomic win32 branch :144-152, saveCredentialAsync :226-229)
+bun --version → 1.4.0; tsc --version → 7.0.2; @types/bun → 1.4.0
+bun test /tmp/fllwup16/skipif-timeout.test.ts → 0 pass, 1 skip, 2 fail; both hangs "timed out after 100ms"; 210ms wall
+tsc --ignoreConfig --noEmit … shape.ts → exit 0 (SHAPE-TYPECHECK: PASS)
+bunx tsc --noEmit → exit 0
+bun test → 207 pass, 1 skip, 0 fail, 1227 expect(), 208 tests, 1021ms
+git status → clean
+```
+
+### Verdict
+**no open objections.** Both recorded positions' mechanism claims hold as run (O3, O4, O5 green; O1 resolves in principal's favor). Two willingness-to-record corrections to the deliberation record, neither blocking: the read-back body carries **8** spawns on the success path (both counts were wrong — 4 was too low, "6–8" undershoots the exact 8), and **four** tests (not three) transitively spawn whoami+icacls on win32 (missing: "readCredential returns null when absent; clear removes it", :95-97). CI-only items O6 and O7 stand as `open-untested` until a windows-latest run settles the 30s budget claim; the design (per-test 30s, single test, no bunfig) has no local falsification gap.
