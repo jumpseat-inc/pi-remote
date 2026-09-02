@@ -1146,3 +1146,90 @@ no emit-ceiling enter the wire contract in any form.
 >    safe because the client's remedy ladder (§4.5) is total. The normative
 >    sentence above the block is the whole contract: no size bound of any
 >    kind enters the wire.
+
+---
+
+## 5. Device registry, grants, push reservation, and the server-side trust model
+
+This section specifies the client device as the server sees it: the device
+registry that assigns and holds device identity; the device data-plane
+connection, specified as a **two-surface model** — a credential-minting
+control-plane surface plus a WebSocket upgrade; the grant-enforcement
+algorithm the relay obeys at fan-out; the revocation semantics that make
+access control a control-plane act; the reserved push record shape; and the
+administrative surface that governs both the registry and scope grants. The
+registry and admin surfaces are precisely the surfaces a client device never
+calls itself — registration, listing, revocation, and scope granting are
+admin/operator surfaces, authenticated by an admin credential (§5.10).
+
+**What this section closes, stated precisely.** Four closures, and they are
+not all the same kind:
+
+1. **One literal forward reference.** §4.1 states: "The population of
+   *granted connected devices* is defined by the registry and grants section
+   (§5)." §5.1–§5.7 are that definition.
+2. **One undefined concept, now defined.** §4.2's "authenticated connection
+   identity" — the source of the server-stamped envelope `deviceId` — is
+   defined here for the first time (§5.6); the concept carried no pointer on
+   the page before this section.
+3. **The scope-grant debt.** §2.5, §2.7, and §3.6 each route the `403
+   insufficient_scope` remedy through "an administrator grant of the scope
+   (administrative surface in §5)"; §5.10 is that surface.
+4. **The distinct-surface statement.** §3.1's single-token/single-upgrade
+   rule and §3.4's handshake govern the **host** connection. Device
+   connections are a distinct, second data-plane surface, specified here. A
+   device MUST NOT attach over the host's §3.3 URL: the host's connection
+   token carries no device identity, so a device attaching over it would be
+   unattributable in exactly the way §4.2's trust rule forbids.
+
+This section carries its own closed status partitions and its own error
+vocabulary additions (§5.14), stated up front rather than inherited by
+implication. Three invariants of §1.4 govern everything below — INV-3
+(credentials carry tenancy; frames do not), INV-4 (the server is the
+enforcement point), and INV-5 (security tokens are short-lived, single-use,
+and self-describing where applicable) — and §1.2's control/data-plane split
+is the architectural rule the two-surface connection model exists to honor:
+every security decision is made on the control plane, before any URL exists.
+
+### 5.1 The device object and identity
+
+The registry holds one row per device, created by registration (§5.2):
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `deviceId` | REQUIRED | Server-assigned, opaque, URL-safe identifier. **Unique within its tenant (MUST); globally unique (MAY).** The wire never observes more: a host only sees `deviceId`s on its own tenant-bound streams, and §2.6's `sub` namespacing already supplies cross-tenant ambiguity-freedom. |
+| `tenantId` | REQUIRED | Immutable after registration. Fixed at registration; moving a device between tenants is revoke + re-register (§5.4). |
+| `displayName` | REQUIRED | Non-empty string, at most 256 characters (guidance-grade maximum, §1.5); informational; the server never interprets it. |
+| `status` | REQUIRED | `active` \| `revoked`. Terminal in the `revoked` direction: there is no un-revoke. |
+| `pushProvider` | REQUIRED | The reserved push record shape (§5.9); defaults to `"webpush"` at registration. |
+| `createdAt` | REQUIRED | Registration time. |
+
+**`deviceId` stability (normative).** `deviceId` MUST be stable for the
+registration's lifetime and MUST NOT be recycled after revocation — not
+re-assigned to a new registration, ever. This is load-bearing, not hygiene:
+the host tracks per-device acknowledgements keyed by the envelope `deviceId`
+(§4.3) and attributes `pi.human_input` by it (§4.2's trust rule); a server
+that re-assigned or recycled `deviceId`s would make per-device bookkeeping
+and audit identity meaningless — or worse, actively falsifiable. The
+no-recycle rule is a guard against audit laundering: a recycled `deviceId`
+would let a newer device's input inherit an older device's audit trail.
+Because §4.2 makes the server the only trust anchor for stamped `deviceId`s,
+the registry is the only decoder ring from envelope `deviceId` back to a
+device — which is why revocation retains the record (§5.8) instead of
+erasing it.
+
+**The device credential (normative shape).** Each registered device holds
+one credential: an **opaque, server-generated secret**. It is long-lived,
+revocable at the control plane, stored by the server only as a hash
+(`credential_hash` — never the credential itself), presented only to the
+control plane over TLS, and compared in constant time. It is **not** an
+OAuth token: no authorization-server round-trip, no `scope` claim, no
+refresh semantics — devices are enrolled subjects of the server, not clients
+of the authorization server, and §2's flows do not apply to them. The
+credential is the device side of the third INV-3 contract point (§5.11): it
+binds its bearer to exactly one tenant. It is presented only to the mint
+surface (§5.5), where it mints a short-lived, single-use connection token —
+the long-lived secret never rides a WebSocket URL (INV-5's shape, held at
+the data plane). A lost credential is unrecoverable: the remedy is revoke +
+re-register (§5.8, §5.2) — the device-side analogue of §2.8's
+replace-not-merge discipline.
