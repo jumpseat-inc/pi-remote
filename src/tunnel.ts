@@ -372,8 +372,11 @@ export async function refreshAccessToken(
   try {
     res = await deps.fetch(tokenEndpoint, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ grant_type: "refresh_token", refresh_token: refreshToken }),
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }).toString(),
     });
   } catch {
     throw new TunnelError("unreachable", "control_plane_unreachable", deps.serverUrl);

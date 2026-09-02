@@ -256,9 +256,11 @@ describe("EV-2 control-plane tunnel REST client", () => {
     expect(discovery).toHaveLength(1); // RFC 8414 discovery used
     const refreshReq = log.find((r) => r.url === TOKEN_ENDPOINT)!;
     expect(refreshReq.method).toBe("POST");
-    const body = JSON.parse(refreshReq.body ?? "{}") as Record<string, unknown>;
-    expect(body.grant_type).toBe("refresh_token");
-    expect(body.refresh_token).toBe("expired-rt");
+    // RFC 6749 §2.3.1: refresh request is form-encoded, not JSON.
+    expect(refreshReq.headers["content-type"]).toBe("application/x-www-form-urlencoded");
+    const params = new URLSearchParams(refreshReq.body ?? "");
+    expect(params.get("grant_type")).toBe("refresh_token");
+    expect(params.get("refresh_token")).toBe("expired-rt");
   });
 
   test("refresh failure: error names /rc:login; no POST /tunnels issued from refresh", async () => {

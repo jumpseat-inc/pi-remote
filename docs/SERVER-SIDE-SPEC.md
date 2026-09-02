@@ -426,17 +426,22 @@ expires, further polls presenting it are rejected.
 ### 2.4 Token refresh
 
 There is **no separate refresh endpoint**. An enrolled host refreshes its
-access token at the `token_endpoint` discovered in §2.1, with an
-`application/json` body of exactly two fields:
+access token at the `token_endpoint` discovered in §2.1. The request body
+MUST be `application/x-www-form-urlencoded` (RFC 6749 §2.3.1, Appendix B)
+and carries exactly two REQUIRED parameters:
 
-| Field | Value |
+| Parameter | Value |
 | --- | --- |
 | `grant_type` | `refresh_token` |
 | `refresh_token` | the host's current refresh token |
 
-Both fields are REQUIRED. The request carries no `client_id`: the client is
-public, the presented refresh token itself identifies the enrollment, and a
-conformant server MUST NOT require `client_id` on a refresh request.
+The request body — the parameters as form-encoded in the POST to the
+token endpoint — is the normative observation point: a conformance harness
+checks the request body, not any client-side representation of it. All
+other constraints are unchanged: the request carries no `client_id` (the
+client is public, the presented refresh token itself identifies the
+enrollment), and a conformant server MUST NOT require `client_id` on a
+refresh request.
 
 **Response (success)** — `200` with an `application/json` body:
 
