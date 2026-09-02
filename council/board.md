@@ -16,12 +16,12 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 
 ## Ready
-- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 - EV-12 — "Data-plane relay spec — envelope, seq/ack, resume and resync, fan-out"
 - EV-13 — "Device registry, grants, push reservation, and the server-side trust model"
 - EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 
 ## Deliberating
+- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 
 ## In Progress
 
