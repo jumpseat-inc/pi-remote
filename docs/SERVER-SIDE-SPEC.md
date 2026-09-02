@@ -889,3 +889,260 @@ distinct remedy rendered for `invalid_request`, and the remedy for
 backoff. On delete, `5xx` lands in a distinct, non-blocking teardown-failure
 class: the host reports the notification failure and proceeds with local
 teardown, and never retries the delete.
+
+---
+
+## 4. Data-plane relay
+
+This section specifies the data plane: the long-lived, host-initiated
+WebSocket connection of §3.1 over which the server relays standardized frames
+between the host and the granted connected client devices. It specifies the
+envelope's two directional shapes, the sequence and acknowledgement accounting
+that makes one ordered stream per direction possible, the resume and resync
+control frames and their handshake, the ring buffer that serves fast
+catch-up, fan-out to multiple devices, and the liveness and close-code rules —
+the two forward references §3.4 and §3.5(b) make to this section resolve in
+§4.8.
+
+Three invariants of §1.4 govern everything below — INV-1 (the data plane
+relays; it does not compute), INV-2 (translation lives in the host client,
+including history), and INV-3 (credentials carry tenancy; frames do not) —
+and the negative invariant of §1.2 is this section's ceiling: the server
+reads the envelope, and nothing else.
+
+### 4.1 Scope and the two streams
+
+One long-lived, host-initiated WebSocket per tunnel (§3.1) carries the entire
+data plane. Over it flow two logical streams, each with exactly one producer:
+
+- **The downlink** — host → server → devices. The host is the single
+  producer: every application frame on this stream originates at the host.
+- **The host-bound stream** — devices → server → host. The server is the
+  single producer: it multiplexes input from all granted connected devices
+  into one ordered stream, so the host receives one total order regardless of
+  how many devices produced it.
+
+The population of *granted connected devices* is defined by the registry and
+grants section (§5); this section specifies only how relay behavior interacts
+with grants. Two restatements bound what follows: the server relays and never
+computes (INV-1), and all conversion between the agent session's native form
+and the standardized frames happens in the host client (INV-2).
+
+### 4.2 The envelope, per direction
+
+The envelope is a JSON object. Its key set is specified per direction, and
+the two directions differ in exactly one key:
+
+| Key | Downlink (host → server) | Host-bound (server → host) | Meaning |
+| --- | --- | --- | --- |
+| `v` | REQUIRED | REQUIRED | Envelope grammar version; `1` in this document (§4.4). |
+| `seq` | REQUIRED | REQUIRED | The sender's sequence number on its stream (§4.3). |
+| `ack` | REQUIRED | REQUIRED | The sender's acknowledgement watermark (§4.3). |
+| `frame` | REQUIRED | REQUIRED | The frame slot (§4.4); `null` in an ack-only envelope. |
+| `deviceId` | MUST NOT appear | OPTIONAL | Server-stamped identity of the device that produced the frame; present if and only if the frame is device-originated. |
+
+Downlink envelopes are **exactly** `{v, seq, ack, frame}` — four keys.
+Host-bound envelopes are `{v, seq, ack, frame}` plus, optionally, the one
+server-stamped key `deviceId`. The key set is closed: **no other key, in
+either direction, ever.** The evolution point is the envelope version `v`
+(§4.4), not extra keys — a server that adds any other envelope key is
+non-conformant.
+
+Server-originated frames — the `resync` control frame of §4.5 and the
+ack-only envelope of §4.3 — carry no `deviceId`.
+
+**The `deviceId` trust rule.** The `deviceId` on host-bound envelopes is
+**server-stamped from the authenticated connection identity**. The server
+MUST NOT take it from any device-supplied byte — neither from a top-level
+envelope key nor from inside the frame. This is a restated consequence of two
+invariants already on the page: INV-4 makes the server the enforcement point
+for device identity and grants, and INV-3 puts tenancy in credentials, so
+device identity is never carried by frames. The host trusts the envelope
+`deviceId` with no verification of its own; the server is therefore the only
+possible trust anchor for it.
+
+**Resume-frame `deviceId` precision.** A `resume` frame (§4.5) carries its
+device identity *inside the frame*, and that in-frame value is the one
+host-side parsing acts on for resumes. The server MUST validate the in-frame
+`deviceId` of an inbound `resume` against the authenticated connection
+identity, and MUST NOT serve `lastAckedSeq` bookkeeping for a device other
+than the connection's own. Without this check a resume frame is a
+cross-device watermark-peek vector: one device could inspect another's
+catch-up state.
+
+**Envelope opacity.** The server MUST NOT inspect `frame` beyond
+discriminating the closed set of §4.4 (restated INV-1). Stamping `deviceId`
+on host-bound envelopes is envelope work the relay rules themselves require —
+not payload interpretation — exactly like assigning the host-bound seq.
+
+### 4.3 Sequence and acknowledgement
+
+**Downlink seq is host-owned.** The host's `seq` is a positive integer
+starting at 1 per session instance, monotonic, never reset. The server never
+reorders, renumbers, or stamps it: the downlink seq space is the host's, and
+the server relays it verbatim.
+
+**Host-bound seq is server-owned.** The server rebuilds device input into one
+merged, monotonic host-bound sequence — positive integers starting at 1 per
+session instance. This is what makes the host's single `ack` watermark
+meaningful when two or more devices are connected: one watermark can
+acknowledge exactly one stream, so the server MUST NOT preserve per-device
+seq passthrough on the host-bound stream. (Per-device sequencing is internal
+bookkeeping at most, never wire surface.)
+
+**Ack.** The `ack` value is the sender's watermark: the highest inbound seq
+it has processed, `0` before any. Every envelope carries the sender's
+current ack — the watermark is piggybacked, and no dedicated ack frame
+exists.
+
+**Ack-only envelopes.** A sender MAY send `{v, seq, ack, frame: null}` to
+advance its watermark. These are downstream-only in practice: the reference
+host never emits `frame: null` — it heartbeats at the WebSocket level (§4.8)
+and piggybacks its ack on its next real frame — while the server MAY emit
+ack-only envelopes on the host-bound stream.
+
+**Ack monotonicity (normative).** An ack MUST never decrease on any single
+stream. A decreasing ack is a protocol violation, closed with `3400` (§4.8) —
+wire-observable in both directions.
+
+**Seq continuity across tunnels (normative).** The host's seq is bound to the
+session instance, not the tunnel: a reconnect mints a new tunnel (§3.1)
+while seq continues unreset. The server MUST NOT assume a tunnel's first
+frame carries seq 1, and MUST NOT reset or renumber seq at tunnel boundaries.
+
+### 4.4 The frame slot's closed set and the versioning escape hatch
+
+The envelope's `frame` value is exactly one of:
+
+a. an application frame (opaque to the server);
+b. `null` — the ack-only envelope of §4.3;
+c. `{"type": "resume", "deviceId": <string>, "lastAckedSeq": <finite number>}`;
+d. `{"type": "resync", "fromSeq": <finite number>}`.
+
+**The only-these-control-frames rule (normative).** Within envelope version
+`1`, `resume` and `resync` are the only control frames a server may emit or
+relay, and the frame slot admits no further types.
+
+**`pi.resync.done` is not a control frame.** It is an ordinary application
+frame — a `CUSTOM` frame named `pi.resync.done` carrying `{uptoSeq}` —
+emitted host-upstream at the end of a replay. The server MUST relay it
+opaquely and MUST NOT parse it (restated INV-1): fan-out needs no replay-end
+signal, because the server relays whatever the host emits in host-bound
+stream order, and post-replay frames follow the replayed ones naturally.
+
+**The versioning escape hatch, named.** A server needing a new control frame
+or a changed envelope MUST version the protocol — increment `v` and define
+the new grammar — never improvise inside `v: 1`. A server receiving a `v` it
+does not implement closes the connection as a protocol violation (`3400`,
+§4.8).
+
+### 4.5 The resume/resync handshake
+
+- A **device** sends `resume` — `{"type": "resume", "deviceId": <string>,
+  "lastAckedSeq": <finite number>}`, riding in the envelope's `frame` slot —
+  to request catch-up. `lastAckedSeq` is in the **host's** seq space: the
+  highest host-seq the device has processed.
+- **The server answers resumes itself; it MUST NOT forward a `resume` frame
+  to the host.** Direction is part of the contract, and it is
+  harness-observable: a resume appearing in the server→host direction is
+  checkable by any conformance harness playing the host.
+- The server answers from its ring buffer (§4.7) by delivering the missed
+  range of the host's stream, in host-seq order.
+- **On a cache miss** the server sends `resync` — `{"type": "resync",
+  "fromSeq": <finite number>}` — to the **host**. `fromSeq` SHOULD equal the
+  requesting device's `lastAckedSeq + 1`; it is explicitly advisory: the host
+  MAY ignore it, and the server MUST NOT assume exact-range replay. The host
+  replays from its own store as ordinary application frames (INV-2) — in the
+  reference, the full active branch — and the server relays the replay like
+  any other downlink traffic.
+- **At-least-once delivery (normative; restated consequence of INV-2).** The
+  relay never guarantees exactly-once: a resume/resync path may redeliver,
+  and recipients dedupe by deterministic event id. The remedy ladder is
+  total: reconnect → resume → resync → full-branch replay from the host's
+  authoritative store.
+- **A cache miss resolves to `resync` — never to an error, a stall, or a
+  fabricated frame** (normative; restated consequence of INV-2). This
+  includes the empty cache of a fresh tunnel answering a post-reconnect
+  resume (§4.7).
+- **Revocation interaction.** If the requesting device is revoked while its
+  resume is outstanding, the server cancels its catch-up; a resync already
+  sent is not recalled — the host's replay fans out to the remaining granted
+  devices, so it is never wasted work. Per-device bookkeeping for a revoked
+  device is discarded; the stream and the other devices are unaffected.
+
+### 4.6 Fan-out (1:N)
+
+- The server delivers each host-produced frame to **every granted connected
+  device**, in host-seq order, identically: same frames, same order, no
+  per-device filtering of the stream.
+- Grant enforcement happens at delivery (INV-4): a device whose grant does
+  not cover the tunnel receives nothing.
+- Revocation takes effect at the next delivery opportunity without host
+  cooperation (INV-4): the server MUST stop delivering to a revoked device
+  immediately, and SHOULD close its socket promptly (a control-plane act, §5).
+- Per-device bookkeeping — last delivered seq, in-flight catch-up — is
+  bookkeeping only, never protocol logic: the single producer yields one
+  total order, and fan-out against it is trivially consistent.
+- Uplink concurrency: input from any granted device is accepted; concurrent
+  uplink frames interleave into the server's host-bound stream order.
+  Arbitration between devices is out of scope for the data plane.
+
+### 4.7 The ring buffer
+
+**Correctness MUST NOT depend on the cache** (normative; restated consequence
+of INV-2). A server with an empty or short cache MUST still deliver every
+live frame and MUST resolve every miss via `resync`; the server MUST NOT
+treat the cache as authoritative history.
+
+**Capacity (SHOULD).** A server SHOULD cache a bounded recent window per
+live tunnel, to serve fast catch-up without a host round-trip.
+
+**Release.** The cache is discarded at tunnel deletion (§3.5(c)). Because
+seq continues across tunnels (§4.3), a post-reconnect resume MUST be answered
+with `resync` (§4.5) — never with an error.
+
+### 4.8 Liveness and close codes
+
+Liveness is native WebSocket ping/pong; no application-level keepalive
+exists. The server MUST answer pings per the WebSocket protocol and MAY send
+its own pings to reap dead sockets. (The reference host pings at 10-second
+intervals — a non-normative example.)
+
+Close codes are **diagnostic, not a contract**: the dialing side's remedy for
+any close is uniform — re-arm, mint a new tunnel (§3.1), reconnect — and a
+client MUST NOT be required to parse close codes. Two codes are named:
+
+- `1000` — deliberate close, including the deletion close of §3.5(b)
+  (normative on the host side; the server's deletion close uses it).
+- `3400` — protocol violation (normative): a malformed envelope, an unknown
+  `v`, a frame-slot value outside §4.4's set, or ack inversion — each
+  wire-observable.
+
+### 4.9 Guidance (non-normative)
+
+**A relay never truncates or splits a frame** (normative; restated
+consequence of INV-1): truncation is a payload transform. No accept-floor and
+no emit-ceiling enter the wire contract in any form.
+
+> **Guidance (non-normative).** One recommended shape per concern:
+>
+> 1. **Ring sizing.** A fixed-capacity, count-based ring per live tunnel —
+>    for example the last 512 envelopes, oldest evicted. No unbounded growth,
+>    no time-based retention to reason about.
+> 2. **Connection state machine.** Host socket `dialing → live → closing →
+>    closed`; per-device delivery `attached → catching-up → streaming →
+>    detached`. A close moves the host socket to `closing`; a cache miss
+>    moves a device to `catching-up`; a revocation moves a device to
+>    `detached`.
+> 3. **Backpressure.** A bounded per-device send queue; on overflow,
+>    disconnect that device rather than buffering unboundedly or blocking the
+>    host's stream — safe because the device's remedy ladder (§4.5) is total.
+> 4. **Deployment topology.** The single-live-socket-per-tunnel rule (§3.1)
+>    pins each tunnel to one server process, so the ring cache can be
+>    in-process memory with no cross-replica coherence; token signing keys
+>    can be shared or asymmetric per §3.3's guidance.
+> 5. **Frame-size handling.** A server may bound per-message memory (a ~1 MiB
+>    example number); a server refusing an oversized message closes `1009` —
+>    safe because the client's remedy ladder (§4.5) is total. The normative
+>    sentence above the block is the whole contract: no size bound of any
+>    kind enters the wire.
