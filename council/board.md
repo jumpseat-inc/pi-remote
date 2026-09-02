@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
 
 ## Deliberating
-- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 
 ## In Progress
+- EV-11 — "Tunnel lifecycle spec — POST /tunnels, signed one-time URL, DELETE, error taxonomy"
 
 ## In Review
 
