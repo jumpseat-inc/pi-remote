@@ -1309,3 +1309,103 @@ is no move operation. The registry row's `tenantId` is immutable after
 registration (§5.1), and the no-recycle rule (§5.1) means the re-registered
 device is a new `deviceId` with a new credential — the old identity's audit
 trail stays bound to the old, revoked row.
+
+### 5.5 The mint surface — `POST /device/connections`
+
+The device data-plane connection is a **two-surface model**, and the model
+is load-bearing. The long-lived device credential is presented over REST —
+where a browser's `fetch` can set an `Authorization` header; the browser
+`WebSocket` constructor cannot, a load-bearing fact of this design, since
+this document's first-class client device is a browser PWA. The REST surface
+mints a short-lived, single-use, signed connection URL; the WebSocket
+upgrade (§5.6) is §3.4-shaped. The model mirrors the host side exactly (§2
+enrollment → §3.3 URL → §3.4 upgrade) and keeps the long-lived secret out of
+WebSocket URLs, which end up in browser history and server logs — INV-5's
+shape, held at the data plane.
+
+**Request.** The path is fixed: `POST /device/connections` on the
+control-plane origin. The request MUST carry `Authorization: Bearer <device
+credential>` (§5.1); the body is `application/json`:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `tunnelId` | REQUIRED | The tunnel to attach to. |
+
+Unknown body fields MUST be ignored; a missing or unparseable body, or a
+missing or wrong-typed `tunnelId`, is `400 invalid_request`.
+
+**Ordered checks**, in order:
+
+1. **Extract and parse.** An absent or malformed credential header, an
+   unparseable body, or a missing `tunnelId` yields `400 invalid_request`.
+2. **Authenticate the device.** The presented credential's hash is compared
+   against the stored `credential_hash` in constant time (§5.1). No match —
+   whether the credential never existed or was revoked — yields `401
+   invalid_token`. No existence leak: a revoked credential and a
+   never-issued one are byte-indistinguishable — same status, same `error`
+   code (`error_description` is diagnostic per §2.7's doctrine).
+3. **Grant coverage.** The device row's `tenantId` is compared with the
+   named tunnel's tenant. A mismatch is **`404 unknown_tunnel`, never
+   `403`**: under base-grant-only (§5.4), "does the tunnel exist *in the
+   device's tenant*?" is the same question as existence, and §3.5's
+   no-existence-leak prose transfers. A cross-tenant denial is
+   byte-indistinguishable from a genuinely unknown tunnel — same status,
+   same `error` code.
+4. **Live-tunnel existence.** An absent or deleted tunnel yields `404
+   unknown_tunnel`.
+5. **Layered denial (MAY path).** `403 tunnel_not_granted` is a **reserved
+   code, stated as reserved on this page: reachable by no MUST in v1**. No
+   wire surface for managing per-tunnel restrictions is specified (§5.7's
+   ceiling); a layered per-tunnel denial, if a server layers one, is
+   expressed only here, and this is the only observable it ever produces.
+
+**Response (success)** — `200` with an `application/json` body:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `url` | REQUIRED | The absolute `wss://` connection URL, specified below. |
+| `tokenTtl` | REQUIRED | Positive integer seconds, equal to the issued token's actual validity window (`exp` minus mint time) — the same shape discipline as §3.2. |
+
+- **URL shape:**
+
+```
+wss://<data-plane host>/<tunnelId>/devices?token=<token>
+```
+
+  This is the **distinct device path**, whose final segment is the literal
+  `devices` — not the `tunnelId`. The distinctness is structural: §3.4's
+  "final segment equals `tunnelId`" binding simply cannot be read onto this
+  URL, so the host's one-upgrade rule (§3.1) cannot be imported onto the
+  device handshake by a reader. The authority and `wss`-scheme rules of
+  §3.3 carry over: a device uses the URL verbatim and never reconstructs a
+  connection URL from its parts.
+- **Token:** a compact JWS — §3.3's grammar with one claim added. Claim
+  names are snake_case, consistent with §2.6 and §3.3:
+
+| Claim | Requirement | Meaning |
+| --- | --- | --- |
+| `tenant_id` | REQUIRED | MUST equal the device row's `tenantId` — the device-credential contract point of INV-3 (§5.11). |
+| `tunnel_id` | REQUIRED | MUST equal the URL path's **first** segment (§5.6). |
+| `device_id` | REQUIRED | The device row's `deviceId`; the source of the server-stamped envelope `deviceId` (§5.6, §4.2). |
+| `exp` | REQUIRED | Expiry, in seconds since the epoch. |
+| `jti` | REQUIRED | Unique per issued token; the single-use consumption identity (§5.6). |
+| `iat`, `iss`, `aud` | SHOULD | Standard JWT provenance claims. |
+
+  TTL bounds are identical to §3.3: a default validity window of 60 seconds
+  (SHOULD); an issued TTL MUST be at least 5 seconds and at most 300
+  seconds; a configured value outside the bounds clamps to the nearest
+  bound. Expiry is judged by the **server's clock**, at the upgrade (§5.6),
+  and only there.
+- **Single use:** the minted token is consumed atomically at the upgrade
+  (§5.6, step 5); a replayed token is rejected `409 token_consumed`.
+
+The status partition is closed: `{200, 400, 401, 403, 404, 5xx}`. **`403`
+lives only on this surface**: the mint surface is control plane, where every
+security decision is made (§1.2); the upgrade carries no `403` (§5.6).
+
+**Identifier, not capability (normative guard).** `tunnelId` is an
+identifier, not a capability. Possession of a `tunnelId` plus a valid device
+credential is not sufficient to attach: the mint surface's grant check
+(step 3) is the only gate, and it compares tenants the server holds, not
+bytes the caller presents. Device-facing tunnel discovery is out-of-band for
+v1 — a named non-decision, not an omission (§5.13(d)).
