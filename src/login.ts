@@ -713,34 +713,41 @@ export async function runHeadlessLogin(
       return { kind: "failure", reason: "unreachable" };
     }
     if (ctl.cancelled) return { kind: "cancelled" };
-    if (!res.ok) {
-      // Non-2xx without a parseable error → token exchange failure.
-      print(deps, loginEnglishFor("login.failure.tokenExchangeFailed"));
-      return { kind: "failure", reason: "tokenExchangeFailed" };
-    }
+    // FLLWUP-22: parse BEFORE the status gate so RFC 8628 §3.5 error bodies
+    // carried on 400 (the normative §2.3 shape) reach the dispatch table.
+    // The .catch(() => null) fails closed at every status: a non-JSON 400 or
+    // 500 body → tokenExchangeFailed, never a throw.
     const body = (await res.json().catch(() => null)) as Record<string, unknown> | null;
 
     const error = typeof body?.["error"] === "string" ? (body["error"] as string) : undefined;
-    if (error === "authorization_pending") {
-      continue;
-    }
-    if (error === "slow_down") {
-      interval += 5000;
-      continue;
-    }
-    if (error === "expired_token") {
-      if (!printedExpiredTail) {
-        print(deps, render(loginEnglishFor("login.headless.expire"), { expiresIn: String(Math.max(1, Math.round((expiresIn * 1000 - elapsed) / 1000))) }));
-        printedExpiredTail = true;
+    if (res.ok || res.status === 400) {
+      // RFC 8628 §3.5: the four documented poll codes, recognized on 400
+      // (normative) and 2xx (tolerated legacy shape).
+      if (error === "authorization_pending") {
+        continue;
       }
-      print(deps, loginEnglishFor("login.failure.expiredCode"));
-      return { kind: "failure", reason: "expiredCode" };
+      if (error === "slow_down") {
+        interval += 5000;
+        continue;
+      }
+      if (error === "expired_token") {
+        if (!printedExpiredTail) {
+          print(deps, render(loginEnglishFor("login.headless.expire"), { expiresIn: String(Math.max(1, Math.round((expiresIn * 1000 - elapsed) / 1000))) }));
+          printedExpiredTail = true;
+        }
+        print(deps, loginEnglishFor("login.failure.expiredCode"));
+        return { kind: "failure", reason: "expiredCode" };
+      }
+      if (error === "access_denied") {
+        print(deps, loginEnglishFor("login.failure.deviceDenied"));
+        return { kind: "failure", reason: "deviceDenied" };
+      }
     }
-    if (error === "access_denied") {
-      print(deps, loginEnglishFor("login.failure.deviceDenied"));
-      return { kind: "failure", reason: "deviceDenied" };
-    }
-    if (error) {
+    if (error || !res.ok) {
+      // Unknown error code (2xx or 400), a 400 without a recognized error, or
+      // any other non-2xx (401/429/500…) → token exchange failure. The four
+      // RFC 8628 codes are recognized only on 400 and 2xx; other statuses'
+      // bodies are effectively unread.
       print(deps, loginEnglishFor("login.failure.tokenExchangeFailed"));
       return { kind: "failure", reason: "tokenExchangeFailed" };
     }

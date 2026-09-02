@@ -535,7 +535,7 @@ describe("EV-7 headless flow", () => {
     c.onToken = (ctl: Control) =>
       ctl.simNow >= 290 * 1000
         ? { status: 200, body: { access_token: fakeJwt("t"), expires_in: 300 } }
-        : { status: 200, body: { error: "authorization_pending" } };
+        : { status: 400, body: { error: "authorization_pending" } };
     const configDir = tempConfigDir();
     const deps: LoginDeps = {
       serverUrl: c.serverUrl,
@@ -554,6 +554,191 @@ describe("EV-7 headless flow", () => {
     expect(progress.length).toBeGreaterThanOrEqual(1);
     expect(progress.length).toBeLessThanOrEqual(3);
     expect(progress.some((l) => l.includes("150s left"))).toBe(true); // half at expires_in/2
+    rmSync(configDir, { recursive: true, force: true });
+  });
+});
+
+describe("FLLWUP-22: RFC 8628 poll error shape (400 window)", () => {
+  /** Non-JSON body simulation: `resp` builds `json: async () => body`, so a
+   * rejected-Promise body makes `await res.json()` reject at the json() seam.
+   * The handler is attached eagerly so the rejection is unhandled only if the
+   * poll loop actually awaits the body — matching a real non-JSON response. */
+  function nonJsonBody(): unknown {
+    const p = Promise.reject(new SyntaxError("Unexpected token 'n' — not valid JSON"));
+    p.catch(() => {});
+    return p;
+  }
+
+  function headlessDeps(
+    c: Control,
+    configDir: string,
+    sleep: LoginDeps["sleep"] = async () => {},
+  ): LoginDeps {
+    return { serverUrl: c.serverUrl, configDir, fetch: makeFetch(c), now: () => c.simNow, sleep };
+  }
+
+  test("400 slow_down → continue with interval increased by 5000ms (sleep seam: 2000 then 7000)", async () => {
+    const c = makeControl({}, {});
+    let calls = 0;
+    c.onToken = () =>
+      ++calls === 1
+        ? { status: 400, body: { error: "slow_down" } }
+        : { status: 200, body: { access_token: fakeJwt("t"), expires_in: 300 } };
+    const configDir = tempConfigDir();
+    const sleeps: number[] = [];
+    const deps = headlessDeps(c, configDir, async (ms: number) => {
+      sleeps.push(ms);
+      c.simNow += ms;
+    });
+    loginEndpointRequestLog.length = 0;
+    const { result } = await captureLog(() => runHeadlessLogin(deps));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("success");
+    expect(sleeps).toEqual([2000, 7000]); // deviceBody interval:2 → 2000ms; +5000 → 7000ms
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("400 expired_token → expiredCode, expire tail printed once, no credential", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({ status: 400, body: { error: "expired_token" } });
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("expiredCode");
+    // "The code expires in …" renders at flow start AND in the expired tail — tail exactly once.
+    expect(logs.filter((l) => l.includes("The code expires in")).length).toBe(2);
+    expect(readCredential({ configDir })).toBeNull();
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("400 access_denied → deviceDenied, no credential", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({ status: 400, body: { error: "access_denied" } });
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("deviceDenied");
+    expect(logs.some((l) => l.includes("Device authorization was denied"))).toBe(true);
+    expect(readCredential({ configDir })).toBeNull();
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("400 unknown error code → tokenExchangeFailed", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({ status: 400, body: { error: "some_other_error" } });
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("tokenExchangeFailed");
+    expect(logs.some((l) => l.includes("Token exchange failed"))).toBe(true);
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("400 {} (absent error) → tokenExchangeFailed", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({ status: 400, body: {} });
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("tokenExchangeFailed");
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("500 + {error:access_denied} → tokenExchangeFailed, NOT deviceDenied (anti-false-denial)", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({ status: 500, body: { error: "access_denied" } });
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("tokenExchangeFailed");
+    expect(logs.some((l) => l.includes("Device authorization was denied"))).toBe(false);
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("500 + {error:authorization_pending} → tokenExchangeFailed, NOT continue (anti-silent-continue)", async () => {
+    const c = makeControl({}, {});
+    let calls = 0;
+    c.onToken = () =>
+      ++calls === 1
+        ? { status: 500, body: { error: "authorization_pending" } }
+        : { status: 200, body: { access_token: fakeJwt("t"), expires_in: 300 } };
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    // If the 500 error body were wrongly honored as "continue", poll #2 would
+    // return success and the outcome would be "success", not this failure.
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("tokenExchangeFailed");
+    const tokenPosts = loginEndpointRequestLog.filter(
+      (e) => (e as { url: string }).url === c.tokenEndpoint,
+    );
+    expect(tokenPosts.length).toBe(1); // no second poll issued
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("500 with non-JSON body → tokenExchangeFailed (not a throw)", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({ status: 500, body: nonJsonBody() });
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("tokenExchangeFailed");
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("400 with non-JSON body → tokenExchangeFailed (pins the .catch on the now-live 400 parse path)", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({ status: 400, body: nonJsonBody() });
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("tokenExchangeFailed");
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("200 + authorization_pending still polls (tolerated-legacy pin)", async () => {
+    const c = makeControl({}, {});
+    let calls = 0;
+    c.onToken = () =>
+      ++calls === 1
+        ? { status: 200, body: { error: "authorization_pending" } }
+        : { status: 200, body: { access_token: fakeJwt("t"), expires_in: 300 } };
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("success");
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("200 + {error:access_denied, access_token:valid} → deviceDenied, credential never saved (error-wins honesty pin)", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({
+      status: 200,
+      body: { error: "access_denied", access_token: fakeJwt("t"), expires_in: 300 },
+    });
+    const configDir = tempConfigDir();
+    loginEndpointRequestLog.length = 0;
+    const { result } = await captureLog(() => runHeadlessLogin(headlessDeps(c, configDir)));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("deviceDenied");
+    expect(readCredential({ configDir })).toBeNull();
     rmSync(configDir, { recursive: true, force: true });
   });
 });
@@ -630,7 +815,7 @@ describe("EV-7 J2 cancellation + replacement prompt (facade)", () => {
 
   test("test 11 (Ctrl-C): cancel during a live flow renders login.cancelled once, zero POSTs after the signal", async () => {
     const c = makeControl({}, {});
-    c.onToken = () => ({ status: 200, body: { error: "authorization_pending" } });
+    c.onToken = () => ({ status: 400, body: { error: "authorization_pending" } });
     const configDir = tempConfigDir();
     let cancelled = false;
     const command = createLoginCommand({
