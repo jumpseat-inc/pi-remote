@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-23
 title: "Fix §5.10's inverted RFC-2119 keyword: MUST where MUST NOT is meant in the cross-tenant grant sentence"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-2
 goal: docs/SERVER-SIDE-SPEC.md §5.10's sentence "there is no cross-tenant grant, and no conformant server MUST honor a grant request naming a subject outside the admin's tenant" is corrected so the keyword matches the intended normativity — a conformant server MUST NOT honor such a request — per the EV-12 rule that a normative keyword must bind the behavior it names.
@@ -50,3 +50,21 @@ Non-blocking note (closed-green): the PR branch carries the `Ready → In Progre
 Judge dispatched with exactly the card's `goal` plus the Skeptic's step-9 evidence — nothing else — and framed per the standing step-10 rule (product-owner general rule, vault/raw/2026-08-31-po-ev1-step10-judge-object.md, wiki: Judge Object Rule): it evaluates the PR branch at the Skeptic-verified SHA (PR #27, head `6e941514`), not main. Settled in 1.6 minutes. Verdict: **PASS**.
 
 Basis (summary): (1) the new `MUST NOT` is a prohibition — it names the observation point (whether a server honors a cross-tenant grant request) and binds non-honoring as a requirement, satisfying the EV-12 rule; the descriptive clause remains a separate factual statement; (2) scope confined — exactly one hunk in one file, §5.7 untouched, no source/test files; (3) wire consistency preserved — the unchanged downstream observable (other-tenant `sub` → `404`) aligns with the new norm.
+
+## Step 11 (autonomous form) — deterministic merge check
+
+All five criteria confirmed against the PR head SHA `6e94151419916c82238f4d1558b39e0b24eb59de`:
+
+1. Owner gates green in full — skeptic-verified (`tsc --noEmit` exit 0; `bun test` 218 pass / 1 skip / 0 fail; both proven fail-capable by injection).
+2. GitHub Actions green on the PR head SHA — `gh pr checks 27 --json name,state,workflow` keyed on the `workflow` field: `gates` and `gates-windows` both present with `state: SUCCESS`. Head SHA re-read immediately before merging: still `6e941514…`.
+3. No blocking Skeptic objection — step 9 PASS, none.
+4. Judge verdict `PASS` — step 10.
+5. No `Needs Human` state or outstanding ruling — card `In Review`; the defect's governing rule (EV-12 Normativity Test) was a recorded audit finding applied as written.
+
+**Merge executed and pinned:** `gh pr merge 27 --merge --match-head-commit 6e94151419916c82238f4d1558b39e0b24eb59de` → PR state MERGED, merge commit `a07e3221fe32804bba071a9d126daa3fd4cdc739`.
+
+## Step 12 — Sync and reconcile
+
+Local main had diverged (three council bookkeeping commits ahead of `90ed2fe` while origin/main held the merge); reconciled by `git rebase origin/main` — merge commit `a07e322` preserved untouched, bookkeeping replayed on top. Post-rebase verification: `git diff 6e941514 HEAD -- docs/SERVER-SIDE-SPEC.md` is empty (merged implementation byte-identical to the PR head the criteria were checked against). CI on the merged SHA observed directly: `gates` workflow `conclusion: success`, `status: completed` at `a07e322` on main.
+
+Card set **Done** on both the card face and the board from these observed artifacts. Reconciliation committed to main and pushed.

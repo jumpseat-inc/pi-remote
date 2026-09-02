@@ -23,11 +23,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-23 — "Fix §5.10's inverted RFC-2119 keyword: MUST where MUST NOT is meant in the cross-tenant grant sentence"
 
 ## Needs Human
 
 ## Done
+- FLLWUP-23 — "Fix §5.10's inverted RFC-2119 keyword: MUST where MUST NOT is meant in the cross-tenant grant sentence"
 - FLLWUP-22 — "Resolve the §2.3 device-flow poll answer shape against the shipped headless driver (400 vs 2xx error body)"
 - EPIC-2 — "Server-side specification — a self-contained implementation spec for the pi-remote relay and control plane"
 - EV-14 — "Assembly, self-containment audit, and cross-spec conformance pass"
