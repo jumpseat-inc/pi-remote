@@ -18,9 +18,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 
 ## Ready
-- FLLWUP-18 — "Align the refresh request encoding with RFC 6749 form-encoding or document the divergence permanently (EV-10 follow-up)"
 
 ## In Progress
+- FLLWUP-18 — "Align the refresh request encoding with RFC 6749 form-encoding or document the divergence permanently (EV-10 follow-up)"
 
 ## In Review
 
