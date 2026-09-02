@@ -6,6 +6,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Backlog
 - FLLWUP-19 — "Align PI-SPEC §7.2's no-lookup-state prose with the governing spec's server-state position"
+- FLLWUP-20 — "Align PI-SPEC §7.3's per-device lastAckedSeq sentence with the shipped single-watermark reality"
 - EPIC-2 — "Server-side specification — a self-contained implementation spec for the pi-remote relay and control plane"
 - FLLWUP-17 — "Key ALREADY_LIVE_COPY as tunnel.alreadyLive and localize it (OJ1 follow-up)"
 - FLLWUP-18 — "Align the refresh request encoding with RFC 6749 form-encoding or document the divergence permanently (EV-10 follow-up)"
@@ -25,6 +26,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
+
+## Needs Human
+
+## Done
 - EV-12 — "Data-plane relay spec — envelope, seq/ack, resume and resync, fan-out"
 
 ## In Progress
