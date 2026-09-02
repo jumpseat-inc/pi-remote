@@ -118,3 +118,48 @@ design choice, both readings RFC-conformant, settle with the 500+access_denied
 fixture. Open questions: the terminal-code trust bound (position: bounded); 200
 carrying both error and token — error wins (four codes dispatched first); no new
 LoginReason, no copy change — any position proposing a new reason is scope creep.
+
+### Round 2 — bounded exchange (owner job-31.3, principal job-31.4)
+
+**owner:** Accepts the principal's position in full. 5xx-retry question withdrawn —
+no retry, immediate `tokenExchangeFailed`, settled; a transient 500 mid-device-flow
+is rare and recoverable by rerun. Honesty fixture
+(`500 {"error":"access_denied"} → tokenExchangeFailed, NOT deviceDenied`) accepted
+as the canonical pin for the status-gate reading — owner corrected itself mid-turn:
+it is a regression pin guarding the reorder from overcorrecting into
+"parse-then-dispatch-everywhere" (which would flip 500s back to false "user denied"
+copy), not a current-code failure; owner wants the plain-500 fixture kept too (plain
+500 pins terminality, honesty 500 pins body-unread). Follow-up flags (connection-
+timeout slowdown divergence; `error_description` ignored) agreed as separate cards,
+orthogonal, neither blocks or shapes this card's diff. Endorses the "error wins over
+stray token on 2xx" pin: the invariant already holds at lines 733–750 and the reorder
+must not break it; fixture should lock it. No new reason, no copy change. Position
+stable — remaining disagreement: none.
+
+**principal:** Accepts (a) connection-timeout and (b) `error_description` as
+follow-up cards. Accepts no-cap on `slow_down` with a precision correction: the
+`expiresIn` loop-top check is evaluated PRE-sleep, so a large accumulated interval
+can emit exactly one doomed poll past expiry before the check exits — bounded and
+harmless (terminates via server `expired_token` or client `timedOut`), no cap, no
+extra assertion; the +5000ms fake-sleep-seam assertion is the sufficient pin. On the
+500 fixtures: the plain `500 {}` is a false-confidence trap — under the agreed
+structure it is green with OR without the status gate (the trailing `if (!res.ok)`
+catches it either way), so it pins nothing; only
+`500 {"error":"access_denied"}` flips outcome when the guard is removed. Position:
+drop the plain one, keep the honesty one; and add a third distinct one-liner,
+`500 {"error":"authorization_pending"} → tokenExchangeFailed` (not continue),
+pinning anti-silent-continue — the access_denied fixture pins anti-false-denial,
+neither subsumes the other. Keeps the error-wins pin, reframed as an honesty pin: a
+terminal error coexisting with a valid `access_token` never yields a saved
+credential. New testable claim: the reorder is safe for 5xx only because
+`res.json().catch(() => null)` fails closed — `500` with a non-JSON body →
+`tokenExchangeFailed` (not a throw); should be a fixture, not an assumption.
+Position stable — remaining disagreement: none on the structural fix; three
+low-cost test-surface refinements only.
+
+**Facilitator note:** Positions stabilized at round 2 of ≤3; exchange stopped early.
+Converged design: reorder the poll loop (parse body before the status gate; four-code
+table dispatched on 2xx-or-400; all other non-2xx → `tokenExchangeFailed`, body
+effectively unread; no new reason; no copy change). One small test-inventory delta
+forwarded to the consolidator: plain-500 fixture kept (owner) vs dropped as a no-op
+guard (principal).
