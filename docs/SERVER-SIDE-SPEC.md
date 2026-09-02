@@ -1579,3 +1579,55 @@ and wire-observable at two observation points:
 A `pushProvider` value on the wire is meaningful only as this stored shape;
 no conformant behavior of §1–§4 depends on it, and no surface in this
 document carries push payloads.
+
+### 5.10 The admin surface (scope grants; the §2.5/§2.7 debt)
+
+**Admin authentication (normative).** Administrative surfaces are
+authenticated by the `pi-remote:admin` scope, carried on the
+**enrollment-credential contract point**: an operator enrolls through §2's
+flows, requesting `pi-remote:admin` from the same authorization server the
+host uses. Tenancy is derived from the admin token's `tenant_id` claim
+exactly as §2.6 derives it — an admin is tenant-bound by credential like
+everything else. **No fourth tenancy mechanism exists; INV-3's list stays at
+three** (§5.11 maps all three to their mechanisms). §2.7's never-merge
+401/403 rule — `401 invalid_token` for a credential that does not
+authenticate, `403 insufficient_scope` for a valid credential lacking the
+scope — extends to every admin surface in this section verbatim, and §2.6's
+tenant-derivation rule applies to every request: tenancy comes from the
+token, never from a request field.
+
+**Endpoints:**
+
+- `GET /devices` — the device list (§5.3). Partition `{200, 401, 403, 5xx}`.
+- `DELETE /devices/{deviceId}` — revocation (§5.8). Partition
+  `{204, 401, 403, 404, 5xx}`.
+- `POST /subjects/{sub}/scopes` — the scope-grant surface. Body is
+  `application/json` with exactly one field:
+
+| Field | Requirement | Meaning |
+| --- | --- | --- |
+| `scope` | REQUIRED | The scope to grant; the closed union below. |
+
+  **The grantable scope is a closed union, exactly `{pi-remote:host,
+  pi-remote:admin}`.** `pi-remote:device` is deliberately NOT in the union:
+  the device credential is an opaque secret (§5.1) with no scope claim and
+  no authorization-server round-trip, so a grantable `pi-remote:device`
+  would name a grant nothing can bear. Devices obtain their credential
+  through `POST /devices` (§5.2), never through this endpoint; this
+  endpoint discharges the §2.5/§2.7/§3.6 debt for **enrolled subjects** —
+  hosts and admins — which devices are not. An unknown scope value is `400
+  invalid_request` (the union is closed). Re-adding a scope to the union
+  later is closed-vocabulary growth and requires a ruling.
+
+  The endpoint grants the named scope to an enrolled subject `sub` —
+  unique within and namespaced by a tenant (§2.6) — in the admin token's
+  own tenant. **Grants are explicitly scoped to the admin token's own
+  tenant:** there is no cross-tenant grant, and no conformant server MUST
+  honor a grant request naming a subject outside the admin's tenant. Success
+  is `204 No Content` with no body; an unknown or other-tenant `sub` is
+  `404` (no existence leak, mirroring §3.5's rule). Partition
+  `{204, 400, 401, 403, 404, 5xx}`.
+
+The grant complements re-consent: §2.7's `403 insufficient_scope` remedy is
+"re-consent plus an administrator grant of the scope" — re-consent is the
+user re-running §2's flows, and the grant half is this endpoint.
