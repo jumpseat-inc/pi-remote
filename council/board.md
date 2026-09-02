@@ -23,6 +23,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
+
+## In Review
 - EV-12 — "Data-plane relay spec — envelope, seq/ack, resume and resync, fan-out"
 
 ## In Progress
