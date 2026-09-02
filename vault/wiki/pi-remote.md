@@ -14,7 +14,7 @@ Delivered by [[EPIC-1 Decision Record]]: enrollment is OAuth2 via `/rc:login` (a
 
 The server side it codes against is now specified too: `docs/SERVER-SIDE-SPEC.md` (see [[Server-Side Spec]]), produced by EPIC-2 — self-contained by mandate, with PI-SPEC §10 carrying the one-line pointer to it.
 
-Open risks tracked on the board: FLLWUP-11 (stand-in members may TypeError at load in a real pi host — the extension has never been loaded in one), FLLWUP-12 (payload-shape honesty), FLLWUP-13..17, and FLLWUP-18..23 (server-spec conformance and prose items; FLLWUP-22 is a live spec-vs-client contradiction in the device-flow poll shape).
+Open items on the board: FLLWUP-11 (stand-in members may TypeError at load in a real pi host — the extension has never been loaded in one; highest severity), FLLWUP-12 (payload-shape honesty), FLLWUP-13..17 (client polish: registerPrompt signature, raise-UI fidelity documentation, local-answer race, tunnel.alreadyLive keying), FLLWUP-24/25/26 (device-flow and copy polish), and FLLWUP-19/20 (PI-SPEC prose sync). The server-spec defects FLLWUP-18/21/22/23 are resolved (see [[Server-Side Spec]]).
 
 ## Related
 [[EPIC-1 Decision Record]], [[EPIC-2 Decision Record]], [[Server-Side Spec]], [[Seven Footer States]], [[Closed Vocabulary Discipline]], [[Copy Honesty Doctrine]]
