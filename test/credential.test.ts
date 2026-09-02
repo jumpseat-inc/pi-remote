@@ -283,7 +283,9 @@ describe("EV-7 credential store", () => {
     } finally {
       rmSync(cfg, { recursive: true, force: true });
     }
-  });
+    // 30s budget: powershell.exe cold start on windows-latest has exceeded bun's
+    // 5s per-test default (FLLWUP-7 close); timing only — assertions unchanged.
+  }, 30_000);
 
   test("saveCredentialAsync resolves to the same WriteResult", async () => {
     const cfg = tempConfigDir();
