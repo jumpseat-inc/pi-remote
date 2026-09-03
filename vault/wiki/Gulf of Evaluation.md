@@ -8,7 +8,7 @@ sources: ["[[EV-7 Design Position r1]]", "[[EV-8 Design Position r1]]", "[[EV-6 
 created: 2026-09-02
 updated: 2026-09-02
 ---
-Every design-position doc carries a "Gulf closed" section: which user misperception this change eliminates. Applied consistently, it decided:
+Every design-position doc carries a "Gulf closed" section: which user misperception this change eliminates. **Attribution:** the lens is Don Norman's Gulf of Evaluation, from *The Design of Everyday Things* (1986/2013) — borrowed as a design instrument, not a source the corpus depends on. Applied consistently, it decided:
 
 - A stated sentence beats a glyph ack — "already connected" must be readable as a state, not inferred from silence (EV-2 Item 3).
 - The 403 row must not collapse into the 401 row — a driver who cannot be helped by re-consent must not be sent around the loop again (EV-2 Item 1).

@@ -1,6 +1,6 @@
 ---
 title: Judge Object Rule
-type: source
+type: concept
 summary: The step-10 judge evaluates the implementation on the PR branch at the Skeptic-verified SHA, never pre-merge main — procedural doctrine from EV-1 that unblocked every later card.
 aliases: [step-10 judge object, judge measures the PR branch]
 tags: [concept/process, judge, verification]

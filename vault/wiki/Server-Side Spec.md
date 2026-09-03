@@ -15,7 +15,7 @@ Governance: self-containment per [[Self-Containment Audit]]; normativity per [[N
 **Defect status: all resolved.** The four defects in the shipped document were closed by the residual run: the device-flow poll shape (FLLWUP-22 — resolved in the client's favor of RFC 8628, see the RFC Conformance Posture), the §5.10 inverted MUST (FLLWUP-23), the §1.2 scoping drift (FLLWUP-21), and §2.4's refresh encoding — now RFC 6749 §2.3.1 form-encoding, client and spec amended in one PR (FLLWUP-18). FLLWUP-19/20 remain open in PI-SPEC (outside this document). The document's one remaining open item is FLLWUP-26 (a §1.2/§5.7 security-decision vocabulary scoping residual, non-blocking, filed from FLLWUP-21's verification).
 
 ## Related
-[[EPIC-2 Decision Record]], [[Self-Containment Audit]], [[Normativity Test]], [[RFC Conformance Posture]], [[pi-remote]], [[Spec Correction Governance]]
+[[EPIC-2 Decision Record]], [[Self-Containment Audit]], [[Normativity Test]], [[RFC Conformance Posture]], [[RFC References]], [[pi-remote]], [[Spec Correction Governance]]
 
 ## Sources
 Provenance: EPIC-2 card face, council cards EV-9..EV-14, PRs #20-25. No vault/raw/ file — deviation stated.

@@ -19,7 +19,7 @@ The most-repeated doctrine in the corpus. Rules, each with a governing precedent
 Underlying lens: [[Gulf of Evaluation]] — the copy exists so the user can perceive the system's state without archaeology.
 
 ## Related
-[[Gulf of Evaluation]], [[Stable Keys]], [[EV-2 Ruling]], [[EV-7 Ruling]], [[EV-8 Ruling]], [[copy.ts]], [[login.ts]]
+[[Gulf of Evaluation]], [[Stable Keys]], [[EV-2 Ruling]], [[EV-6 Design Position]], [[EV-7 Ruling]], [[EV-8 Ruling]], [[copy.ts]], [[login.ts]]
 
 ## Sources
 [[EV-2 Ruling]], [[EV-7 Ruling]], [[EV-8 Ruling]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[FLLWUP-7 Design Position r2]]

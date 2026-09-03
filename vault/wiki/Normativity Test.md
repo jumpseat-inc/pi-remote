@@ -18,7 +18,7 @@ It earned its place twice:
 It also reconciled a governance tension: descriptive text vs normative prohibition is decided by observability (a resume frame in the server→host direction IS harness-checkable, so MUST NOT was honest even though today's host tolerates it — EV-12 OJ-4), and pinning an advisory value was honest where the field rides a fully-specified frame (fromSeq, EV-12 OJ-5) but inventing semantics for an unread field would not be.
 
 ## Related
-[[Server-Side Spec]], [[Self-Containment Audit]], [[Closed Vocabulary Discipline]], [[Deterministic Merge Check]], [[Cheapest To Reverse]]
+[[Server-Side Spec]], [[Self-Containment Audit]], [[Closed Vocabulary Discipline]], [[RFC References]], [[Deterministic Merge Check]], [[Cheapest To Reverse]]
 
 ## Sources
 [[EPIC-2 Decision Record]], [[Server-Side Spec]]

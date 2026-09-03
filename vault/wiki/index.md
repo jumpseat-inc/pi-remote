@@ -6,12 +6,12 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 ## Overviews
 
 - [[EPIC-1 Decision Record]] — synthesis of the two autonomous delivery runs on pi-remote: 18 PRs, the converged doctrine, and the doors left open.
-- [[EPIC-2 Decision Record]] — synthesis of the run that produced docs/SERVER-SIDE-SPEC.md: the self-contained server-side spec, the normativity test, and the open cross-artifact contradictions.
+- [[EPIC-2 Decision Record]] — synthesis of the run that produced docs/SERVER-SIDE-SPEC.md: the self-contained server-side spec, the normativity test, and the cross-artifact contradictions (since resolved by the residual run).
 
 ## Entities
 
 - [[pi-remote]] — the pi-side extension exposing a live session over AG-UI; the product every ruling governs.
-- [[Server-Side Spec]] — docs/SERVER-SIDE-SPEC.md: the self-contained relay/control-plane implementation spec (§1-§5); closed with FLLWUP-18..23 tracked.
+- [[Server-Side Spec]] — docs/SERVER-SIDE-SPEC.md: the self-contained relay/control-plane implementation spec (§1-§5); its four defects (FLLWUP-18/21/22/23) resolved; FLLWUP-26 the one remaining open item.
 - [[Seven Footer States]] — off, not enrolled, authorizing, dialing, resyncing, live, error — the authoritative lifecycle-ordered set.
 - [[Reason Taxonomy]] — the transport's closed five-value reason set; honest metadata, never terminal.
 - [[Council Seats]] — ruling, verification, and working seats, with the authority map and provenance note.
@@ -41,7 +41,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Retry Policy]] — two seams: transport dials forever; credential terminality stops with the rich reason preserved.
 - [[Gulf of Evaluation]] — the designer's lens: can the user perceive the system's state without archaeology?
 - [[AG-UI]] — the open event-based protocol pi-remote speaks; taxonomy, transports, CUSTOM escape hatch, external references.
-- [[RFC References]] — the four IETF RFCs the system builds on (2119, 6749, 8628, 8414) and what each governs here.
+- [[RFC References]] — the five IETF RFCs the system builds on (2119, 6749, 7636, 8628, 8414) and what each governs here.
 - [[Self-Containment Audit]] — zero references to sibling specs or codebases; exactly one external link; run on the real artifact.
 - [[Normativity Test]] — a MUST/SHOULD must name its observation point; one-sided bounds are never normative; failures are defects.
 - [[RFC Conformance Posture]] — when shipped client behavior diverges from a published RFC, the client moves; the spec stays standards-accurate.

@@ -15,7 +15,7 @@ Pure drivers implementing EV-1's pinned contract: attended = Authorization Code 
 Ruling-shaped behavior: the replacement prompt (re-run while enrolled) renders and waits **at the driver, before any HTTP request** (Skeptic-assertable via request log), never in `--headless`; the success line conditionally appends ` (tenant <tenantId>)` only when the token carries a tenant-scoped `sub`; `LoginOutcome` carries the typed `acl_enforcement_failed` reason rendered per FLLWUP-7's ruled copy (host cause + nothing-saved + "Run /rc:login" — no "file an issue"). Copy resolves through `loginEnglishFor` — no bypass, no second vocabulary (EV-7 general rule).
 
 ## Related
-[[Copy Honesty Doctrine]], [[credential.ts]], [[Stable Keys]], [[Seven Footer States]], [[tunnel.ts]], [[RFC Conformance Posture]]
+[[Copy Honesty Doctrine]], [[credential.ts]], [[Stable Keys]], [[Seven Footer States]], [[tunnel.ts]], [[RFC Conformance Posture]], [[RFC References]]
 
 ## Sources
 [[EV-7 Ruling]], [[FLLWUP-5 Ruling]], [[EV-8 Ruling]]

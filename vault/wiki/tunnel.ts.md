@@ -15,7 +15,7 @@ The other network module (§7.2 client half). Creates tunnels via Bearer-authent
 Copy lives here per EV-2 Item 2: a reason→`{footerState, userLine, severity}` map with stable keys and English defaults, unit-testable without rendering. `ALREADY_LIVE_COPY` is the one remaining verbatim-ruled literal (keying deferred to FLLWUP-17). Severity tags feed [[Footer Merge Policy]]; `TunnelError` kinds are distinct for 401 (`enrollment_expired`) and 403 (`enrollment_rejected`) with ruling-fixed remedy copy (EV-2 Item 1: /rc:login + admin clause).
 
 ## Related
-[[Stable Keys]], [[Copy Honesty Doctrine]], [[Retry Policy]], [[Footer Merge Policy]], [[login.ts]]
+[[Stable Keys]], [[Copy Honesty Doctrine]], [[Retry Policy]], [[Footer Merge Policy]], [[login.ts]], [[RFC References]]
 
 ## Sources
 [[EV-2 Ruling]], [[EV-7 Ruling]], [[EV-8 Ruling]]

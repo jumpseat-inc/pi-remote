@@ -4,7 +4,7 @@ type: entity
 summary: Converts inbound AG-UI user messages into pi.sendUserMessage calls — steer/followUp delivery, a (promptId, occurrence) pending-prompt registry, and zero transformation of its own injections.
 aliases: [the injection module]
 tags: [entity/module, inject]
-sources: ["[[EV-6 Design Position]]", "[[FLLWUP-5 Ruling]]", "EV-8 Ruling (FLLWUP-8 shipped with no separate ruling)"]
+sources: ["[[EV-6 Design Position]]", "[[FLLWUP-5 Ruling]]", "[[EV-8 Ruling]] (FLLWUP-8 shipped with no separate ruling)"]
 created: 2026-09-02
 updated: 2026-09-02
 ---
@@ -14,4 +14,4 @@ Implements §5.4 under EV-6's load-bearing principle: **no input handler, no fil
 [[Fixture-Green Honesty]], [[Closed Vocabulary Discipline]], [[index.ts]], [[translate.ts]], [[FLLWUP-5 Ruling]]
 
 ## Sources
-[[EV-6 Design Position]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]]
+[[EV-6 Design Position]], [[FLLWUP-5 Ruling]], [[EV-8 Ruling]] (FLLWUP-8 shipped with no separate ruling)

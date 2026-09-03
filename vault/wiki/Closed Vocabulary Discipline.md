@@ -17,7 +17,7 @@ Three closed sets govern the wire and the UI, each enumerated by ruling: the [[S
 - **Shrink is also a ruling act.** EV-13 Q1 dropped `pi-remote:device` from the server spec's grantable-scope union — a grantable scope with no bearer is "dead vocabulary the day it ships" (the opaque-secret device credential never touches the AS). Re-adding later requires a ruling: the documented route for closed-vocabulary growth in either direction.
 
 ## Related
-[[Seven Footer States]], [[Reason Taxonomy]], [[Stable Keys]], [[translate.ts]], [[Spec Correction Governance]]
+[[Seven Footer States]], [[Reason Taxonomy]], [[Stable Keys]], [[translate.ts]], [[Spec Correction Governance]], [[AG-UI]]
 
 ## Sources
 [[EV-1 Ruling]], [[EV-3 Ruling]], [[EV-4 Ruling]], [[FLLWUP-3 Design Position r3]], [[FLLWUP-4 Ruling]]

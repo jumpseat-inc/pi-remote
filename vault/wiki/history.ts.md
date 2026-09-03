@@ -17,7 +17,7 @@ Implements §5: walks the active branch (compaction and branch_summary honored) 
 - `onResync(fromSeq)` (transport) is the injected trigger wired by [[index.ts]].
 
 ## Related
-[[translate.ts]], [[Spec Correction Governance]], [[Closed Vocabulary Discipline]], [[transport.ts]], [[index.ts]]
+[[translate.ts]], [[Spec Correction Governance]], [[Closed Vocabulary Discipline]], [[transport.ts]], [[index.ts]], [[AG-UI]]
 
 ## Sources
 [[EV-5 Ruling]], [[EV-4 Ruling]], [[FLLWUP-3 Design Position r3]]

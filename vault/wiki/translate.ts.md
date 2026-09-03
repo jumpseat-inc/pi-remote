@@ -20,7 +20,7 @@ Implements §4's mapping table as a pure fold: no I/O, no sockets, no session re
 Shared unchanged by [[history.ts]] (replay) and [[index.ts]] (live) — the property that makes replay correct by construction.
 
 ## Related
-[[Spec Correction Governance]], [[Closed Vocabulary Discipline]], [[history.ts]], [[index.ts]], [[FLLWUP-3 Design Position r3]]
+[[Spec Correction Governance]], [[Closed Vocabulary Discipline]], [[history.ts]], [[index.ts]], [[AG-UI]], [[FLLWUP-3 Design Position r3]]
 
 ## Sources
 [[EV-4 Ruling]], [[EV-5 Ruling]], [[FLLWUP-3 Design Position r3]], [[FLLWUP-5 Ruling]]

@@ -17,7 +17,7 @@ The server side it codes against is now specified too: `docs/SERVER-SIDE-SPEC.md
 Open items on the board: FLLWUP-11 (stand-in members may TypeError at load in a real pi host — the extension has never been loaded in one; highest severity), FLLWUP-12 (payload-shape honesty), FLLWUP-13..17 (client polish: registerPrompt signature, raise-UI fidelity documentation, local-answer race, tunnel.alreadyLive keying), FLLWUP-24/25/26 (device-flow and copy polish), and FLLWUP-19/20 (PI-SPEC prose sync). The server-spec defects FLLWUP-18/21/22/23 are resolved (see [[Server-Side Spec]]).
 
 ## Related
-[[EPIC-1 Decision Record]], [[EPIC-2 Decision Record]], [[Server-Side Spec]], [[Seven Footer States]], [[Closed Vocabulary Discipline]], [[Copy Honesty Doctrine]]
+[[EPIC-1 Decision Record]], [[EPIC-2 Decision Record]], [[Server-Side Spec]], [[Seven Footer States]], [[Closed Vocabulary Discipline]], [[Copy Honesty Doctrine]], [[AG-UI]]
 
 ## Sources
 [[EV-1 Ruling]], [[EV-3 Ruling]], [[EV-8 Ruling]], [[FLLWUP-4 Ruling]]

@@ -4,7 +4,7 @@ type: concept
 summary: Acceptance text may only claim what has been proven — runtime behavior requires runtime evidence, and knowingly partial coverage is announced at the surface itself.
 aliases: [fixture honesty, partial coverage announcement]
 tags: [concept/process, doctrine, testing]
-sources: ["[[FLLWUP-5 Ruling]]", "[[FLLWUP-4 Ruling]]", "[[FLLWUP-5 Ruling]]"]
+sources: ["[[FLLWUP-5 Ruling]]", "[[FLLWUP-4 Ruling]]"]
 created: 2026-09-02
 updated: 2026-09-02
 ---
