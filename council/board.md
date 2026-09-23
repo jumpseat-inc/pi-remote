@@ -20,9 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - EPIC-3 — "Run integrity and device-flow coverage — the device-flow polish run's four follow-ups"
 
 ## In Progress
-- FLLWUP-29 — "Pin the attended PKCE path's no-error_description boundary in the login suite"
 
 ## In Review
+- FLLWUP-29 — "Pin the attended PKCE path's no-error_description boundary in the login suite"
 
 ## Needs Human
 
