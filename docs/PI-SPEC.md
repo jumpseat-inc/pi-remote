@@ -302,6 +302,9 @@ static key, never an environment variable.
   RFC 8628 semantics: `interval` between polls, `slow_down`,
   `authorization_pending` (keep polling), and the terminal conditions
   `expired_token` and `access_denied` (failure names the `/rc:login` remedy).
+  A connection-level failure at the poll waits 5 seconds and re-polls (§3.2)
+  until the device-code window expires; `unreachable` stays terminal only for
+  the device-authorization request itself.
 - **Token issuance and refresh.** Both flows exchange at `{token_endpoint}`
   (`grant_type=authorization_code` with `code_verifier`, or the device-code
   grant). When the response includes a refresh token, the extension stores it
