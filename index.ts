@@ -35,6 +35,7 @@ import {
 import { renderCopy, setLocale } from "./src/copy";
 import { readCredential, saveCredentialAsync, type EnrollmentCredential } from "./src/credential";
 import { createLoginCommand, loginEnglishFor } from "./src/login";
+import type { LoginMode } from "./src/login";
 import { mergeTransport, transportErrorKey, STATUS_KEYS, type FooterState } from "./src/merge";
 import { sessionEntriesToJsonl, type SessionEntry } from "./src/replay-adapter";
 import { replayActiveBranch, resyncDoneFrame } from "./src/history";
@@ -113,7 +114,7 @@ export type FooterAction =
   | { type: "error"; reason: TunnelReason };
 
 export interface RemoteController {
-  commands: { name: string; handler: () => void | Promise<void> }[];
+  commands: { name: string; handler: (args?: string) => void | Promise<void> }[];
   reducer: (action: FooterAction) => FooterView;
   onShutdown: () => Promise<void>;
 }
@@ -541,11 +542,14 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     deps.print(loginEnglishFor("rc.offLifecycle")); // same line whether live or not (no-op wording banned)
   }
 
-  async function rcLoginCommand(): Promise<void> {
+  async function rcLoginCommand(args?: string): Promise<void> {
     if (footer === "live" || footer === "dialing" || footer === "resyncing" || footer === "authorizing" || footer === "error") {
       deps.print(loginEnglishFor("rc:login.refusal")); // J5 — footer unchanged, driver not entered
       return;
     }
+    // BUG-1: parse the mode from argv. `--headless` is the literal token;
+    // no flag (or any args without it) → attended (spec §7.2/§8, EV-7).
+    const mode: LoginMode = (args ?? "").split(/\s+/).includes("--headless") ? "headless" : "attended";
     let serverUrl = deps.serverUrl;
     if (!serverUrl) {
       // J2 — the URL prompt fires only out-of-band after /rc:login, never a bare /rc.
@@ -573,7 +577,7 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
         if (s === "authorizing") applyFooter("authorizing");
       },
     });
-    const outcome = await cmd.run("attended", existing);
+    const outcome = await cmd.run(mode, existing);
     void outcome;
     applyFooter("off"); // success AND failure both return to off (J5/EV-7)
   }

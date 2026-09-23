@@ -109,7 +109,7 @@ interface Harness {
   ctrl: ReturnType<typeof createRemoteController>;
   setStatus: (string | undefined)[];
   printed: string[];
-  commandHandlers: Record<string, () => void | Promise<void>>;
+  commandHandlers: Record<string, (args?: string) => void | Promise<void>>;
   eventHandlers: Record<string, Array<(...a: unknown[]) => void>>;
   posts: string[];
   deletes: string[];
@@ -117,7 +117,7 @@ interface Harness {
   inputResponses: string[];
   relay: FakeRelay;
   sendUserMessages: string[];
-  runCommand: (name: string) => Promise<void>;
+  runCommand: (name: string, args?: string) => Promise<void>;
   emit: (event: string, payload?: unknown) => void;
   /** Wait until pred() is truthy (poll every 2ms). */
   waitFor: (pred: () => boolean, timeoutMs?: number) => Promise<void>;
@@ -148,7 +148,7 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
   const relay = startRelay();
   const setStatus: (string | undefined)[] = [];
   const printed: string[] = [];
-  const commandHandlers: Record<string, () => void | Promise<void>> = {};
+  const commandHandlers: Record<string, (args?: string) => void | Promise<void>> = {};
   const eventHandlers: Record<string, Array<(...a: unknown[]) => void>> = {};
   const posts: string[] = [];
   const deletes: string[] = [];
@@ -222,7 +222,7 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
     redirectTimeoutMs: opts.redirectTimeoutMs ?? 2000,
     ERROR_DIAL_THRESHOLD: 3,
     command: (name, handler) => {
-      commandHandlers[name] = () => handler(name);
+      commandHandlers[name] = (args?: string) => handler(args);
     },
     on: (event, handler) => {
       (eventHandlers[event] ??= []).push(handler as (...a: unknown[]) => void);
@@ -244,8 +244,8 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
     inputResponses,
     relay,
     sendUserMessages,
-    runCommand: async (name) => {
-      await commandHandlers[name]?.();
+    runCommand: async (name, args) => {
+      await commandHandlers[name]?.(args);
     },
     emit: (event, payload) => {
       for (const h of eventHandlers[event] ?? []) h(payload);
@@ -728,6 +728,10 @@ describe("EV-8 /rc:login (J5)", () => {
     await h.runCommand("rc:login");
     expect(h.printed).toContain(loginEnglishFor("rc:login.refusal"));
     expect(lastSet(h.setStatus)).toBe(LIVE_SENTENCE); // footer unchanged
+    // BUG-1: the refusal precedes mode selection — --headless is no exception.
+    await h.runCommand("rc:login", "--headless");
+    expect(h.printed).toContain(loginEnglishFor("rc:login.refusal"));
+    expect(lastSet(h.setStatus)).toBe(LIVE_SENTENCE); // footer unchanged
     h.relay.stop();
   });
 
@@ -784,6 +788,157 @@ describe("EV-8 /rc:login (J5)", () => {
     expect(h.setStatus).toContain(loginEnglishFor("status.authorizing"));
     // off on terminal (failure)
     expect(lastSet(h.setStatus)).toBe(OFF_SENTENCE);
+    h.relay.stop();
+  });
+
+  // BUG-1: the driver prints via console.log (src/login.ts print seam),
+  // not deps.print, so these tests capture console output around the run.
+  function captureConsole(): { logs: string[]; restore: () => void } {
+    const logs: string[] = [];
+    const origLog = console.log;
+    console.log = (...a: unknown[]) => {
+      logs.push(a.join(" "));
+    };
+    return { logs, restore: () => (console.log = origLog) };
+  }
+
+  test("BUG-1: /rc:login --headless runs the device flow; no browser opened", async () => {
+    const openUrls: string[] = [];
+    const { logs, restore } = captureConsole();
+    const h = await makeHarness({
+      openUrl: async (url) => {
+        openUrls.push(url);
+        return true;
+      },
+    });
+    h.deps.fetch = (async (url: string) => {
+      if (url.includes("oauth-authorization-server")) {
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://cp.example.com/auth",
+            token_endpoint: "https://cp.example.com/token",
+            device_authorization_endpoint: "https://cp.example.com/device",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/device")) {
+        return new Response(
+          JSON.stringify({
+            device_code: "dc-1",
+            user_code: "ABCD-EFGH",
+            verification_uri: "https://cp.example.com/verify",
+            verification_uri_complete: "https://cp.example.com/verify?code=ABCD-EFGH",
+            expires_in: 300,
+            interval: 5,
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/token")) {
+        return new Response(
+          JSON.stringify({ access_token: "at-new", refresh_token: "rt-new", expires_in: 3600 }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await h.runCommand("rc:login", "--headless");
+    } finally {
+      restore();
+    }
+
+    expect(logs).toContain(loginEnglishFor("login.headless.instructions"));
+    expect(openUrls).toHaveLength(0); // no browser in headless mode
+    expect(lastSet(h.setStatus)).toBe(OFF_SENTENCE);
+    h.relay.stop();
+  });
+
+  test("BUG-1: /rc:login with no flag still runs the attended flow", async () => {
+    const openUrls: string[] = [];
+    const { logs, restore } = captureConsole();
+    const h = await makeHarness({
+      randomBytes: () => new Uint8Array(8),
+      openUrl: async (url) => {
+        openUrls.push(url);
+        // Simulate the browser completing consent (same wire trick as the
+        // existing attended test: fetch the redirect_uri with the state).
+        const u = new URL(url);
+        const state = u.searchParams.get("state") ?? "";
+        const redirect = u.searchParams.get("redirect_uri") ?? "";
+        await fetch(`${redirect}?code=okcode&state=${state}`);
+        return true;
+      },
+    });
+    h.deps.fetch = (async (url: string, init?: RequestInit) => {
+      if (url.includes("oauth-authorization-server")) {
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://cp.example.com/auth",
+            token_endpoint: "https://cp.example.com/token",
+            device_authorization_endpoint: "https://cp.example.com/device",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/token") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({ access_token: "at-new", refresh_token: "rt-new", expires_in: 3600 }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await h.runCommand("rc:login");
+    } finally {
+      restore();
+    }
+
+    expect(openUrls.length).toBeGreaterThanOrEqual(1); // attended opens the browser
+    expect(logs).not.toContain(loginEnglishFor("login.headless.instructions"));
+    expect(lastSet(h.setStatus)).toBe(OFF_SENTENCE);
+    h.relay.stop();
+  });
+
+  test("BUG-1: args containing the token select headless (token is literal, whitespace-tolerant)", async () => {
+    const { logs, restore } = captureConsole();
+    const h = await makeHarness({});
+    h.deps.fetch = (async (url: string) => {
+      if (url.includes("oauth-authorization-server")) {
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://cp.example.com/auth",
+            token_endpoint: "https://cp.example.com/token",
+            device_authorization_endpoint: "https://cp.example.com/device",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/device")) {
+        return new Response(
+          JSON.stringify({
+            device_code: "dc-1",
+            user_code: "ABCD-EFGH",
+            verification_uri: "https://cp.example.com/verify",
+            expires_in: 300,
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await h.runCommand("rc:login", "--headless --extra");
+    } finally {
+      restore();
+    }
+
+    expect(logs).toContain(loginEnglishFor("login.headless.instructions"));
     h.relay.stop();
   });
 });
