@@ -63,6 +63,21 @@ behavior is testable without a live `pi` process. Follow the existing
 pattern: pure logic in `src/` modules, wiring and session-scoped state in
 `index.ts`'s factory closure — **never module-level mutable state**.
 
+## Council card worktrees
+
+A council card's owner branch/worktree is cut from `origin/main` — never the
+run's local `main`, which carries unpushed run-state commits:
+
+```bash
+git fetch origin
+git worktree add ../pi-remote-<card> -b owner/<card>-<slug> origin/main
+```
+
+Consequence: a card PR's diff contains only the owner's product/plan change —
+run board/config/preflight commits never appear in it. The run's council
+record (board, cards, preflight) commits reach `main` through the step-12
+direct record push instead.
+
 ## Commits
 
 All commits must follow [Conventional Commits](https://www.conventionalcommits.org/):
