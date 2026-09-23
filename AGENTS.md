@@ -9,8 +9,59 @@ AG-UI by dialing out to a relay server. This repo builds the `pi`-side
 extension only.
 
 **Read [`docs/PI-SPEC.md`](docs/PI-SPEC.md) first.** It is the source of
-truth for the design; keep it in sync with any change that affects the wire
-format, replay, or security model.
+truth for the host-side design; [`docs/SERVER-SIDE-SPEC.md`](docs/SERVER-SIDE-SPEC.md)
+is the relay/control-plane counterpart. Keep both in sync with any change
+that affects the wire format, replay, auth, or security model.
+
+## Current state
+
+- The command surface, outbound transport, live translation, JSONL
+  replay/resync, input injection, OAuth2 login drivers, and credential
+  storage are implemented. Layout: `index.ts` (entry, commands, live-event
+  wiring) plus `src/` modules; tests live in `test/` (one suite per module).
+- The unit suite is green: `bunx tsc --noEmit` clean, `bun test` 218 pass /
+  1 Windows-gated skip.
+- **Not yet loadable in a real `pi` host.** `index.ts` binds a local
+  `ExtensionAPI` stand-in whose non-`on` members (`getSetting`, `env`,
+  `configDir`, `sessionId`, `readActiveBranch`, …) have no counterpart on
+  the installed `pi` SDK, so a real host fails at load. FLLWUP-11 and
+  FLLWUP-12 (`council/cards/`, tracked in `council/board.md`) gate that
+  reconciliation. Do not claim installability until they land.
+- The `/rc:login --headless` device flow (RFC 8628) is implemented in
+  `src/login.ts` but **not routed by the command surface** — `index.ts`
+  always runs the attended flow. Check the board before relying on it.
+
+## Configuration contract
+
+Two settings, each with an environment override:
+
+| Setting | Env override | Notes |
+| --- | --- | --- |
+| `piRemote.serverUrl` | `PI_REMOTE_SERVER_URL` | Control-plane base URL. Resolution: env → setting → stored credential → interactive prompt from `/rc:login`. Every endpoint is derived via RFC 8414 discovery; never hardcode paths. |
+| `piRemote.locale` | `PI_REMOTE_LOCALE` | `en` (default) or `id`; anything else normalizes to `en`. |
+
+Credentials are **never** read from environment variables — they live in
+`<configDir>/pi-remote/credentials.json`, user-only (POSIX `0600` / Windows
+NTFS ACL). The env override exists for the server URL only.
+
+## Development
+
+Use Bun ([`CLAUDE.md`](CLAUDE.md) has the Bun-specific conventions):
+
+```bash
+bun install
+bunx tsc --noEmit      # typecheck (CI gate)
+bun test               # unit suite (CI gate)
+```
+
+CI is [`.github/workflows/gates.yml`](.github/workflows/gates.yml): typecheck
+and tests on `ubuntu-latest`, plus a `windows-latest` job that runs the
+credential-file ACL test. Keep both jobs green.
+
+Tests are written against a dependency-injected `ExtensionAPI` stand-in, so
+behavior is testable without a live `pi` process. Follow the existing
+pattern: pure logic in `src/` modules, wiring and session-scoped state in
+`index.ts`'s factory closure — **never module-level mutable state**.
 
 ## Commits
 
