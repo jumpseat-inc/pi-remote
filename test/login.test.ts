@@ -12,6 +12,7 @@ import {
   REPLACEMENT_PROMPT_COPY,
   runAttendedLogin,
   runHeadlessLogin,
+  sanitizeErrorDescription,
   ACL_ENFORCEMENT_FAILED_NOTICE,
   type LoginDeps,
   type LoginOutcome,
@@ -1000,6 +1001,214 @@ describe("EV-7 J2 cancellation + replacement prompt (facade)", () => {
     expect(readCredential({ configDir })).toEqual(existing);
     // No endpoint requests were issued.
     expect(loginEndpointRequestLog.length).toBe(0);
+    rmSync(configDir, { recursive: true, force: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FLLWUP-25 — device-flow error_description (PO ruling
+// vault/raw/2026-09-02-po-fllwup-25-error-description.md)
+// ---------------------------------------------------------------------------
+
+describe("FLLWUP-25: error_description sanitizer + copy key", () => {
+  test("strips C0 (U+0000–U+001F) and DEL/C1 (U+007F–U+009F): no escape sequence can form", () => {
+    const hostile = `be\x1b[31mwarned\x1b[0m\u009b31m plain`;
+    expect(sanitizeErrorDescription(hostile)).toBe("be[31mwarned[0m31m plain");
+  });
+
+  test("collapses whitespace runs (incl. \\n, \\r\\n, \\t) to single spaces and trims", () => {
+    expect(sanitizeErrorDescription("  scope \n\n main \t app \r\n revoked  ")).toBe(
+      "scope main app revoked"
+    );
+    // Ruled ORDER (PO ruling 3): step 1 strips C0 — LF/CR/tab are deleted,
+    // not converted to spaces — then step 2 collapses surviving whitespace.
+    // A newline between non-space characters therefore fuses the words;
+    // only whitespace that survives step 1 is collapsed.
+    expect(sanitizeErrorDescription("ab\ncd")).toBe("abcd");
+    // Stripped newlines/tabs must not leave double spaces (ruling 3.2):
+    expect(sanitizeErrorDescription("a \n\n b")).toBe("a b");
+  });
+
+  test("caps at 200 code points + '...' without splitting surrogate pairs", () => {
+    // 250 astral chars = 250 code points → first 200 kept, then "...".
+    const astral = "𝛼".repeat(250);
+    const out = sanitizeErrorDescription(astral)!;
+    expect([...out].length).toBe(203); // 200 code points + 3 dots
+    expect(out.endsWith("...")).toBe(true);
+    // Every kept element is the whole astral char — no lone surrogate.
+    expect([...out].every((ch) => ch === "𝛼" || ch === ".")).toBe(true);
+    // Under the cap, astral content passes through untruncated and unsplit.
+    expect(sanitizeErrorDescription("𝛼".repeat(150))).toBe("𝛼".repeat(150));
+    // Cap boundary lands ON an astral char (index 199 in code points): the
+    // char straddles the 200-UTF-16-unit mark but must be kept whole. A
+    // UTF-16-unit slicer would emit a lone leading surrogate instead.
+    const out2 = sanitizeErrorDescription("a".repeat(199) + "𝛼tail")!;
+    expect([...out2].length).toBe(203); // 199 a's + 𝛼 + "..."
+    expect(out2).toBe("a".repeat(199) + "𝛼" + "...");
+  });
+
+  test("returns undefined for missing, null, non-string, and whitespace-only inputs", () => {
+    expect(sanitizeErrorDescription(undefined)).toBeUndefined();
+    expect(sanitizeErrorDescription(null)).toBeUndefined();
+    expect(sanitizeErrorDescription(42)).toBeUndefined();
+    expect(sanitizeErrorDescription({ error: "x" })).toBeUndefined();
+    expect(sanitizeErrorDescription("   \n\t ")).toBeUndefined();
+    expect(sanitizeErrorDescription("")).toBeUndefined();
+  });
+
+  test("copy vocabulary: login.failure.detail resolves through loginEnglishFor with the ruled string", () => {
+    expect(loginEnglishFor("login.failure.detail")).toBe(
+      "Details from the server: `<errorDescription>`"
+    );
+  });
+});
+
+describe("FLLWUP-25: headless poll dispatch surfaces error_description", () => {
+  const RULED = "Token exchange failed — run /rc:login to retry. No credentials were saved.";
+  const DETAIL_PREFIX = "Details from the server:";
+
+  function failingHeadlessDeps(
+    c: Control,
+    configDir: string,
+    onToken: Control["onToken"]
+  ): LoginDeps {
+    c.onToken = onToken;
+    return {
+      serverUrl: c.serverUrl,
+      configDir,
+      fetch: makeFetch(c),
+      now: () => c.simNow,
+      sleep: async () => {},
+    };
+  }
+
+  test("400 unknown error + error_description → ruled line, then one detail line", async () => {
+    const c = makeControl({}, {});
+    const configDir = tempConfigDir();
+    const { result, logs } = await captureLog(() =>
+      runHeadlessLogin(
+        failingHeadlessDeps(c, configDir, () => ({
+          status: 400,
+          body: {
+            error: "some_other_error",
+            // ESC + CSI stripped to inert brackets; the newline sits next to a
+            // space so step 2 collapses it away (one terminal line, no fusion).
+            error_description: "Scope \u001b[31mmain\u001b[0m  denied \n by the admin",
+          },
+        }))
+      )
+    );
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("tokenExchangeFailed");
+    const idx = logs.indexOf(RULED);
+    expect(idx).toBeGreaterThanOrEqual(0);
+    expect(logs[idx + 1]).toBe("Details from the server: `Scope [31mmain[0m denied by the admin`");
+    expect(logs.filter((l) => l.startsWith(DETAIL_PREFIX))).toHaveLength(1);
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("no error_description → ruled line only, byte-identical (no detail line)", async () => {
+    const c = makeControl({}, {});
+    const configDir = tempConfigDir();
+    const { logs } = await captureLog(() =>
+      runHeadlessLogin(
+        failingHeadlessDeps(c, configDir, () => ({
+          status: 400,
+          body: { error: "some_other_error" },
+        }))
+      )
+    );
+    expect(logs).toContain(RULED);
+    expect(logs.some((l) => l.startsWith(DETAIL_PREFIX))).toBe(false);
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("error_description null / non-string / whitespace-only → ruled line only", async () => {
+    for (const desc of [null, 42, "  \n\t ", { text: "x" }]) {
+      const c = makeControl({}, {});
+      const configDir = tempConfigDir();
+      const { logs } = await captureLog(() =>
+        runHeadlessLogin(
+          failingHeadlessDeps(c, configDir, () => ({
+            status: 400,
+            body: { error: "some_other_error", error_description: desc },
+          }))
+        )
+      );
+      expect(logs).toContain(RULED);
+      expect(logs.some((l) => l.startsWith(DETAIL_PREFIX))).toBe(false);
+      rmSync(configDir, { recursive: true, force: true });
+    }
+  });
+
+  test("boundary: deviceDenied / expiredCode / invalidTokenResponse never emit a detail line", async () => {
+    // deviceDenied: 400 access_denied with a description in the body.
+    const cd = makeControl({}, {});
+    const dd = tempConfigDir();
+    const { logs: deniedLogs } = await captureLog(() =>
+      runHeadlessLogin(
+        failingHeadlessDeps(cd, dd, () => ({
+          status: 400,
+          body: { error: "access_denied", error_description: "the user said no" },
+        }))
+      )
+    );
+    expect(deniedLogs.some((l) => l.includes("Device authorization was denied"))).toBe(true);
+    expect(deniedLogs.some((l) => l.startsWith(DETAIL_PREFIX))).toBe(false);
+    rmSync(dd, { recursive: true, force: true });
+
+    // expiredCode: 400 expired_token with a description.
+    const ce = makeControl({}, {});
+    const ed = tempConfigDir();
+    const { logs: expiredLogs } = await captureLog(() =>
+      runHeadlessLogin(
+        failingHeadlessDeps(ce, ed, () => ({
+          status: 400,
+          body: { error: "expired_token", error_description: "the code expired" },
+        }))
+      )
+    );
+    expect(expiredLogs.some((l) => l.includes("The enrollment code expired"))).toBe(true);
+    expect(expiredLogs.some((l) => l.startsWith(DETAIL_PREFIX))).toBe(false);
+    rmSync(ed, { recursive: true, force: true });
+
+    // invalidTokenResponse: 2xx, no error field, access_token not a string.
+    const ci = makeControl({}, {});
+    const id = tempConfigDir();
+    const { logs: invalidLogs } = await captureLog(() =>
+      runHeadlessLogin(
+        failingHeadlessDeps(ci, id, () => ({
+          status: 200,
+          body: { error_description: "trust me this is fine" },
+        }))
+      )
+    );
+    expect(invalidLogs.some((l) => l.includes("returned an invalid OAuth2 response"))).toBe(true);
+    expect(invalidLogs.some((l) => l.startsWith(DETAIL_PREFIX))).toBe(false);
+    rmSync(id, { recursive: true, force: true });
+  });
+
+  test("hostile: >200-code-point description truncates to 200 cps + '...' on one line", async () => {
+    const c = makeControl({}, {});
+    const configDir = tempConfigDir();
+    const long = "x".repeat(250) + "\n" + "y".repeat(50);
+    const { logs } = await captureLog(() =>
+      runHeadlessLogin(
+        failingHeadlessDeps(c, configDir, () => ({
+          status: 400,
+          body: { error: "some_other_error", error_description: long },
+        }))
+      )
+    );
+    const detail = logs.find((l) => l.startsWith(DETAIL_PREFIX));
+    expect(detail).toBeDefined();
+    expect(detail!.includes("\n")).toBe(false);
+    // The sanitized payload between the backticks: exactly 200 code points +
+    // "..." — 300 x/y characters (LF stripped) capped at the first 200,
+    // which are all x's (250 x's precede the 50 y's).
+    const inner = detail!.slice(detail!.indexOf("`") + 1, detail!.lastIndexOf("`"));
+    expect(inner).toBe("x".repeat(200) + "...");
     rmSync(configDir, { recursive: true, force: true });
   });
 });
