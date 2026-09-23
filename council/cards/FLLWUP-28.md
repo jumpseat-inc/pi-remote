@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-28
 title: "Pin cancellation during the device-flow slowdown wait in the login suite"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-3
 goal: The headless login test suite pins cancellation arriving during the 5-second connection-failure slowdown sleep, asserting the driver returns cancelled and issues no further token poll, so behavior the Skeptic proved only by ad-hoc probe is covered by a committed fixture.
@@ -35,6 +35,9 @@ without a red test.
 
 ### Step 1 — recorded mode Direct (authoritative)
 EV-70 owner-only lane. Mechanical, not surface-touching (test-suite-only change, no user-visible surface). Concurs with the recorded routing; no fallback judgment needed. Direct path: no deliberation, no spec file, no skeptic, no judge — merge criteria 1, 2, 5 only. (`council_route` is not exposed in this container; the recorded mode from the dispatch input is authoritative per EV-69/EV-70.)
+
+### Step 8 — owner implements (job-4.1, settled 3.9m, ~1.09M tokens)
+Worktree `/home/tista/codes/pi-remote-fllwup-28` cut from `origin/main` `fb4a39fea30e62265319222bab0a7280913c750c` (main-worktree HEAD untouched). Branch `owner/fllwup-28-slowdown-cancel`, PR #35 open at head `bb0c6279a8802765dfe42c5626e770fea80cb157`, diff = `test/login.test.ts` (+57) + plan doc (+60) only. Fixture: self-contained describe block, direct-`ctl` drive — `ctl.cancelled = true` from the `sleep` seam while `ms === 5000`; asserts outcome `cancelled`, no failure copy, token-endpoint POST count 1, sleeps `[2000, 5000]`. Red-at-base (owner record, all seven fields): base `b784540bb6d613e353aeab8195dc7c2665b2afb0` (required; first parent of FLLWUP-24 mechanism merge `d63e942`), transplant = the same describe block appended to the base tree's own `test/login.test.ts` (head sha `bb0c627`, no new files), command `bun test test/login.test.ts`, red = `Expected: "cancelled" / Received: "failure"` (31 pass / 1 fail / exit 1, mechanism-absent class), detached worktree `/tmp/fllwup-28-base` removed after run, copy set bare + the one block, head half 0 fail (235 pass / 1 skip). Gates in the worktree: `bun install` exit 0; `bunx tsc --noEmit` exit 0; `bun test` 235 pass / 1 skip / 0 fail. Card set `In Review` from the observed open PR (facilitator-verified: `gh pr view 35` OPEN at `bb0c627`, `gh pr diff --name-only` = plan doc + test file). Facilitator re-verification and gate re-run recorded at step 11.
 
 ### Step 7 — handoff (this commit)
 Card set `In Progress` (card + board), validate.py clean. Owner handed the card's own Intent/goal (mechanical path — no spec file) with facilitator-gathered grounding: mechanism at `src/login.ts` poll-catch `await sleep(5_000); continue` + loop-top cancel check; red-at-base base `b784540bb6d613e353aeab8195dc7c2665b2afb0` (first parent of FLLWUP-24 mechanism merge `d63e942`, where the catch is terminal failure/unreachable with no slowdown sleep); transplant-shape warning (head test file imports `sanitizeErrorDescription`, absent at base — transplant must be a self-contained describe block over base-existing helpers so it loads at base).

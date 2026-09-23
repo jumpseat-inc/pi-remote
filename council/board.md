@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-29 — "Pin the attended PKCE path's no-error_description boundary in the login suite"
 
 ## In Progress
-- FLLWUP-28 — "Pin cancellation during the device-flow slowdown wait in the login suite"
 
 ## In Review
+- FLLWUP-28 — "Pin cancellation during the device-flow slowdown wait in the login suite"
 
 ## Needs Human
 
