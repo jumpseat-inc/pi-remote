@@ -709,8 +709,13 @@ export async function runHeadlessLogin(
         }),
       });
     } catch {
-      print(deps, render(loginEnglishFor("login.failure.unreachable"), { serverUrl: deps.serverUrl }));
-      return { kind: "failure", reason: "unreachable" };
+      // FLLWUP-24 / RFC 8628 §3.2 (§3.5 slowdown language): a connection-level
+      // failure at the poll must not kill the login. Wait 5 seconds and
+      // re-poll — the loop-top check bounds this by the device-code window
+      // (timedOut) and cancellation. The retry is silent; `unreachable`
+      // stays terminal only for the pre-loop device-authorization POST.
+      await sleep(5_000);
+      continue;
     }
     if (ctl.cancelled) return { kind: "cancelled" };
     // FLLWUP-22: parse BEFORE the status gate so RFC 8628 §3.5 error bodies
