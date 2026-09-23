@@ -5,11 +5,23 @@ Checks every card in council/cards/ against:
   - required frontmatter keys
   - id pattern ^(EV|FLLWUP|BUG|EPIC)-[1-9]\d*$, matching the filename
   - state in the allowed set
-  - goal present and containing no colon-space sequence (frontmatter is
-    parsed as plain `key: value` lines, so a `: ` truncates the value)
+  - goal present on a single line and last in the block; the value is
+    everything after the first `: ` of the line, edge-whitespace-trimmed —
+    a colon-space inside the value does not truncate, and the judge reads
+    the same text. The loader refuses (named FAIL, not a silent green):
+    a wrapped goal, a key-shaped line after `goal:`, a non-`key: value`
+    line inside the block, and an unclosed block. A not-`key: value`
+    line's diagnostic names both a wrapped/continued value and a missing
+    closing `---` because the parser cannot tell them apart.
   - board.md contains exactly one `- <ID> — <Title>` line per card, under
     the column matching its state, with an em dash (U+2014)
   - board.md contains no orphan lines (entries with no matching card)
+  - gate policy pre-registration: council/gate/policy.json's policyVersion
+    must have a matching entry in council/gate/registrations.jsonl (a
+    version moved with no pre-registration record is a threshold moved by
+    taste). No policy.json, nothing to pre-register (seed/scaffold trees).
+    A torn registrations line or an unreadable policy.json is a named FAIL,
+    never a traceback or a silent skip.
 
 Exits non-zero and prints a FAIL: line per finding. Prints
 `All council artifacts valid` only when clean.
@@ -17,6 +29,7 @@ Exits non-zero and prints a FAIL: line per finding. Prints
 Run from the repo root: `python3 council/validate.py`.
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -24,6 +37,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CARDS = ROOT / "council" / "cards"
 BOARD = ROOT / "council" / "board.md"
+GATE_POLICY = ROOT / "council" / "gate" / "policy.json"
+GATE_REGISTRATIONS = ROOT / "council" / "gate" / "registrations.jsonl"
 
 ID_RE = re.compile(r"^(EV|FLLWUP|BUG|EPIC)-[1-9]\d*$")
 STATE_COLUMNS = [
@@ -44,24 +59,90 @@ def fail(msg: str) -> None:
     failures.append(msg)
 
 
+class FrontmatterError(Exception):
+    """A structural frontmatter failure (see parse_frontmatter for the
+    grammar). Carries the failing line's number and text, plus the keys
+    parsed before the failure, so main() can keep reporting missing keys
+    and board drift from the partial metadata instead of losing the whole
+    card's report.
+    """
+
+    def __init__(self, message, line_no=None, line_text=None, partial_meta=None):
+        super().__init__(message)
+        self.line_no = line_no
+        self.line_text = line_text
+        self.partial_meta = partial_meta if partial_meta is not None else {}
+
+
 def parse_frontmatter(text: str) -> dict:
-    """Parse plain `key: value` frontmatter, stopping at a value truncation."""
+    """Parse plain `key: value` frontmatter, refusing a structurally broken
+    leading block instead of silently truncating it.
+
+    Grammar: the leading block (after the opening `---`) is a run of
+    `key: value` lines — the first `: ` of a line splits key from value,
+    edge whitespace is trimmed, and colons/colon-spaces inside the value
+    are literal characters — terminated by a closing `---`. The value ends
+    at a line break (never wrap a value onto a second line); a line without
+    the `key: value` shape inside the block is a parse error, not a block
+    terminator.
+
+    Three structural rules raise FrontmatterError:
+
+      - Positional rule: once a `goal` key has been seen, only blank lines
+        and the closing `---` may follow. A wrapped goal continuation
+        parses as a key, so a key-shaped line after `goal:` is refused.
+      - A non-blank line that is not `key: value`-shaped is refused. The
+        diagnostic names both a wrapped/continued value and a missing
+        closing `---` because they are indistinguishable inside the scan.
+      - A block never terminated by `---` (EOF reached) is refused with a
+        distinct "not closed" message. It is naturally suppressed when the
+        bare-line rule already fired — that raise never returns.
+
+    Scope is the leading block only: the scan stops at the first closing
+    `---`, so body-embedded fences are never parsed.
+    """
     meta = {}
     if not text.startswith("---"):
         return meta
     lines = text.splitlines()
-    # skip leading ---
-    i = 1
-    for line in lines[1:]:
+    seen_goal = False
+    closed = False
+    # skip leading ---; physical line numbers start at 2
+    for line_no, line in enumerate(lines[1:], start=2):
         if line.strip() == "---":
+            closed = True
             break
         if ": " in line:
             key, value = line.split(": ", 1)
-            meta[key.strip()] = value.strip()
+            key = key.strip()
+            if seen_goal:
+                raise FrontmatterError(
+                    f"frontmatter line {line_no} '{line.strip()}' comes after "
+                    "'goal' — a wrapped goal continuation parses as a key; "
+                    "keep the goal on one line, and keep goal last in the block.",
+                    line_no=line_no,
+                    line_text=line.strip(),
+                    partial_meta=dict(meta),
+                )
+            meta[key] = value.strip()
+            if key == "goal":
+                seen_goal = True
         elif line.strip():
-            # a bare non-`key: value` line ends frontmatter per convention
-            break
-        i += 1
+            raise FrontmatterError(
+                f"frontmatter line {line_no} '{line.strip()}' is not "
+                "'key: value' — a wrapped/continued value, or the closing "
+                "'---' is missing (a line break ends the value; keep the "
+                "goal on one line).",
+                line_no=line_no,
+                line_text=line.strip(),
+                partial_meta=dict(meta),
+            )
+    if not closed:
+        raise FrontmatterError(
+            "frontmatter block is not closed — the closing '---' is missing "
+            "(a line break ends the value; keep each key on one line).",
+            partial_meta=dict(meta),
+        )
     return meta
 
 
@@ -85,6 +166,47 @@ def board_columns(board_text: str) -> dict:
     return columns
 
 
+def check_gate_registrations() -> None:
+    """Every gate policy version needs a pre-registration record (EV-72).
+
+    The FAIL line carries the remedy inline — it names the version, where
+    the entry is added, and what the entry must name — so the maintainer is
+    never sent to open another file to learn what to do.
+    """
+    if not GATE_POLICY.exists():
+        return  # no gate policy → nothing to pre-register
+    try:
+        policy = json.loads(GATE_POLICY.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        fail(f"council/gate/policy.json is not readable JSON: {exc}")
+        return
+    if not isinstance(policy, dict) or not policy.get("policyVersion"):
+        fail("council/gate/policy.json has no policyVersion — name the policy version to pre-register it")
+        return
+    version = policy["policyVersion"]
+    registered = False
+    if GATE_REGISTRATIONS.exists():
+        for line_no, line in enumerate(GATE_REGISTRATIONS.read_text().splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError as exc:
+                fail(
+                    f"council/gate/registrations.jsonl line {line_no} {line.strip()!r} is not "
+                    f"valid JSON ({exc}) — one JSON object per line; fix or remove the torn line"
+                )
+                continue
+            if isinstance(entry, dict) and entry.get("policyVersion") == version:
+                registered = True
+    if not registered:
+        fail(
+            f"gate policy version {version} has no pre-registration record in "
+            "council/gate/registrations.jsonl \u2014 add an entry naming that version, "
+            "the coefficient or floor that changed, and the ledger evidence that motivated it"
+        )
+
+
 def main() -> int:
     board_text = ""
     if not BOARD.exists():
@@ -101,10 +223,18 @@ def main() -> int:
         if path.name == "_template.md":
             continue
         text = path.read_text()
-        meta = parse_frontmatter(text)
+        fname = path.stem
+        meta = {}
+        try:
+            meta = parse_frontmatter(text)
+        except FrontmatterError as exc:
+            # one structural FAIL per card; downstream checks below run
+            # against the partial metadata so the missing-key class and
+            # board checks still report
+            fail(f"{fname}: {exc}")
+            meta = exc.partial_meta
         cid = meta.get("id")
         card_ids.add(cid)
-        fname = path.stem
 
         if cid != fname:
             fail(f"{fname}: frontmatter id {cid!r} does not match filename {fname!r}")
@@ -119,9 +249,6 @@ def main() -> int:
         state = meta.get("state")
         if state not in STATE_COLUMNS:
             fail(f"{cid}: state {state!r} not in {STATE_COLUMNS}")
-        goal = meta.get("goal")
-        if goal is not None and ": " in goal:
-            fail(f"{cid}: goal contains a colon-space sequence (value truncates)")
         title = meta.get("title")
 
         # board presence: exactly one line under its state column
@@ -156,6 +283,8 @@ def main() -> int:
             bid = m.group(1)
             if bid not in card_ids:
                 fail(f"board entry {bid} has no matching card file")
+
+    check_gate_registrations()
 
     if failures:
         for f in failures:

@@ -4,7 +4,7 @@ title: Example card title
 state: Backlog
 owner: null
 epic: null
-goal: One testable sentence stating what done means — the judge reads exactly this text, so name any literal precisely as the system emits it. Keep it on one line; the value is everything after "goal: ", edge-whitespace-trimmed (colons allowed).
+goal: One testable sentence stating what done means. No colon-space sequence anywhere in this value.
 ---
 
 ## Intent

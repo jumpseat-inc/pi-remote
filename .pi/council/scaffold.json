@@ -1,0 +1,10 @@
+{
+  "council/cards/_template.md": {
+    "sha256": "120a87f188589a681faaacacb7035a0452d3bf392d27eee591771bdf0bb17b0a",
+    "packageVersion": "0.35.1"
+  },
+  "council/validate.py": {
+    "sha256": "177c9428599c3887b2565b4b5d378e63022d4b655bd2d8c5d15ecd639d5acda0",
+    "packageVersion": "0.35.1"
+  }
+}
