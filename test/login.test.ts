@@ -1269,3 +1269,67 @@ describe("FLLWUP-25: headless poll dispatch surfaces error_description", () => {
     rmSync(configDir, { recursive: true, force: true });
   });
 });
+
+// ---------------------------------------------------------------------------
+// FLLWUP-29: attended-path boundary pair (test-only pin — no product change)
+// ---------------------------------------------------------------------------
+
+describe("FLLWUP-29: attended PKCE tokenExchangeFailed never emits the error_description detail line (boundary pair)", () => {
+  const RULED = "Token exchange failed — run /rc:login to retry. No credentials were saved.";
+  const DETAIL_PREFIX = "Details from the server:";
+  const DESCRIPTION = "enrollment rejected by the admin";
+
+  /** Minimal fetch over base helpers: discovery, device POST, token POST via onToken. */
+  function pairFetch(c: Control): LoginDeps["fetch"] {
+    return (async (input: string | URL | { url: string }, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const method = init?.method ?? "GET";
+      if (url.includes("/.well-known/oauth-authorization-server")) return resp(200, c.discovery);
+      if (url === c.tokenEndpoint && method === "POST") {
+        const out = c.onToken(c);
+        return resp(out.status, out.body);
+      }
+      if (c.deviceEndpoint && url === c.deviceEndpoint && method === "POST") {
+        return resp(200, c.deviceBody);
+      }
+      return resp(404, {});
+    }) as unknown as LoginDeps["fetch"];
+  }
+
+  test("(a) attended (PKCE): 400 + error_description on the token body → ruled line, NO detail line", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({
+      status: 400,
+      body: { error: "some_other_error", error_description: DESCRIPTION },
+    });
+    const deps = attendedDeps(c);
+    const { result, logs } = await captureLog(() => runAttendedLogin(deps, null));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("tokenExchangeFailed");
+    expect(logs).toContain(RULED);
+    expect(logs.some((l) => l.startsWith(DETAIL_PREFIX))).toBe(false);
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("(b) positive control: headless with the same onToken shape DOES print the detail line", async () => {
+    const c = makeControl({}, {});
+    c.onToken = () => ({
+      status: 400,
+      body: { error: "some_other_error", error_description: DESCRIPTION },
+    });
+    const configDir = tempConfigDir();
+    const { logs } = await captureLog(() =>
+      runHeadlessLogin({
+        serverUrl: c.serverUrl,
+        configDir,
+        fetch: pairFetch(c),
+        now: () => c.simNow,
+        sleep: async () => {},
+      })
+    );
+    expect(logs).toContain(RULED);
+    expect(logs).toContain(`Details from the server: \`${DESCRIPTION}\``);
+    rmSync(configDir, { recursive: true, force: true });
+  });
+});
