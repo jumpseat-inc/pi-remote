@@ -1,44 +1,47 @@
 {
-	"council": {
-		"consolidator": {
-			"model": "openrouter/xiaomi/mimo-v2.5",
-			"thinking": "high"
-		},
-		"council-runner": {
-			"model": "openrouter/z-ai/glm-5.3-flash",
-			"thinking": "medium"
-		},
-		"designer": {
-			"model": "openrouter/minimax/minimax-m3",
-			"thinking": "high"
-		},
-		"judge": {
-			"model": "openrouter/qwen/qwen3.6-35b-a3b",
-			"thinking": "medium"
-		},
-		"owner": {
-			"model": "openrouter/z-ai/glm-5.3-flash",
-			"thinking": "high"
-		},
-		"principal": {
-			"model": "openrouter/deepseek/deepseek-v4-pro-0813",
-			"thinking": "high"
-		},
-		"product-owner": {
-			"model": "openrouter/moonshotai/kimi-k3",
-			"thinking": "high"
-		},
-		"skeptic": {
-			"model": "openrouter/deepseek/deepseek-v4-flash-0731",
-			"thinking": "high"
-		},
-		"steward": {
-			"model": "openrouter/qwen/qwen3.8-max",
-			"thinking": "high"
-		}
-	},
-	"theme": {
-		"enabled": true,
-		"variant": "auto"
-	}
+  "council": {
+    "consolidator": {
+      "model": "openrouter/xiaomi/mimo-v2.5",
+      "thinking": "high"
+    },
+    "council-runner": {
+      "model": "openrouter/z-ai/glm-5.3-flash",
+      "thinking": "medium"
+    },
+    "designer": {
+      "model": "openrouter/minimax/minimax-m3",
+      "thinking": "high"
+    },
+    "judge": {
+      "model": "openrouter/qwen/qwen3.6-35b-a3b",
+      "thinking": "medium"
+    },
+    "owner": {
+      "model": "openrouter/z-ai/glm-5.3-flash",
+      "thinking": "high"
+    },
+    "principal": {
+      "model": "openrouter/deepseek/deepseek-v4.1-flash",
+      "thinking": "high"
+    },
+    "product-owner": {
+      "model": "openrouter/z-ai/glm-5.3-flashx",
+      "thinking": "high"
+    },
+    "skeptic": {
+      "model": "openrouter/deepseek/deepseek-v4-flash-0731",
+      "thinking": "high"
+    },
+    "steward": {
+      "model": "openrouter/deepseek/deepseek-v4.1-flash",
+      "thinking": "high"
+    }
+  },
+  "theme": {
+    "enabled": true,
+    "variant": "auto"
+  },
+  "gate": {
+    "mode": "active"
+  }
 }
