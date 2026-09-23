@@ -6,6 +6,7 @@ node_modules/
 # pi harness + transient state (pi-council, pi-remote)
 .pi/git/
 .pi/council/.pids.json
+.pi/council/gate-ledger.jsonl
 .pi/remote/
 # Smoke test run artifacts (dot-dir so bun test never discovers them)
 smoke/.artifacts/*
