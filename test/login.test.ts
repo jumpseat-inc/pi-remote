@@ -743,7 +743,7 @@ describe("FLLWUP-22: RFC 8628 poll error shape (400 window)", () => {
   });
 });
 
-describe("FLLWUP-24: RFC 8628 §3.2 connection-failure slowdown", () => {
+describe("FLLWUP-24: RFC 8628 §3.5 connection-failure slowdown + cause-distinguished expiry (PO ruling 1)", () => {
   /** A fetch that simulates a connection-level failure (fetch throw) when a
    * predicate matches, delegating to the control's normal fetch otherwise. */
   function fetchWithThrow(
@@ -792,7 +792,7 @@ describe("FLLWUP-24: RFC 8628 §3.2 connection-failure slowdown", () => {
     rmSync(configDir, { recursive: true, force: true });
   });
 
-  test("connection failures until the window expires → timedOut (not unreachable), retries bounded by the loop-top expiry check", async () => {
+  test("all-connection-failure window → unreachable at expiry (PO ruling 1: the token endpoint was never reached), silent retries at interval+5s gaps", async () => {
     const base = makeControl();
     const c = makeControl(
       { deviceBody: { ...(base.deviceBody as Record<string, unknown>), expires_in: 10 } },
@@ -814,11 +814,55 @@ describe("FLLWUP-24: RFC 8628 §3.2 connection-failure slowdown", () => {
     const { result, logs } = await captureLog(() => runHeadlessLogin(deps));
     const o = result as LoginOutcome;
     expect(o.kind).toBe("failure");
-    if (o.kind === "failure") expect(o.reason).toBe("timedOut");
+    // PO ruling 1: no poll in the window ever received an HTTP response, so
+    // expiry lands `unreachable` (existing verbatim copy), not `timedOut`.
+    if (o.kind === "failure") expect(o.reason).toBe("unreachable");
     // Two in-window retry rounds (2s interval + 5s slowdown, twice), then the
     // second slowdown sleep crosses the 10s window → loop-top expiry fires
-    // before any third poll, not a third retry and never unreachable.
+    // before any third poll.
     expect(sleeps).toEqual([2000, 5000, 2000, 5000]);
+    // Retries are silent: the unreachable copy prints only once, at expiry.
+    expect(logs.filter((l) => l.includes("Cannot reach")).length).toBe(1);
+    expect(logs.some((l) => l.includes("Sign-in timed out"))).toBe(false);
+    expect(readCredential({ configDir })).toBeNull();
+    rmSync(configDir, { recursive: true, force: true });
+  });
+
+  test("mixed window (≥1 received response, then expiry) → timedOut (PO ruling 1: the server answered at least once)", async () => {
+    const base = makeControl();
+    const c = makeControl({
+      deviceBody: { ...(base.deviceBody as Record<string, unknown>), expires_in: 10 },
+      // After the throw, the server answers every poll with the normative
+      // 400 authorization_pending — a received HTTP response, any status.
+      onToken: () => ({ status: 400, body: { error: "authorization_pending" } }),
+    });
+    const configDir = tempConfigDir();
+    const sleeps: number[] = [];
+    let tokenCalls = 0;
+    const deps: LoginDeps = {
+      serverUrl: c.serverUrl,
+      configDir,
+      fetch: fetchWithThrow(c, (url, method) => {
+        if (url !== c.tokenEndpoint || method !== "POST") return false;
+        // First poll throws (connection level); every later poll gets a
+        // 400 authorization_pending response — the server was reached.
+        return ++tokenCalls === 1;
+      }),
+      now: () => c.simNow,
+      sleep: async (ms: number) => {
+        sleeps.push(ms);
+        c.simNow += ms;
+      },
+    };
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runHeadlessLogin(deps));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("failure");
+    if (o.kind === "failure") expect(o.reason).toBe("timedOut");
+    // throw→5s→answered polls at interval; the loop-top expiry check fires
+    // after the last poll (simNow 11s ≥ 10s) with no trailing interval sleep.
+    expect(sleeps).toEqual([2000, 5000, 2000, 2000]);
+    expect(logs.some((l) => l.includes("Sign-in timed out"))).toBe(true);
     expect(logs.some((l) => l.includes("Cannot reach"))).toBe(false);
     expect(readCredential({ configDir })).toBeNull();
     rmSync(configDir, { recursive: true, force: true });
