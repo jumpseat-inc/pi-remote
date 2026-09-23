@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-30
 title: "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-3
 goal: A run seat never runs `git checkout` in the shared main worktree (seats operate only inside their own isolated worktree), so the main worktree's HEAD and branch are never left detached or moved during a run.
@@ -42,8 +42,11 @@ applies the ruling and cites it; it does not re-ask.
 ### Step 1 — recorded mode Direct (authoritative)
 EV-70 owner-only lane. Mechanical, not surface-touching (agent-facing docs, no user-visible product surface). Concurs with the recorded routing; no fallback judgment needed. Direct path: no deliberation, no spec file, no skeptic, no judge — criteria 1, 2, 5 only.
 
-### Step 7 — handoff (record commits `126de16`–`0a41b38`)
+### Step 7 — handoff (record commit `be75601`)
 Card set `In Progress` (card + board), validate.py clean.
+
+### Step 8 — owner implements (job-2.1, settled 2.6m, ~202K tokens)
+Worktree `/home/tista/codes/pi-remote-fllwup-30` cut from `origin/main` `29f1488` (main-worktree HEAD untouched; owner confirmed `symbolic-ref HEAD` resolves to `refs/heads/main`). Branch `owner/fllwup-30-main-worktree-immutability`, PR #34 open at head `624681c8eabcd6b24eeba3f0902ee3e8025d2b31`, diff = `AGENTS.md` only (+7, immutability rule leading the "Council card worktrees" section, R-CONV-1 cited). Gates in the worktree: `bun install` exit 0; `bunx tsc --noEmit` exit 0; `bun test` 234 pass / 1 skip / 0 fail, exit 0. Card set `In Review` from the observed open PR (facilitator-verified: `gh pr view` OPEN, `gh pr diff --name-only` = `AGENTS.md`).
 
 - **R-CONV-1 (FLLWUP-27, FLLWUP-30)** — The run-hygiene conventions are written
   in this repository's `AGENTS.md`, the sanctioned sink. This card records the

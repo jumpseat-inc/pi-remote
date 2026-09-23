@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-29 — "Pin the attended PKCE path's no-error_description boundary in the login suite"
 
 ## In Progress
-- FLLWUP-30 — "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
 
 ## In Review
+- FLLWUP-30 — "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
 
 ## Needs Human
 
