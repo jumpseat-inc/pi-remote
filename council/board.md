@@ -16,11 +16,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 
 ## Ready
-- BUG-1 — "Route /rc:login --headless to the device-flow driver instead of hardcoding attended"
 - FLLWUP-24 — "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
 - FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 
 ## In Progress
+- BUG-1 — "Route /rc:login --headless to the device-flow driver instead of hardcoding attended"
 
 ## In Review
 
