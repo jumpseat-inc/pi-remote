@@ -5,6 +5,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- FLLWUP-28 — "Pin cancellation during the device-flow slowdown wait in the login suite"
 - FLLWUP-27 — "Base owner worktrees on origin/main so card PRs stay product-only"
 - FLLWUP-26 — "Scope §1.2/§5.7's 'security decision' vocabulary across per-delivery grant enforcement"
 - FLLWUP-19 — "Align PI-SPEC §7.2's no-lookup-state prose with the governing spec's server-state position"
@@ -20,13 +21,13 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 
 ## In Progress
-- FLLWUP-24 — "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
 
 ## In Review
 
 ## Needs Human
 
 ## Done
+- FLLWUP-24 — "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
 - BUG-1 — "Route /rc:login --headless to the device-flow driver instead of hardcoding attended"
 - FLLWUP-18 — "Align the refresh request encoding with RFC 6749 form-encoding or document the divergence permanently (EV-10 follow-up)"
 - FLLWUP-21 — "Align §1.2's control/data-plane decision sentence with §5.6's device-upgrade admission checks"
