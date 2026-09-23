@@ -18,9 +18,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 
 ## Ready
-- FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 
 ## In Progress
+- FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 
 ## In Review
 
