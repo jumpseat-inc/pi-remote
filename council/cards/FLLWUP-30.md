@@ -1,9 +1,9 @@
 ---
 id: FLLWUP-30
 title: "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
-state: Backlog
+state: Ready
 owner: null
-epic: null
+epic: EPIC-3
 goal: A run seat never runs `git checkout` in the shared main worktree (seats operate only inside their own isolated worktree), so the main worktree's HEAD and branch are never left detached or moved during a run.
 ---
 

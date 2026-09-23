@@ -1,9 +1,9 @@
 ---
 id: FLLWUP-28
 title: "Pin cancellation during the device-flow slowdown wait in the login suite"
-state: Backlog
+state: Ready
 owner: null
-epic: EPIC-2
+epic: EPIC-3
 goal: The headless login test suite pins cancellation arriving during the 5-second connection-failure slowdown sleep, asserting the driver returns cancelled and issues no further token poll, so behavior the Skeptic proved only by ad-hoc probe is covered by a committed fixture.
 ---
 

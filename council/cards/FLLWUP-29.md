@@ -1,9 +1,9 @@
 ---
 id: FLLWUP-29
 title: "Pin the attended PKCE path's no-error_description boundary in the login suite"
-state: Backlog
+state: Ready
 owner: null
-epic: EPIC-2
+epic: EPIC-3
 goal: The login suite pins that the attended (PKCE) token-exchange path emits no `login.failure.detail` line even when the response body carries an `error_description`, so the dispatch boundary the Skeptic proved only by ad-hoc probe is covered by a committed fixture.
 ---
 
