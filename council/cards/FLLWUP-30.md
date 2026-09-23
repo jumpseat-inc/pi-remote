@@ -61,6 +61,9 @@ One candidate drafted (owner's incidental observation, out of scope for this car
 - Recorded decision (council_followup_review, active gate, status ok): **Mode: File — composite 0.16 < merge threshold 1.00 — Update AGENTS.md's stale unit-suite count in Current state (218 pass → observed 234) (active)**
 - Held, not filed: confirmation-pending per the active gate — no card written to `council/cards/` in this container; resumable by the next runner against this draft title once the confirming ruling arrives.
 
+### Step 13 — follow-up confirmation (orchestrator, job-3 `product-owner`)
+Per the run's authority map the follow-up-confirmation judgment was re-homed to `product-owner`. Job-3 ruled **Confirm `File`** — the recorded disposition stands; `Merge` and `Drop` both rejected (no open board card or sibling candidate names the count; the stale figure is a checkable, now-false claim in the loader every agent reads). The ruling binds the follow-up's scope: state the count without pinning it as eternal. The card was written by the orchestrator as **FLLWUP-31** (state `Backlog`) with this ruling recorded in its `Intent`.
+
 - **R-CONV-1 (FLLWUP-27, FLLWUP-30)** — The run-hygiene conventions are written
   in this repository's `AGENTS.md`, the sanctioned sink. This card records the
   shared main-worktree immutability rule: no `git checkout`/`git switch`/
