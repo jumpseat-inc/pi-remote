@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-27
 title: "Base owner worktrees on origin/main so card PRs stay product-only"
-state: In Progress
+state: Done
 owner: null
 epic: EPIC-3
 goal: A council card's owner branch is cut from origin/main rather than the run's local main, so the card's PR diff contains only its own product/plan change and not the run's local board, config, or preflight commits.
@@ -59,3 +59,25 @@ applies the ruling and cites it; it does not re-ask.
 - **R-MERGE-1 (run-wide)** — This run is unattended. The orchestrator executes
   the deterministic merge check and the merge without pausing for human
   confirmation, including the first merge of the run.
+## Run record — /features-deliver EPIC-3 (2026-09-23)
+
+### Step 1 — recorded mode Direct (authoritative)
+EV-70 owner-only lane. Mechanical, not surface-touching (agent-facing docs, no user-visible product surface). Concurs with the recorded routing; no fallback judgment needed. Direct path: no deliberation, no spec file, no skeptic, no judge — criteria 1, 2, 5 only.
+
+### Step 7 — handoff
+Card set `In Progress` (card + board), validate.py clean, record commit `126de16`.
+
+### Step 8 — owner implements (job-1.1, settled 3.3m, ~281K tokens)
+Worktree `/home/tista/codes/pi-remote-fllwup-27` cut from `origin/main` `cb02823` per the card's own rule (main-worktree HEAD untouched). Branch `owner/fllwup-27-agents-worktree-base`, PR #33 at head `b63ba54279cbd69c9d97c051becdf90def802ca7`, one commit, diff = `AGENTS.md` only. Gates in the worktree: `bunx tsc --noEmit` exit 0; `bun test` 234 pass / 1 skip (Windows-gated) / 0 fail exit 0 — card's "218 pass" note verified stale at base cb02823 (234/1/0 there too; delta predates the change). Card set `In Review` from the observed open PR.
+
+### Step 11 — merge gate (unattended, R-MERGE-1)
+Deterministic merge check, mode Direct, against head `b63ba54`: (1) owner gates green in full; (2) `gh pr checks 33 --json name,state,workflow` keyed on `workflow == "gates"` → `SUCCESS` (gates + gates-windows); (5) no `Needs Human` state, reviewDecision empty, zero reviews, no outstanding ruling — R-MERGE-1 authorizes the merge. `gh pr merge 33 --squash --match-head-commit b63ba54…` (ordinary merge per R-ADMIN-1; `main` unprotected, MERGEABLE). PR MERGED 2026-09-23T20:18:24Z, squash commit **`dac5c7e5ab2d6e0f284264a007dd6cfa0652be2c`**. CI on the merged SHA: `gates` success, `gates-windows` success (check-runs API + run list, conclusion success).
+
+### Step 12 — sync and reconcile
+Record commit rebased onto `origin/main` `dac5c7e` (rebase of the In Progress/In Review record commits — no local commit discarded, no force, no conflict markers; squash-merge touched `AGENTS.md` only, disjoint from council records). validate.py clean. Record commit pushed directly to `main` under **R-PUSH-1** (run-scoped authorization, this run only). Card set `Done` from the observed merged artifact.
+
+### Step 13 — follow-ups
+None drafted: the run surfaced no deferred idea, no out-of-scope objection, and no "we should also" item. No `council_followup_review` call needed (no candidates); no cards written.
+
+### Step 14 — persist
+No durable wiki artifact surfaced; `vault/` untouched (repo has no wiki pages for run hygiene; AGENTS.md is the sanctioned sink per R-CONV-1).

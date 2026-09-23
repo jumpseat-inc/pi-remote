@@ -22,13 +22,13 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-30 — "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
 
 ## In Progress
-- FLLWUP-27 — "Base owner worktrees on origin/main so card PRs stay product-only"
 
 ## In Review
 
 ## Needs Human
 
 ## Done
+- FLLWUP-27 — "Base owner worktrees on origin/main so card PRs stay product-only"
 - FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 - FLLWUP-24 — "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
 - BUG-1 — "Route /rc:login --headless to the device-flow driver instead of hardcoding attended"
