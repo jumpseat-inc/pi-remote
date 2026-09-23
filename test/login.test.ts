@@ -12,6 +12,7 @@ import {
   REPLACEMENT_PROMPT_COPY,
   runAttendedLogin,
   runHeadlessLogin,
+  sanitizeErrorDescription,
   ACL_ENFORCEMENT_FAILED_NOTICE,
   type LoginDeps,
   type LoginOutcome,
@@ -1001,5 +1002,56 @@ describe("EV-7 J2 cancellation + replacement prompt (facade)", () => {
     // No endpoint requests were issued.
     expect(loginEndpointRequestLog.length).toBe(0);
     rmSync(configDir, { recursive: true, force: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FLLWUP-25 — device-flow error_description (PO ruling
+// vault/raw/2026-09-02-po-fllwup-25-error-description.md)
+// ---------------------------------------------------------------------------
+
+describe("FLLWUP-25: error_description sanitizer + copy key", () => {
+  test("strips C0 (U+0000–U+001F) and DEL/C1 (U+007F–U+009F): no escape sequence can form", () => {
+    const hostile = `be\x1b[31mwarned\x1b[0m\u009b31m plain`;
+    expect(sanitizeErrorDescription(hostile)).toBe("be[31mwarned[0m31m plain");
+  });
+
+  test("collapses whitespace runs (incl. \\n, \\r\\n, \\t) to single spaces and trims", () => {
+    expect(sanitizeErrorDescription("  scope \n\n main \t app \r\n revoked  ")).toBe(
+      "scope main app revoked"
+    );
+  });
+
+  test("caps at 200 code points + '...' without splitting surrogate pairs", () => {
+    // 250 astral chars = 250 code points → first 200 kept, then "...".
+    const astral = "𝛼".repeat(250);
+    const out = sanitizeErrorDescription(astral)!;
+    expect([...out].length).toBe(203); // 200 code points + 3 dots
+    expect(out.endsWith("...")).toBe(true);
+    // Every kept element is the whole astral char — no lone surrogate.
+    expect([...out].every((ch) => ch === "𝛼" || ch === ".")).toBe(true);
+    // Under the cap, astral content passes through untruncated and unsplit.
+    expect(sanitizeErrorDescription("𝛼".repeat(150))).toBe("𝛼".repeat(150));
+    // Cap boundary lands ON an astral char (index 199 in code points): the
+    // char straddles the 200-UTF-16-unit mark but must be kept whole. A
+    // UTF-16-unit slicer would emit a lone leading surrogate instead.
+    const out2 = sanitizeErrorDescription("a".repeat(199) + "𝛼tail")!;
+    expect([...out2].length).toBe(203); // 199 a's + 𝛼 + "..."
+    expect(out2).toBe("a".repeat(199) + "𝛼" + "...");
+  });
+
+  test("returns undefined for missing, null, non-string, and whitespace-only inputs", () => {
+    expect(sanitizeErrorDescription(undefined)).toBeUndefined();
+    expect(sanitizeErrorDescription(null)).toBeUndefined();
+    expect(sanitizeErrorDescription(42)).toBeUndefined();
+    expect(sanitizeErrorDescription({ error: "x" })).toBeUndefined();
+    expect(sanitizeErrorDescription("   \n\t ")).toBeUndefined();
+    expect(sanitizeErrorDescription("")).toBeUndefined();
+  });
+
+  test("copy vocabulary: login.failure.detail resolves through loginEnglishFor with the ruled string", () => {
+    expect(loginEnglishFor("login.failure.detail")).toBe(
+      "Details from the server: `<errorDescription>`"
+    );
   });
 });
