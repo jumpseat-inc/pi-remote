@@ -790,6 +790,16 @@ export async function runHeadlessLogin(
       // RFC 8628 codes are recognized only on 400 and 2xx; other statuses'
       // bodies are effectively unread.
       print(deps, loginEnglishFor("login.failure.tokenExchangeFailed"));
+      // FLLWUP-25 (PO ruling 1): tokenExchangeFailed is the one outcome whose
+      // cause only the server can name, so its error_description (RFC 6749
+      // §5.2) is surfaced here — sanitized per PO ruling 3 — as a second
+      // line. All other outcomes (deviceDenied, expiredCode,
+      // invalidTokenResponse, attended paths) never emit it: the boundary is
+      // dispatch-level, not sanitizer-level.
+      const detail = sanitizeErrorDescription(body?.["error_description"]);
+      if (detail !== undefined) {
+        print(deps, render(loginEnglishFor("login.failure.detail"), { errorDescription: detail }));
+      }
       return { kind: "failure", reason: "tokenExchangeFailed" };
     }
     const at = body?.[K_ACCESS_TOKEN];
