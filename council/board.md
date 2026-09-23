@@ -20,9 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 
 ## In Progress
-- BUG-1 — "Route /rc:login --headless to the device-flow driver instead of hardcoding attended"
 
 ## In Review
+- BUG-1 — "Route /rc:login --headless to the device-flow driver instead of hardcoding attended"
 
 ## Needs Human
 

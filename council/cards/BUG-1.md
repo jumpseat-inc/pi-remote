@@ -1,7 +1,7 @@
 ---
 id: BUG-1
 title: "Route /rc:login --headless to the device-flow driver instead of hardcoding attended"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-1
 goal: Invoking `/rc:login --headless` selects the login driver's `headless` mode — the RFC 8628 device flow, observable as the `login.headless.instructions` copy being printed and no browser being opened — while `/rc:login` with no flag still selects `attended`, both proven by tests in test/index.test.ts.
