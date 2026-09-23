@@ -17,12 +17,12 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 - EPIC-3 — "Run integrity and device-flow coverage — the device-flow polish run's four follow-ups"
-- FLLWUP-27 — "Base owner worktrees on origin/main so card PRs stay product-only"
 - FLLWUP-28 — "Pin cancellation during the device-flow slowdown wait in the login suite"
 - FLLWUP-29 — "Pin the attended PKCE path's no-error_description boundary in the login suite"
 - FLLWUP-30 — "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
 
 ## In Progress
+- FLLWUP-27 — "Base owner worktrees on origin/main so card PRs stay product-only"
 
 ## In Review
 

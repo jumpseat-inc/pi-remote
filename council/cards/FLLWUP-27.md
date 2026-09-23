@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-27
 title: "Base owner worktrees on origin/main so card PRs stay product-only"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-3
 goal: A council card's owner branch is cut from origin/main rather than the run's local main, so the card's PR diff contains only its own product/plan change and not the run's local board, config, or preflight commits.
