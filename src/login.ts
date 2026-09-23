@@ -203,7 +203,32 @@ const NON_FAILURE_ROWS: Record<string, string> = {
   "login.cancelled": "Sign-in cancelled — no credentials were saved.",
   "login.alreadyRunning": ALREADY_LOGGING_IN_COPY,
   "login.replacementPrompt": REPLACEMENT_PROMPT_COPY,
+  // FLLWUP-25 (PO ruling 2): the device-flow error_description detail line.
+  // English-only by design — login-flow rows are deliberately outside the id
+  // overlay table (FLLWUP-4 OJ2); no src/copy.ts entry.
+  "login.failure.detail": "Details from the server: `<errorDescription>`",
 };
+
+/**
+ * FLLWUP-25 (PO ruling 3): sanitize the untrusted server `error_description`
+ * for terminal display. Order is ruled: (1) strip all C0 (U+0000–U+001F) and
+ * DEL+C1 (U+007F–U+009F) code points so no escape sequence can form (no
+ * textual ANSI matching); (2) collapse whitespace runs to single spaces and
+ * trim — always one terminal line; (3) cap at 200 code points (count code
+ * points, never split a surrogate pair), appending "..." when truncated.
+ * Returns undefined when the input is missing, null, a non-string, or
+ * sanitizes to empty — the detail line is omitted entirely in that case.
+ */
+export function sanitizeErrorDescription(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  // eslint-disable-next-line no-control-regex
+  const stripped = raw.replace(/[\u0000-\u001f\u007f-\u009f]/g, "");
+  const collapsed = stripped.replace(/\s+/gu, " ").trim();
+  if (collapsed.length === 0) return undefined;
+  const cps = [...collapsed];
+  if (cps.length > 200) return cps.slice(0, 200).join("") + "...";
+  return collapsed;
+}
 
 /** Appended to the storage-failed row when the user-only ACL could not be
  * enforced on this host (FLLWUP-7; binding ruling: cause names the host,
