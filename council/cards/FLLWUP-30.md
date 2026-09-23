@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-30
 title: "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-3
 goal: A run seat never runs `git checkout` in the shared main worktree (seats operate only inside their own isolated worktree), so the main worktree's HEAD and branch are never left detached or moved during a run.
@@ -36,6 +36,14 @@ must happen inside the seat's own isolated worktree.
 Recorded human decisions, for this run only; immutable for the run and binding
 on every seat, `steward` included. A runner that meets a dispute covered here
 applies the ruling and cites it; it does not re-ask.
+
+## Run record — /features-deliver EPIC-3 (2026-09-23)
+
+### Step 1 — recorded mode Direct (authoritative)
+EV-70 owner-only lane. Mechanical, not surface-touching (agent-facing docs, no user-visible product surface). Concurs with the recorded routing; no fallback judgment needed. Direct path: no deliberation, no spec file, no skeptic, no judge — criteria 1, 2, 5 only.
+
+### Step 7 — handoff (record commits `126de16`–`0a41b38`)
+Card set `In Progress` (card + board), validate.py clean.
 
 - **R-CONV-1 (FLLWUP-27, FLLWUP-30)** — The run-hygiene conventions are written
   in this repository's `AGENTS.md`, the sanctioned sink. This card records the
