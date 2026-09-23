@@ -65,6 +65,13 @@ pattern: pure logic in `src/` modules, wiring and session-scoped state in
 
 ## Council card worktrees
 
+During a council run the shared main worktree (`/home/tista/codes/pi-remote`)
+is immutable to every seat and agent: never run `git checkout`, `git switch`,
+or `git reset` against it. It stays on its branch and its HEAD is never left
+detached. Every branch-state change — moving a branch pointer, checking out a
+commit, switching branches, rewinding history — happens in a dedicated
+worktree created with `git worktree add` (recorded as run ruling R-CONV-1).
+
 A council card's owner branch/worktree is cut from `origin/main` — never the
 run's local `main`, which carries unpushed run-state commits:
 
