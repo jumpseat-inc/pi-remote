@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-30
 title: "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-3
 goal: A run seat never runs `git checkout` in the shared main worktree (seats operate only inside their own isolated worktree), so the main worktree's HEAD and branch are never left detached or moved during a run.
@@ -47,6 +47,19 @@ Card set `In Progress` (card + board), validate.py clean.
 
 ### Step 8 — owner implements (job-2.1, settled 2.6m, ~202K tokens)
 Worktree `/home/tista/codes/pi-remote-fllwup-30` cut from `origin/main` `29f1488` (main-worktree HEAD untouched; owner confirmed `symbolic-ref HEAD` resolves to `refs/heads/main`). Branch `owner/fllwup-30-main-worktree-immutability`, PR #34 open at head `624681c8eabcd6b24eeba3f0902ee3e8025d2b31`, diff = `AGENTS.md` only (+7, immutability rule leading the "Council card worktrees" section, R-CONV-1 cited). Gates in the worktree: `bun install` exit 0; `bunx tsc --noEmit` exit 0; `bun test` 234 pass / 1 skip / 0 fail, exit 0. Card set `In Review` from the observed open PR (facilitator-verified: `gh pr view` OPEN, `gh pr diff --name-only` = `AGENTS.md`).
+
+### Step 11 — merge gate (unattended, R-MERGE-1)
+Deterministic merge check, mode Direct, against head `624681c8eabcd6b24eeba3f0902ee3e8025d2b31`: (1) owner gates green in full — facilitator re-ran them in the owner worktree: `bunx tsc --noEmit` exit 0, `bun test` 234 pass / 1 skip / 0 fail exit 0; (2) `gh pr checks 34 --json name,state,workflow` keyed on `workflow == "gates"` → `SUCCESS` (gates + gates-windows); (5) no `Needs Human` state, reviewDecision empty, no outstanding ruling — all five Phase-1 rulings applied and cited. `gh pr merge 34 --squash --match-head-commit 624681c…` (ordinary merge per R-ADMIN-1; `main` unprotected, MERGEABLE). PR MERGED 2026-09-23T20:29:22Z, squash commit **`de4a942efa8b1b9ab3bf9cf23801836258aaee4f`**. CI on the merged SHA: `gates` success, `gates-windows` success (check-runs API, observed).
+
+### Step 12 — sync and reconcile
+Blocked mid-step by a transient environment failure: all transports to github.com (git over SSH and HTTPS, api.github.com) began timing out immediately after the merge landed. The merge and its CI-green verification were already observed and complete; only the record push to `main` under R-PUSH-1 remains. Local `main` at the Done record commit, HEAD attached, tree clean. No checkout/switch/reset used (this card's own rule); repair is a plain `git fetch`/`git pull --no-rebase` + push once the network returns. Held for the resuming runner.
+
+### Step 13 — follow-ups (held, not filed)
+One candidate drafted (owner's incidental observation, out of scope for this card, dedup pass clean — no existing card or sibling covers it):
+
+- Draft title: "Update AGENTS.md's stale unit-suite count in Current state (218 pass → observed 234)"
+- Recorded decision (council_followup_review, active gate, status ok): **Mode: File — composite 0.16 < merge threshold 1.00 — Update AGENTS.md's stale unit-suite count in Current state (218 pass → observed 234) (active)**
+- Held, not filed: confirmation-pending per the active gate — no card written to `council/cards/` in this container; resumable by the next runner against this draft title once the confirming ruling arrives.
 
 - **R-CONV-1 (FLLWUP-27, FLLWUP-30)** — The run-hygiene conventions are written
   in this repository's `AGENTS.md`, the sanctioned sink. This card records the

@@ -23,11 +23,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-30 — "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
 
 ## Needs Human
 
 ## Done
+- FLLWUP-30 — "Keep the shared main worktree's HEAD untouched during a run (no seat checkouts in the main checkout)"
 - FLLWUP-27 — "Base owner worktrees on origin/main so card PRs stay product-only"
 - FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 - FLLWUP-24 — "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
