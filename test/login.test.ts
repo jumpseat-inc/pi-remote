@@ -870,6 +870,63 @@ describe("FLLWUP-24: RFC 8628 §3.5 connection-failure slowdown + cause-distingu
   });
 });
 
+describe("FLLWUP-28: cancellation during the RFC 8628 §3.5 slowdown sleep is honored", () => {
+  /** Self-contained connection-failure fetch (same shape as the FLLWUP-24
+   * block's helper, but local to this block so it exists wherever this block
+   * exists): throws at the connection level when a predicate matches,
+   * delegating to the control's normal fetch otherwise. */
+  function throwOnPoll(c: Control): LoginDeps["fetch"] {
+    const inner = makeFetch(c);
+    return (async (input: string | URL | { url: string }, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const method = init?.method ?? "GET";
+      if (url === c.tokenEndpoint && method === "POST") {
+        throw new TypeError("fetch failed: connection reset");
+      }
+      return inner(url, init);
+    }) as unknown as LoginDeps["fetch"];
+  }
+
+  test("cancel flag set inside the 5000ms slowdown sleep → cancelled, no failure copy, no further token poll", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    const configDir = tempConfigDir();
+    const ctl = { cancelled: false };
+    const sleeps: number[] = [];
+    const deps: LoginDeps = {
+      serverUrl: c.serverUrl,
+      configDir,
+      fetch: throwOnPoll(c),
+      now: () => c.simNow,
+      sleep: async (ms: number) => {
+        sleeps.push(ms);
+        c.simNow += ms;
+        if (ms === 5000) ctl.cancelled = true;
+      },
+    };
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runHeadlessLogin(deps, ctl));
+    const o = result as LoginOutcome;
+    expect(o.kind).toBe("cancelled");
+    // interval poll (deviceBody interval:2 → 2000ms), then the slowdown sleep
+    // whose await is interrupted by the cancel — no trailing interval sleep,
+    // i.e. the loop never started another poll round.
+    expect(sleeps).toEqual([2000, 5000]);
+    // No token poll issued after the cancel signal: the module-level endpoint
+    // request log carries exactly one token-endpoint POST — the one that
+    // threw, before the slowdown. `makeFetch` logs discovery/device/tunnel
+    // requests too, so count by URL.
+    expect(
+      loginEndpointRequestLog.filter((e) => (e as { url: string }).url === c.tokenEndpoint)
+    ).toHaveLength(1);
+    // Silent path: no failure copy of any kind — neither the connection
+    // failure copy nor the expiry copy.
+    expect(logs.some((l) => l.includes("Cannot reach"))).toBe(false);
+    expect(logs.some((l) => l.includes("Sign-in timed out"))).toBe(false);
+    expect(readCredential({ configDir })).toBeNull();
+    rmSync(configDir, { recursive: true, force: true });
+  });
+});
+
 describe("EV-7 J2 cancellation + replacement prompt (facade)", () => {
   test("test 10: attended pre-seeded → replacement prompt renders before any endpoint request (request log empty at confirm)", async () => {
     const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
