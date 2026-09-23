@@ -748,18 +748,16 @@ describe("FLLWUP-24: RFC 8628 §3.2 connection-failure slowdown", () => {
    * predicate matches, delegating to the control's normal fetch otherwise. */
   function fetchWithThrow(
     c: Control,
-    throwWhen: (url: string, method: string) => boolean,
-    opts: { onThrow?: () => void } = {}
+    throwWhen: (url: string, method: string) => boolean
   ): LoginDeps["fetch"] {
     const inner = makeFetch(c);
     return (async (input: string | URL | { url: string }, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       const method = init?.method ?? "GET";
       if (throwWhen(url, method)) {
-        opts.onThrow?.();
         throw new TypeError("fetch failed: connection reset");
       }
-      return inner(input, init);
+      return inner(url, init);
     }) as unknown as LoginDeps["fetch"];
   }
 
@@ -796,7 +794,10 @@ describe("FLLWUP-24: RFC 8628 §3.2 connection-failure slowdown", () => {
 
   test("connection failures until the window expires → timedOut (not unreachable), retries bounded by the loop-top expiry check", async () => {
     const base = makeControl();
-    const c = makeControl({ deviceBody: { ...base.deviceBody, expires_in: 10 } }, {});
+    const c = makeControl(
+      { deviceBody: { ...(base.deviceBody as Record<string, unknown>), expires_in: 10 } },
+      {}
+    );
     const configDir = tempConfigDir();
     const sleeps: number[] = [];
     const deps: LoginDeps = {
