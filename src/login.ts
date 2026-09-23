@@ -674,6 +674,10 @@ export async function runHeadlessLogin(
   let printedHalf = false;
   let printedThirty = false;
   let printedExpiredTail = false;
+  let sawResponse = false;
+  // FLLWUP-24 (PO ruling 1): true once any poll receives an HTTP response
+  // (any status). Window expiry dispatches on this — all-connection-failure
+  // windows land `unreachable`, windows the server answered land `timedOut`.
   let interval = intervalMs;
   const deviceCode = deDeviceCode as string;
 
@@ -681,8 +685,12 @@ export async function runHeadlessLogin(
     if (ctl.cancelled) return { kind: "cancelled" };
     const elapsed = now() - start;
     if (elapsed >= expiresIn * 1000) {
-      print(deps, loginEnglishFor("login.failure.timedOut"));
-      return { kind: "failure", reason: "timedOut" };
+      if (sawResponse) {
+        print(deps, loginEnglishFor("login.failure.timedOut"));
+        return { kind: "failure", reason: "timedOut" };
+      }
+      print(deps, render(loginEnglishFor("login.failure.unreachable"), { serverUrl: deps.serverUrl }));
+      return { kind: "failure", reason: "unreachable" };
     }
     if (!printedHalf && elapsed >= (expiresIn * 1000) / 2) {
       print(deps, render(loginEnglishFor("login.headless.half"), { halfExpiresIn: String(Math.max(1, Math.round(expiresIn / 2))) }));
@@ -709,9 +717,17 @@ export async function runHeadlessLogin(
         }),
       });
     } catch {
-      print(deps, render(loginEnglishFor("login.failure.unreachable"), { serverUrl: deps.serverUrl }));
-      return { kind: "failure", reason: "unreachable" };
+      // FLLWUP-24 / RFC 8628 §3.5: a client encountering connection problems
+      // MUST unilaterally reduce its polling frequency before retrying — here
+      // a fixed 5-second pause, §3.2's default minimum poll interval. The
+      // loop-top check bounds this by the device-code window (cause-
+      // distinguished via `sawResponse`) and cancellation. The retry is
+      // silent; `unreachable` stays terminal for the pre-loop device-
+      // authorization POST and the all-failed window expiry.
+      await sleep(5_000);
+      continue;
     }
+    sawResponse = true;
     if (ctl.cancelled) return { kind: "cancelled" };
     // FLLWUP-22: parse BEFORE the status gate so RFC 8628 §3.5 error bodies
     // carried on 400 (the normative §2.3 shape) reach the dispatch table.

@@ -302,6 +302,15 @@ static key, never an environment variable.
   RFC 8628 semantics: `interval` between polls, `slow_down`,
   `authorization_pending` (keep polling), and the terminal conditions
   `expired_token` and `access_denied` (failure names the `/rc:login` remedy).
+  On a connection-level failure (fetch throw), the driver waits 5 seconds and
+  re-polls, per RFC 8628 §3.5's requirement that a client encountering
+  connection problems unilaterally reduce its polling frequency before
+  retrying; the 5-second figure is §3.2's default minimum poll interval,
+  adopted as the client's fixed slowdown step. At device-code-window expiry
+  the terminal outcome is cause-distinguished: if no poll in the window ever
+  received an HTTP response, the outcome is `unreachable` (existing verbatim
+  copy); if at least one poll received a response, the outcome is `timedOut`
+  (existing verbatim copy).
 - **Token issuance and refresh.** Both flows exchange at `{token_endpoint}`
   (`grant_type=authorization_code` with `code_verifier`, or the device-code
   grant). When the response includes a refresh token, the extension stores it
