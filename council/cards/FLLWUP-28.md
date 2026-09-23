@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-28
 title: "Pin cancellation during the device-flow slowdown wait in the login suite"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-3
 goal: The headless login test suite pins cancellation arriving during the 5-second connection-failure slowdown sleep, asserting the driver returns cancelled and issues no further token poll, so behavior the Skeptic proved only by ad-hoc probe is covered by a committed fixture.
@@ -38,6 +38,15 @@ EV-70 owner-only lane. Mechanical, not surface-touching (test-suite-only change,
 
 ### Step 8 — owner implements (job-4.1, settled 3.9m, ~1.09M tokens)
 Worktree `/home/tista/codes/pi-remote-fllwup-28` cut from `origin/main` `fb4a39fea30e62265319222bab0a7280913c750c` (main-worktree HEAD untouched). Branch `owner/fllwup-28-slowdown-cancel`, PR #35 open at head `bb0c6279a8802765dfe42c5626e770fea80cb157`, diff = `test/login.test.ts` (+57) + plan doc (+60) only. Fixture: self-contained describe block, direct-`ctl` drive — `ctl.cancelled = true` from the `sleep` seam while `ms === 5000`; asserts outcome `cancelled`, no failure copy, token-endpoint POST count 1, sleeps `[2000, 5000]`. Red-at-base (owner record, all seven fields): base `b784540bb6d613e353aeab8195dc7c2665b2afb0` (required; first parent of FLLWUP-24 mechanism merge `d63e942`), transplant = the same describe block appended to the base tree's own `test/login.test.ts` (head sha `bb0c627`, no new files), command `bun test test/login.test.ts`, red = `Expected: "cancelled" / Received: "failure"` (31 pass / 1 fail / exit 1, mechanism-absent class), detached worktree `/tmp/fllwup-28-base` removed after run, copy set bare + the one block, head half 0 fail (235 pass / 1 skip). Gates in the worktree: `bun install` exit 0; `bunx tsc --noEmit` exit 0; `bun test` 235 pass / 1 skip / 0 fail. Card set `In Review` from the observed open PR (facilitator-verified: `gh pr view 35` OPEN at `bb0c627`, `gh pr diff --name-only` = plan doc + test file). Facilitator re-verification and gate re-run recorded at step 11.
+
+### Step 11 — merge gate (unattended, R-MERGE-1)
+Deterministic merge check, mode **Direct** (criteria 1, 2, 5), against head `bb0c6279a8802765dfe42c5626e770fea80cb157`: **(1)** owner gates green in full — facilitator re-ran them in the owner worktree: `bunx tsc --noEmit` exit 0 (`TypeScript: No errors found`), `bun test` 235 pass / 1 skip / 0 fail / 1329 expect calls / 236 tests across 11 files, exit 0; red-at-base record verified complete (all seven fields present; base `b784540` red = `Expected: "cancelled" / Received: "failure"`, mechanism-absent class; head half 0 fail); fixture assertions re-read from the PR diff and matched to the acceptance. **(2)** `gh pr checks 35 --json name,state,workflow` keyed on `workflow == "gates"` → `SUCCESS` (gates + gates-windows, both jobs; `[code]smith` SKIPPED has empty workflow and is not keyed on). **(5)** no `Needs Human` state (card `In Review`), `reviewDecision` empty, all five Phase-1 rulings applied and cited, no outstanding ruling. Head re-read immediately before merge: `bb0c627…` equal → `gh pr merge 35 --squash --match-head-commit bb0c627…` (ordinary merge per R-ADMIN-1; `main` unprotected — 0 rulesets, branch-protection API 404, observed). PR **MERGED** 2026-09-23, squash commit **`3b60bb6481667a8da451542a49d3abacd2cf96cc`**. CI on the merged SHA (observed, check-runs + workflow-runs APIs): `gates` success, `gates-windows` success.
+
+### Step 12 — sync and reconcile
+`git fetch origin && git pull --no-rebase`: fast-forward not possible (local record commits) → merge commit `a4fc2d1`, both sides kept (union repair; same shape as FLLWUP-30's step 12). Verified: no conflict markers in `council/board.md` / `council/cards/FLLWUP-28.md` / `test/login.test.ts`; the product change (FLLWUP-28 fixture) present in the working tree; `validate.py` clean. Card set **Done** (card + board) from the observed merge + green CI on the merged SHA.
+
+### Step 13 — follow-ups
+No candidates drafted: the owner surfaced no out-of-scope findings, no designer ran (Direct path), and no Skeptic objections exist to carry (no step-9 dispatch on the Direct path). Nothing deferred; nothing held.
 
 ### Step 7 — handoff (this commit)
 Card set `In Progress` (card + board), validate.py clean. Owner handed the card's own Intent/goal (mechanical path — no spec file) with facilitator-gathered grounding: mechanism at `src/login.ts` poll-catch `await sleep(5_000); continue` + loop-top cancel check; red-at-base base `b784540bb6d613e353aeab8195dc7c2665b2afb0` (first parent of FLLWUP-24 mechanism merge `d63e942`, where the catch is terminal failure/unreachable with no slowdown sleep); transplant-shape warning (head test file imports `sanitizeErrorDescription`, absent at base — transplant must be a self-contained describe block over base-existing helpers so it loads at base).
