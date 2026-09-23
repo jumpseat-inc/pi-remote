@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-25
 title: "Surface the device-flow token endpoint's error_description in login failure output"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-2
 goal: When a device-flow token poll or exchange fails with an error_description, the /rc:login failure output includes that server-provided description, so the user sees why the identity provider refused rather than only the client's generic failure line.

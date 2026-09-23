@@ -20,9 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Ready
 
 ## In Progress
-- FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 
 ## In Review
+- FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 
 ## Needs Human
 
