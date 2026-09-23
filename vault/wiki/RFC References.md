@@ -4,20 +4,19 @@ type: concept
 summary: The five IETF RFCs the pi-remote system builds on — 2119 for normative language, 6749/8628 for the enrollment flows, 7636 for PKCE, 8414 for discovery — each with its role in the corpus.
 aliases: [RFCs, RFC index]
 tags: [concept/protocol, rfc]
-sources: ["[[Server-Side Spec]]", "[[login.ts]]", "[[tunnel.ts]]", "[[RFC Conformance Posture]]"]
+sources: ["[[Server-Side Spec]]", "[[login.ts]]", "[[tunnel.ts]]", "[[RFC Conformance Posture]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]"]
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-23
 ---
 The published RFCs the system builds on, and what each governs here:
 
 - **[RFC 2119](https://www.rfc-editor.org/rfc/rfc2119)** — the normative keyword convention. The server spec's MUST/SHOULD/MAY vocabulary follows it, constrained by the [[Normativity Test]]: every keyword must name an observation point, and one-sided bounds are never normative.
 - **[RFC 6749](https://www.rfc-editor.org/rfc/rfc6749)** — OAuth 2.0: the refresh flow (`grant_type=refresh_token` at token_endpoint, no separate /refresh), the `pi-remote:host`/`pi-remote:admin` scope model, and §2.3.1 form-encoding — the client and the server spec §2.4 were migrated to form-encoding together (FLLWUP-18), per the [[RFC Conformance Posture]].
-- **[RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)** — the device authorization grant: the headless `/rc:login --headless` flow, the four error codes the client dispatches (`authorization_pending`/`slow_down` retriable; `access_denied`/`expired_token` terminal), and the §3.2 connection-failure slowdown (carded as FLLWUP-24, Backlog — not yet delivered). The §2.3 poll-shape contradiction was resolved with the client conforming to this RFC (FLLWUP-22, PR #26).
+- **[RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)** — the device authorization grant: the headless `/rc:login --headless` flow and the four error codes the client dispatches (`authorization_pending`/`slow_down` retriable; `access_denied`/`expired_token` terminal). A connection-level poll failure now waits five seconds and re-polls (FLLWUP-24, PR #31): the directive is **§3.5** (reduce polling frequency before retrying), while the five seconds is §3.2's default minimum poll interval — a client design choice within the mandate, not a specified value. **Superseded claim, flagged:** this bullet previously read "§3.2 … Backlog — not yet delivered"; the section was wrong and the card is now delivered. The §2.3 poll-shape contradiction was resolved with the client conforming to this RFC (FLLWUP-22, PR #26).
 - **[RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)** — Proof Key for Code Exchange: the S256 code-challenge/challenge-verifier pair securing the attended Authorization Code flow ([[login.ts]]'s PKCE driver; server spec §2.2). **Externally-sourced detail, flagged:** PKCE is the standard hardening for public clients that cannot hold a client secret; the RFC text is the authority.
-- **[RFC 8414](https://www.rfc-editor.org/rfc/rfc8414)**
 - **[RFC 8414](https://www.rfc-editor.org/rfc/rfc8414)** — authorization-server discovery: the metadata document with `authorization_endpoint`/`token_endpoint`/`device_authorization_endpoint` required and `revocation_endpoint` optional, as the server spec §2.2 and [[tunnel.ts]]'s discovery implement it.
 
-All four are externally-sourced standards — this page indexes where the corpus uses them; the RFC texts themselves are the authority.
+All five are externally-sourced standards — this page indexes where the corpus uses them; the RFC texts themselves are the authority.
 
 ## Related
 [[RFC Conformance Posture]], [[login.ts]], [[tunnel.ts]], [[Server-Side Spec]], [[Normativity Test]], [[Copy Honesty Doctrine]]

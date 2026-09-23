@@ -4,9 +4,9 @@ type: overview
 summary: Synthesis of the autonomous run that produced docs/SERVER-SIDE-SPEC.md — a self-contained server-side implementation spec — with the new doctrine the run added to the corpus.
 aliases: [EPIC-2 overview, server-side spec decision record]
 tags: [overview/epic2, synthesis]
-sources: ["[[EPIC-2 Decision Record]]"]
+sources: ["[[EPIC-2 Decision Record]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]"]
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-23
 ---
 **Provenance deviation, stated:** unlike the EPIC-1 corpus, this run archived no `vault/raw/` files — its rulings live in the council card records (EV-9..EV-14, the EPIC-2 face with Phase 1 rulings R1-R6) and in PRs #20-25. This page and its sibling pages cite those as authority; the deviation is the FLLWUP-16 precedent applied at run scale.
 
@@ -21,7 +21,7 @@ updated: 2026-09-02
 
 **Contradictions at close — now resolved:** the four defects in the shipped document (device-flow poll shape, §5.10 inverted MUST, §1.2 scoping drift, refresh encoding) were closed by the residual run; see the RFC Conformance Posture for the posture that decided FLLWUP-22/18. Still open in PI-SPEC (outside this document): FLLWUP-19 and FLLWUP-20 prose drift.
 
-**Residual queue closed (follow-on run, 2026-09-02).** The four defect cards were delivered in steward's order — FLLWUP-22 (PR #26: the client now conforms to RFC 8628's poll contract per the human's RFC Conformance Posture ruling; §2.3 untouched), FLLWUP-23 (PR #27: §5.10 keyword fixed), FLLWUP-21 (PR #28: §1.2 scoped to per-frame relay), FLLWUP-18 (PR #29: refresh migrated to RFC 6749 form-encoding, client + spec in one PR). The document's four defects are RESOLVED as of this update; its one remaining open item is FLLWUP-26 (vocabulary scoping, non-blocking). Three new Backlog cards were filed during the run (FLLWUP-24/25 from FLLWUP-22's deferred items — device-flow polish; FLLWUP-26 from FLLWUP-21's verification — a §1.2/§5.7 vocabulary-scoping residual, the document's one remaining open item).
+**Residual queue closed (follow-on run, 2026-09-02).** The four defect cards were delivered in steward's order — FLLWUP-22 (PR #26: the client now conforms to RFC 8628's poll contract per the human's RFC Conformance Posture ruling; §2.3 untouched), FLLWUP-23 (PR #27: §5.10 keyword fixed), FLLWUP-21 (PR #28: §1.2 scoped to per-frame relay), FLLWUP-18 (PR #29: refresh migrated to RFC 6749 form-encoding, client + spec in one PR). The document's four defects are RESOLVED as of this update; its one remaining open item is FLLWUP-26 (vocabulary scoping, non-blocking). Three new Backlog cards were filed during the run: FLLWUP-24/25 (device-flow polish, from FLLWUP-22's deferred items — since delivered by the [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], PRs #31/#32) and FLLWUP-26 (a §1.2/§5.7 vocabulary-scoping residual from FLLWUP-21's verification, the document's one remaining open item).
 
 **Process lessons.** The self-containment mandate was enforced mechanically (EV-14's grep audit plus soft-phrase read-through), and the conformance audit ran council-side, recorded on the card — the two-audit split kept the page clean while keeping the verification honest. Provider idle timeouts killed two EV-13 instances at the same long-generation step; the chunked-write mitigation (compose large documents in bounded tool calls) resolved it without a model change.
 

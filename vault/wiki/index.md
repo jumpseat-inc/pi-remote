@@ -20,7 +20,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[tunnel.ts]] — control-plane REST client; key-based copy table with severity tags; 401-terminal createTunnel.
 - [[history.ts]] — active-branch replay; init-only MESSAGES_SNAPSHOT; deterministic frame ids; pi.resync.done.
 - [[inject.ts]] — sendUserMessage conversion, (promptId, occurrence) registry, zero transformation of own injections.
-- [[login.ts]] — /rc:login OAuth2 drivers (PKCE attended, device flow headless); driver-side prompt gate.
+- [[login.ts]] — /rc:login OAuth2 drivers (PKCE attended, device flow headless); driver-side prompt gate; §3.5 slowdown + cause-distinguished expiry + `error_description` detail (FLLWUP-24/25).
 - [[credential.ts]] — 0600 tmp+fsync+rename store; Windows NTFS ACL enforcement; fail-closed WriteResult.
 - [[index.ts]] — command surface, live-path wiring, footer merge FSM, teardown for all five shutdown reasons.
 - [[copy.ts]] — dependency-free resolver; 22-key en→id table; announced partial-coverage boundary.
@@ -29,6 +29,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 ## Concepts
 
 - [[Copy Honesty Doctrine]] — state what happened; name only remedies a real actor can perform; sentences over glyphs.
+- [[Cause-Distinguished Expiry]] — a bounded wait's terminal reason names the cause the client observed, not a fixed row.
 - [[Closed Vocabulary Discipline]] — enumerated state/reason/key sets; new values only by ruling; name is the sole dispatch key.
 - [[Stable Keys]] — keys are free at authoring time, non-relitigable contract from merge; verbatim-ruled copy changes via own ruling only.
 - [[Spec Correction Governance]] — evidence-cited spec corrections ride the implementing PR; security-model changes go to steward.
@@ -69,3 +70,4 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[FLLWUP-7 Design Position r2]] — fail-closed correction: WriteResult narrows, notice becomes reason-keyed.
 - [[FLLWUP-3 Design Position r1]] — unmapped live events round 1: proposals and falsifiable predictions.
 - [[FLLWUP-3 Design Position r3]] — FINAL: flips to the partialResult split; payload-variant dispatch-key doctrine.
+- [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]] — three-card batch: --headless flag routing, RFC 8628 §3.5 slowdown, error_description surfacing; new cause-distinguished-expiry doctrine.
