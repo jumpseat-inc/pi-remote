@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-24
 title: "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
-state: In Review
+state: In Progress
 owner: null
 epic: EPIC-2
 goal: The headless device-flow driver retries the token poll after 5 seconds when the request fails at the connection level (fetch throw), per RFC 8628 §3.2, instead of failing terminal unreachable.

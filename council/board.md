@@ -20,9 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-25 — "Surface the device-flow token endpoint's error_description in login failure output"
 
 ## In Progress
+- FLLWUP-24 — "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
 
 ## In Review
-- FLLWUP-24 — "Honor RFC 8628 §3.2's connection-failure slowdown: retry the device-flow token poll after 5s instead of failing terminal unreachable"
 
 ## Needs Human
 
