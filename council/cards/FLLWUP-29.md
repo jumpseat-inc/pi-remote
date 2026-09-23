@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-29
 title: "Pin the attended PKCE path's no-error_description boundary in the login suite"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-3
 goal: The login suite pins that the attended (PKCE) token-exchange path emits no `login.failure.detail` line even when the response body carries an `error_description`, so the dispatch boundary the Skeptic proved only by ad-hoc probe is covered by a committed fixture.
@@ -51,3 +51,17 @@ applies the ruling and cites it; it does not re-ask.
 - **R-MERGE-1 (run-wide)** — This run is unattended. The orchestrator executes
   the deterministic merge check and the merge without pausing for human
   confirmation, including the first merge of the run.
+## Run record — /features-deliver EPIC-3 (2026-09-23)
+
+### Step 1 — recorded mode Direct (authoritative)
+EV-70 owner-only lane. Mechanical, not surface-touching (test-suite-only change, no user-visible surface). Concurs with the recorded routing; no fallback judgment needed. Direct path: no deliberation, no spec file, no skeptic, no judge — merge criteria 1, 2, 5 only. (`council_route` is not exposed in this container; the recorded mode from the dispatch input is authoritative per EV-69/EV-70.)
+
+### Step 7 — handoff (this commit)
+Card set `In Progress` (card + board), validate.py clean. Owner handed the card's own Intent/goal (mechanical path — no spec file) with facilitator-gathered grounding:
+
+- Mechanism: FLLWUP-25's `login.failure.detail` emit lives on the headless `tokenExchangeFailed` dispatch only (`src/login.ts` ~792–803, guarded by the FLLWUP-25 comment); the attended PKCE exchange (~573) prints only the ruled line and never parses the response body on `!res.ok`. The committed FLLWUP-25 boundary fixture covers headless outcomes (deviceDenied / expiredCode / invalidTokenResponse) only — no attended-path fixture exists (the Skeptic proved the attended boundary by ad-hoc probe, uncommitted).
+- Red-at-base base: `81d5c747349d2e1fc58e9cd898c057209c3f3213` — first parent of FLLWUP-25's mechanism merge `c9a570f` (PR #32 squash; branch head `b78f744`). Role: required. The same base FLLWUP-25's skeptic transplanted onto. At this base no detail-line mechanism exists anywhere.
+- Design consequence (stated in the handoff, verbatim rule from the convention): an attended-only negative assertion is GREEN at that base (the attended path printed no detail line even pre-mechanism), so it cannot produce a valid red. The falsifier must be a boundary PAIR in one self-contained describe block: (a) the attended drive — callback completes, token POST answers non-2xx with `error` + `error_description` in the body — asserting outcome `tokenExchangeFailed`, the ruled line printed, and NO line starting with "Details from the server:"; and (b) a headless drive with the same onToken shape asserting the detail line IS printed — the positive control that is red at the base (mechanism absent: no dispatched token-exchange path emits the detail line) and proves the negative assertion's detection machinery is live (same capture harness, same prefix matcher). On a future widening of the emit into shared handling, half (a) goes red — the pin the card exists for.
+- Transplant constraints: the block must use only base-existing helpers (`makeControl`, `attendedDeps`, `runHeadlessLogin`, `runAttendedLogin`, `captureLog`, `tempConfigDir`, `fakeJwt`, `resp`) and must NOT import or reference `sanitizeErrorDescription` or the `login.failure.detail` key — both absent at `81d5c74`; an import/reference failure is a copy-set-dependent red, disqualified as a base measurement. Transplant = the describe block appended to the base tree's own `test/login.test.ts`, no new files.
+- Ruled copy constants for assertions: ruled line "Token exchange failed — run /rc:login to retry. No credentials were saved."; detail prefix "Details from the server:".
+- origin/main at dispatch: `f5235893bf5d6026f801b8c7951f531c1ef54bca` (carries FLLWUP-28's PR #35 fixture; suite 236 tests, 235 pass / 1 skip / 0 fail). SSH :22 to github.com is blocked; a repo-local `url.https://github.com/.insteadOf git@github.com:` rewrite is configured in the shared `.git/config`, so linked worktrees fetch/push over HTTPS — do not debug ssh timeouts.
