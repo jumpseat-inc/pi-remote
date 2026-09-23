@@ -18,6 +18,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 
 ## Ready
+- BUG-1 — "Route /rc:login --headless to the device-flow driver instead of hardcoding attended"
 
 ## In Progress
 
