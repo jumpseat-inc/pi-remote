@@ -18,10 +18,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 - EPIC-3 — "Run integrity and device-flow coverage — the device-flow polish run's four follow-ups"
-- FLLWUP-28 — "Pin cancellation during the device-flow slowdown wait in the login suite"
 - FLLWUP-29 — "Pin the attended PKCE path's no-error_description boundary in the login suite"
 
 ## In Progress
+- FLLWUP-28 — "Pin cancellation during the device-flow slowdown wait in the login suite"
 
 ## In Review
 

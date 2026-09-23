@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-28
 title: "Pin cancellation during the device-flow slowdown wait in the login suite"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-3
 goal: The headless login test suite pins cancellation arriving during the 5-second connection-failure slowdown sleep, asserting the driver returns cancelled and issues no further token poll, so behavior the Skeptic proved only by ad-hoc probe is covered by a committed fixture.
@@ -30,6 +30,14 @@ without a red test.
   demonstrated for the mechanism it pins).
 - No product behavior or copy changes; `bunx tsc --noEmit` exit 0; `bun test`
   green.
+
+## Run record — /features-deliver EPIC-3 (2026-09-23)
+
+### Step 1 — recorded mode Direct (authoritative)
+EV-70 owner-only lane. Mechanical, not surface-touching (test-suite-only change, no user-visible surface). Concurs with the recorded routing; no fallback judgment needed. Direct path: no deliberation, no spec file, no skeptic, no judge — merge criteria 1, 2, 5 only. (`council_route` is not exposed in this container; the recorded mode from the dispatch input is authoritative per EV-69/EV-70.)
+
+### Step 7 — handoff (this commit)
+Card set `In Progress` (card + board), validate.py clean. Owner handed the card's own Intent/goal (mechanical path — no spec file) with facilitator-gathered grounding: mechanism at `src/login.ts` poll-catch `await sleep(5_000); continue` + loop-top cancel check; red-at-base base `b784540bb6d613e353aeab8195dc7c2665b2afb0` (first parent of FLLWUP-24 mechanism merge `d63e942`, where the catch is terminal failure/unreachable with no slowdown sleep); transplant-shape warning (head test file imports `sanitizeErrorDescription`, absent at base — transplant must be a self-contained describe block over base-existing helpers so it loads at base).
 
 ## Run rulings — /features-deliver EPIC-3 (2026-09-23)
 
