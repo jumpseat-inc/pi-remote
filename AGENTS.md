@@ -22,12 +22,14 @@ that affects the wire format, replay, auth, or security model.
 - The unit suite is green: `bunx tsc --noEmit` clean, `bun test` all-pass
   (the only expected non-pass is the Windows-gated credential-ACL skip on
   non-Windows runners).
-- **Not yet loadable in a real `pi` host.** `index.ts` binds a local
-  `ExtensionAPI` stand-in whose non-`on` members (`getSetting`, `env`,
-  `configDir`, `sessionId`, `readActiveBranch`, …) have no counterpart on
-  the installed `pi` SDK, so a real host fails at load. FLLWUP-11 and
-  FLLWUP-12 (`council/cards/`, tracked in `council/board.md`) gate that
-  reconciliation. Do not claim installability until they land.
+- **Loadable in a real `pi` host.** `index.ts` binds the real `ExtensionAPI`
+  surface (FLLWUP-11): a real load through the installed production loader
+  was proven green, and a strict-Proxy load smoke (`test/pi-sdk-load.test.ts`)
+  keeps the entry pinned to the real loader's member names. Handler payload
+  narrowing matches the installed SDK's event payloads (FLLWUP-12): the live
+  subscriptions' handler narrowing was reconciled against the SDK's payload
+  types, with real-shaped fixtures feeding the live path. Do not claim beyond
+  what is proven above.
 - The `/rc:login --headless` device flow (RFC 8628) is implemented in
   `src/login.ts` and routed by the command surface: `index.ts` parses the
   `--headless` token from the command args and selects the device-flow
