@@ -167,3 +167,21 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   Local main fast-forward-unable (diverged by the run's record commits) →
   documented union reconcile via `git merge origin/main` (ort, no conflicts,
   conflict-marker sweep clean, validate clean).
+- Step 13: four follow-up candidates drafted; dedup pass ran (board + open
+  cards checked; no duplicates, no merge targets — FLLWUP-32/33/34 and
+  FLLWUP-13/14/15 cover different subjects). Recorded decision via
+  `council_followup_review` (mode active, confirmation-pending) is **File**
+  for all four — HELD, no card written, resumable by draft title:
+  1. "Add a fold-bookkeeping probe that catches a dropped message_start masked
+     by the message_update fallback" — Mode: File — composite 0.31 < merge
+     threshold 1.00 (active)
+  2. "Ground emission-semantics claims in the event-constructing layer, not
+     only the pass-through emitter" — Mode: File — composite 0.42 < merge
+     threshold 1.00 (active)
+  3. "Watch the duplicated message-family role decoder between translate.ts
+     and pi-sdk-events.ts" — Mode: File — composite 0.50 < merge threshold
+     1.00 (active)
+  4. "Declare or annotate the vendored PiTextContent's omitted optional
+     textSignature field" — Mode: File — composite 0.36 < merge threshold
+     1.00 (active)
+  Awaiting the confirming ruling via ESCALATION.
