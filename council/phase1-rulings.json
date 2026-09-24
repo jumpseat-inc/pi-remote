@@ -2,12 +2,12 @@
   {
     "class": "surface copy",
     "stakes": "card",
-    "reason": "n/a: no person-facing surface — EPIC-5's children change a test header, council records, AGENTS.md prose, internal types, and a regression probe; none renders copy a person sees"
+    "reason": "n/a: no person-facing surface — EPIC-6 changes a vendored type field and a test-file source comment; neither renders copy a person sees"
   },
   {
     "class": "state and field naming",
     "stakes": "card",
-    "reason": "n/a: no run-owned state or field name is chosen by this epic — FLLWUP-38's textSignature is vendored verbatim from the installed SDK dist types"
+    "reason": "n/a: no field name is chosen by this run — FLLWUP-39's thinkingSignature/thoughtSignature are vendored verbatim from the installed SDK dist types, not named here"
   },
   {
     "class": "uncertainty display",

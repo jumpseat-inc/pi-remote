@@ -53,3 +53,38 @@ Observed as met when FLLWUP-39 and FLLWUP-40 are both `Done`:
   implementation dispatch (one branch and PR) covering both, one Skeptic
   verification covering both, and one judge `PASS` covering both.
 - `bunx tsc --noEmit` exits 0 and `bun test` is green throughout.
+## Run rulings — /features-deliver EPIC-6 (2026-09-24)
+
+Recorded human decisions, for this run only; immutable for the run and binding
+on every seat, `steward` included. A runner that meets a dispute covered here
+applies the ruling and cites it; it does not re-ask.
+
+- **R-ONE-RUN-1 (run-wide)** — This epic is delivered by a **single**
+  `council-runner` covering both children in one council run: exactly one
+  `owner` implementation dispatch (one branch, one PR) implements FLLWUP-39
+  and FLLWUP-40 together first, then exactly one `skeptic` verification and
+  one `judge` evaluation cover both. No per-card runner duplication.
+- **R-PUSH-1 (run-wide)** — Run-scoped authorization: the Phase-1 record
+  (`council/phase1-rulings.json`, `council/phase1-authorizations.json`,
+  `council/run-strategy.json`) and the step-12 record commit may be committed
+  and pushed directly to `main` for this run only. Never extended to any later
+  run.
+- **R-ADMIN-1 (run-wide)** — Run-scoped authorization:
+  `gh pr merge <PR> --squash --admin --match-head-commit <X>` may be used if a
+  `main` ruleset blocks an ordinary merge. Unused while `main` is unprotected.
+  Never extended to any later run.
+- **R-MERGE-1 (run-wide)** — This run is unattended. The orchestrator (and the
+  runner under the deterministic merge check) executes the merge check and the
+  merge without pausing for human confirmation, including the first merge of
+  the run.
+- **R-CLASS-1 (run-wide)** — Phase-1 class rulings are recorded at
+  `council/phase1-rulings.json`: `surface copy`, `state and field naming`,
+  `uncertainty display`, and `error and empty-state text` are structured
+  `n/a`; `gate user-visibility` is ruled **information only** (the recorded
+  mode is read mechanically by the merge check and reported in the run ledger,
+  never surfaced as a blocking human prompt).
+
+**Recorded execution mode (orchestrator routing, EV-69):** **Verify** — one
+owner, one skeptic, one judge; all five deterministic-merge criteria with
+criterion 3 scoped to the single Verify skeptic dispatch. A generator seat in
+the runner subtree upgrades the effective mode to Deliberate.

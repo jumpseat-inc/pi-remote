@@ -1,14 +1,13 @@
 {
-  "run": "EPIC-5",
-  "recordedAt": "2026-09-24T15:00:00Z",
-  "seat": "steward",
-  "dispatch": "job-1",
-  "question": "Execution order for FLLWUP-32..FLLWUP-38 and whether any child should be retired or deferred.",
-  "ruling": "Run all seven children — retire none, defer none — in this order: FLLWUP-34, FLLWUP-35, FLLWUP-38, FLLWUP-37, FLLWUP-32, FLLWUP-33, FLLWUP-36.",
-  "binding_constraints": [
-    "FLLWUP-34 first (precondition FLLWUP-12 Done; next run reads AGENTS.md first).",
-    "FLLWUP-38 immediately before FLLWUP-37; never interleave anything touching src/pi-sdk-events.ts.",
-    "FLLWUP-37 is a tracking/scope deliverable only; it must not attempt to lift G-12 (steward authority).",
-    "FLLWUP-36 last."
+  "run": "EPIC-6",
+  "recordedAt": "2026-09-24T00:00:00Z",
+  "source": "human run directive at /features-deliver EPIC-6 intake",
+  "delivery_model": "A single council-runner covers both children in one council run: one owner implementation dispatch (one branch and one PR) implements FLLWUP-39 and FLLWUP-40 together first, then one Skeptic verification and one judge PASS cover both.",
+  "build_order": ["FLLWUP-39", "FLLWUP-40"],
+  "rationale": "EPIC-6's approved goal and Intent encode this single-unit delivery; the two changes are small, non-overlapping, and share the src/pi-sdk-events.ts / test/translate.test.ts seam.",
+  "constraints": [
+    "Exactly one owner implementation dispatch across both cards.",
+    "Exactly one Skeptic verification and one judge evaluation covering both.",
+    "No per-card runner duplication."
   ]
 }
