@@ -138,6 +138,15 @@ export interface ToolResultEventBase {
 
 export interface UIPromptStartEvent { type: "ui_prompt_start"; reason: "ui_prompt"; kind: string; title?: string }
 export interface UIPromptEndEvent { type: "ui_prompt_end"; reason: "ui_prompt"; kind: string; title?: string }
+
+/** Real ToolExecution*Event payloads (FLLWUP-94; types.d.ts:608–628;
+ * agent-session.js:528–553 forwards them verbatim to extension handlers).
+ * args/partialResult/result are `any` in the real SDK — bash's onUpdate
+ * passes the tool's own ToolResult-shaped object ({content, details},
+ * bundle chunk-JVUZSMYM.js), never a string. */
+export interface ToolExecutionStartEvent { type: "tool_execution_start"; toolCallId: string; toolName: string; args: unknown }
+export interface ToolExecutionUpdateEvent { type: "tool_execution_update"; toolCallId: string; toolName: string; args: unknown; partialResult: unknown }
+export interface ToolExecutionEndEvent { type: "tool_execution_end"; toolCallId: string; toolName: string; result: unknown; isError: boolean }
 export interface TurnStartEvent { type: "turn_start"; turnIndex: number; timestamp: number }
 /** Real TurnEndEvent minus the BoundaryState fields pi-remote's fold never
  * consumes (entries/context/continue/outcome are pi boundary-machinery

@@ -705,6 +705,31 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     }
     forward({ event: "tool_result", messageId: e.toolCallId, toolCallId: e.toolCallId, content });
   });
+  // FLLWUP-94 — the execution-lane trio. The real payloads are
+  // {type, toolCallId, toolName, args?/partialResult?/result?, isError}
+  // (dist/core/extensions/types.d.ts:608–628; agent-session.js:528–553
+  // forwards them verbatim; vendored mirrors in src/pi-sdk-events.ts).
+  // toolCallId/toolName are the string identity fields every variant carries;
+  // args/partialResult/result are `any` in the real SDK (bash's onUpdate
+  // passes the tool's own ToolResult-shaped object, never a string), so they
+  // flow through unvalidated-by-shape and translate.ts's presence-based
+  // conditional emission (FLLWUP-3 §4 split) decides the frames. isError is
+  // boolean in the real payload; a non-boolean is malformed → drop (S-O2).
+  deps.on("tool_execution_start", (ev) => {
+    const e = ev as { toolCallId?: unknown; toolName?: unknown } | null | undefined;
+    if (!e || typeof e.toolCallId !== "string" || typeof e.toolName !== "string") return;
+    forward({ event: "tool_execution_start", toolCallId: e.toolCallId, toolName: e.toolName });
+  });
+  deps.on("tool_execution_update", (ev) => {
+    const e = ev as { toolCallId?: unknown; toolName?: unknown; args?: unknown; partialResult?: unknown } | null | undefined;
+    if (!e || typeof e.toolCallId !== "string" || typeof e.toolName !== "string") return;
+    forward({ event: "tool_execution_update", toolCallId: e.toolCallId, args: e.args, partialResult: e.partialResult });
+  });
+  deps.on("tool_execution_end", (ev) => {
+    const e = ev as { toolCallId?: unknown; toolName?: unknown; result?: unknown; isError?: unknown } | null | undefined;
+    if (!e || typeof e.toolCallId !== "string" || typeof e.toolName !== "string" || typeof e.isError !== "boolean") return;
+    forward({ event: "tool_execution_end", toolCallId: e.toolCallId, result: e.result, isError: e.isError });
+  });
   deps.on("ui.confirm", (ev) => {
     const e = ev as { promptKind?: unknown; prompt?: unknown } | null | undefined;
     if (!e || typeof e.promptKind !== "string" || typeof e.prompt !== "string") return;
