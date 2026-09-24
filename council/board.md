@@ -20,9 +20,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-36 — "Ground emission-semantics claims in the event-constructing layer, not only the pass-through emitter"
 
 ## In Progress
-- FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 
 ## In Review
+- FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 
 ## Needs Human
 
