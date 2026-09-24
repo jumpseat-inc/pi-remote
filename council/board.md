@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 
 ## In Progress
-- FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 
 ## In Review
+- FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 
 ## Needs Human
 
