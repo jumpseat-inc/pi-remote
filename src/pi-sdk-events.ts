@@ -7,7 +7,7 @@
  * UIPromptStartEvent ~629, UIPromptEndEvent ~636, TurnStartEvent ~643,
  * TurnEndEvent ~649, AgentStartEvent ~567, AgentSettledEvent ~624) and
  * pi-ai dist/types.d.ts (AgentMessage union via pi-agent-core types.d.ts:318;
- * AssistantMessageEvent type-union at :470; content blocks :242–266).
+ * AssistantMessageEvent type-union at :470; content blocks :242–269).
  * Re-diff on SDK upgrades. Only fields pi-remote consumes are declared; the
  * real SDK carries more. The SDK is NOT a dependency (R-TYPE-1).
  *
@@ -33,16 +33,38 @@
  * throwing; runner.js emitToolResult 803–849).
  */
 
-/** Real pi-ai content blocks (pi-ai dist/types.d.ts:242–266; TextContent
+/** Real pi-ai content blocks (pi-ai dist/types.d.ts:242–269; TextContent
  *  declared at :242–246, textSignature at :245). */
 export interface PiTextContent {
   type: "text";
   text: string;
   textSignature?: string;
 }
-export interface PiThinkingContent { type: "thinking"; thinking: string }
+/** Real ThinkingContent (pi-ai dist/types.d.ts:247–255, thinkingSignature
+ *  at :250). FLLWUP-39: mirrored so the vendored surface states the field
+ *  the real SDK carries; pi-remote never reads or sets signature payloads.
+ *  The adjacent dist field `redacted?: boolean` (:254) is deliberately
+ *  omitted: pi-remote treats redacted thinking as inert payload and never
+ *  consumes the flag. */
+export interface PiThinkingContent {
+  type: "thinking";
+  thinking: string;
+  thinkingSignature?: string;
+}
 export interface PiImageContent { type: "image"; data: string; mimeType: string }
-export interface PiToolCall { type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> }
+/** Real ToolCall (pi-ai dist/types.d.ts:261–269, thoughtSignature at :266);
+ *  `arguments` narrowed JsonObject → Record<string, unknown>. FLLWUP-39:
+ *  thoughtSignature mirrored so the vendored surface states the field the
+ *  real SDK carries (it lives on the tool-call block, not on thinking).
+ *  The adjacent dist field `namespace?: string` (:268, OpenAI Responses
+ *  namespaced tools) is deliberately omitted: never consumed. */
+export interface PiToolCall {
+  type: "toolCall";
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  thoughtSignature?: string;
+}
 
 /**
  * Real AgentMessage union (pi-agent-core types.d.ts:318; pi-ai types.d.ts

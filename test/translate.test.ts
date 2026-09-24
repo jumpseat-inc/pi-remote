@@ -428,9 +428,14 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
   test("FLLWUP-12 static pairing: translate.ts messageFrameRoleLocal decodes pi-sdk-events.ts agentMessageId ids (G-12 keeps them separate, so pin both directions)", async () => {
     const mint = await Bun.file(new URL("../src/pi-sdk-events.ts", import.meta.url)).text();
     const fold = await Bun.file(new URL("../src/translate.ts", import.meta.url)).text();
-    // Both files must carry the same role:timestamp derivation. If either
-    // side changes its minting/decoding rule, this fails until both move
-    // together (or the pairing test is consciously updated).
+    // Textual-drift tripwire, not a behavioral guard (FLLWUP-40; see
+    // docs/ROLE-DECODER-DUPLICATION.md, "What pins the pairing today"). It
+    // pins (1) derivation-text presence — `messageId.indexOf(":")` in both
+    // files — and (2) role vocabulary within the 400-char signature windows.
+    // The windows include the return-type annotation, so the vocabulary
+    // assertions are satisfied by the annotation regardless of the body's
+    // decode comparison: the value-level decode rule itself is NOT pinned
+    // here, and a silent decode regression can pass this test.
     const parse = (src: string) => src.match(/messageId\.indexOf\(":"\)/) !== null;
     expect(parse(mint)).toBe(true); // messageFrameRole in pi-sdk-events.ts
     expect(parse(fold)).toBe(true); // messageFrameRoleLocal in translate.ts
