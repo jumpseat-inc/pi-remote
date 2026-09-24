@@ -3,7 +3,7 @@ id: FLLWUP-40
 title: "Correct the FLLWUP-12 pairing test's source comment, which overstates what the test pins"
 state: Backlog
 owner: null
-epic: null
+epic: EPIC-6
 goal: correct the FLLWUP-12 static pairing test's source comment in test/translate.test.ts (~:431-434) so it matches what the test actually pins (wording to match the merged docs/ROLE-DECODER-DUPLICATION.md).
 ---
 

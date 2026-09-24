@@ -16,6 +16,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 
 ## Ready
+- EPIC-6 — "SDK vendoring residuals — FLLWUP-39/40 delivered in one council run"
 
 ## In Progress
 
