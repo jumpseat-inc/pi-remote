@@ -68,6 +68,20 @@ export interface Injector {
    * alongside the outbound `pi.human_input` raise.
    */
   registerPrompt(input: { promptId: string; kind: string; prompt: string }): { occurrence: number };
+  /**
+   * FLLWUP-94 (fix cycle 2) — echo correlation. Pop the oldest pending
+   * composer-injected client messageId whose injected text matches `text`
+   * (both sides trimmed). The host uses it to forward the echoed user
+   * message under the CLIENT's AG-UI messageId so the web client's existing
+   * local-row dedup (`local:<messageId>`) swallows the echo. FIFO per text:
+   * pi appends injected messages in injection order and emits message_start
+   * in append order. TUI-typed turns never enter the registry, so they never
+   * claim a client id. Bounded: at most 64 pending entries (oldest dropped).
+   * Approval-response fallbacks (steered_fallback) never register: the
+   * client does not fold them optimistically, so their echo must render
+   * everywhere including the sending device.
+   */
+  claimEcho(text: string): string | undefined;
 }
 
 export function createInjector(deps: InjectDeps): Injector {
@@ -80,6 +94,11 @@ export function createInjector(deps: InjectDeps): Injector {
   let announcedFallback = false;
   const hasAnnounced = deps.hasAnnouncedFallback ?? (() => announcedFallback);
   const markAnnounced = deps.markAnnouncedFallback ?? (() => { announcedFallback = true; });
+
+  // FLLWUP-94 (fix cycle 2) — pending composer-injected echoes: (client AG-UI
+  // messageId, injected text). Recorded ONLY on the composer inject path;
+  // bounded at 64 (oldest dropped).
+  const pendingEcho: { text: string; messageId: string }[] = [];
 
   const FALLBACK_STATEMENT =
     "This reply was surfaced as a steering message instead of being delivered directly: this host cannot resolve the pending prompt directly.";
@@ -169,6 +188,10 @@ export function createInjector(deps: InjectDeps): Injector {
         const text = a.parts.join("");
         const deliverAs = pickDeliverAs(deps.isStreaming(), a.name).deliverAs;
         await deps.sendUserMessage(text, deliverAs === undefined ? undefined : { deliverAs });
+        // FLLWUP-94 (fix cycle 2): remember the client's messageId so the
+        // host can forward this message's echo under the client id.
+        pendingEcho.push({ text: text.trim(), messageId: frame.messageId });
+        if (pendingEcho.length > 64) pendingEcho.shift();
         return { kind: "injected", deliverAs };
       }
       if (frame.type === "CUSTOM" && frame.name === "pi.human_input.response") {
@@ -192,5 +215,13 @@ export function createInjector(deps: InjectDeps): Injector {
     return { occurrence: next };
   }
 
-  return { handle, registerPrompt };
+  function claimEcho(text: string): string | undefined {
+    const wanted = text.trim();
+    const idx = pendingEcho.findIndex((e) => e.text === wanted);
+    if (idx === -1) return undefined;
+    const removed = pendingEcho.splice(idx, 1);
+    return removed[0]?.messageId;
+  }
+
+  return { handle, registerPrompt, claimEcho };
 }

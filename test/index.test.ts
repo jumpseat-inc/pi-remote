@@ -1387,3 +1387,126 @@ describe("FLLWUP-94: tool_execution_* live wiring (R-PAYLOAD-1 real shapes)", ()
     h.relay.stop();
   });
 });
+
+// ---------------------------------------------------------------------------
+// FLLWUP-94 (fix cycle 2) — live user-turn echo. The real SDK delivers a USER
+// message as a whole message_start/message_end pair ({type, message} — no
+// assistantMessageEvent; agent-session.js forwards message_* with only
+// {message}), so deps.on("message_update") never fires for a locally typed
+// (TUI) turn and the live fold emits nothing — the turn appeared only via the
+// reload snapshot. The fix: message_start with role "user" forwards the
+// message's text as a synthetic message_update text event, so the fold emits
+// TEXT_MESSAGE_START{role:user} + TEXT_MESSAGE_CONTENT live and message_end
+// closes with TEXT_MESSAGE_END.
+//
+// Hard constraint (no double render): the web client optimistically folds its
+// own sent message (jumpseat ag-ui-timeline applyLocalUserMessage,
+// eventId local:<messageId>) and dedupes an inbound user START by messageId
+// or local:<messageId>. The injection path (src/inject.ts) sends only the
+// text — sendUserMessage → prompt() mints the pi user message (and its
+// timestamp) internally, so the client's AG-UI messageId cannot ride through
+// injection. Therefore the host correlates: the injector records the client
+// messageId per injected text, and when the echoed user message_start's text
+// matches, the echo is forwarded under the CLIENT's id — the existing client
+// dedup swallows it (jumpseat test "an inbound user-role START with a
+// messageId matching a local row adds no entry"); a TUI turn (never injected
+// by the relay) echoes under the derived user:<timestamp> id and renders live
+// on every connected client (jumpseat test "an inbound user-role START with
+// an unknown messageId opens one user row").
+// ---------------------------------------------------------------------------
+
+/** Real stored user-message shape (pi-agent-core UserMessage). */
+function realUserMessage(text: string, timestamp: number): Record<string, unknown> {
+  return { role: "user", content: [{ type: "text", text }], timestamp };
+}
+
+function textFrames(h: Harness): { type: string; messageId?: string; role?: string; delta?: string }[] {
+  return h.relay.received
+    .map((e) => e.frame as { type?: string; messageId?: string; role?: string; delta?: string })
+    .filter((f) => f?.type === "TEXT_MESSAGE_START" || f?.type === "TEXT_MESSAGE_CONTENT" || f?.type === "TEXT_MESSAGE_END")
+    .map((f) => ({ type: f.type!, messageId: f.messageId, role: f.role, delta: f.delta }));
+}
+
+function sendUserTriple(h: Harness, seq: number, messageId: string, text: string): void {
+  h.relay.broadcast({ v: 1, seq, ack: 0, deviceId: "dev-web", frame: { type: "TEXT_MESSAGE_START", messageId, role: "user" } });
+  h.relay.broadcast({ v: 1, seq: seq + 1, ack: 0, deviceId: "dev-web", frame: { type: "TEXT_MESSAGE_CONTENT", messageId, delta: text } });
+  h.relay.broadcast({ v: 1, seq: seq + 2, ack: 0, deviceId: "dev-web", frame: { type: "TEXT_MESSAGE_END", messageId } });
+}
+
+describe("FLLWUP-94 fix cycle 2: live user-turn echo (no assistantMessageEvent on user messages)", () => {
+  test("TUI user turn: real-shaped message_start+message_end (no assistantMessageEvent) → full user TEXT triple live, one derived id", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    // The REAL SDK path for a user message: message_start then message_end,
+    // whole message, no assistantMessageEvent, no message_update.
+    h.emit("message_start", { type: "message_start", message: realUserMessage("typed in the tui", 1234) });
+    h.emit("message_end", { type: "message_end", message: realUserMessage("typed in the tui", 1234) });
+    await h.waitFor(() => textFrames(h).some((f) => f.type === "TEXT_MESSAGE_END"));
+
+    const frames = textFrames(h);
+    const types = frames.map((f) => f.type);
+    expect(types).toEqual(["TEXT_MESSAGE_START", "TEXT_MESSAGE_CONTENT", "TEXT_MESSAGE_END"]);
+    expect(frames[0]!.role).toBe("user");
+    expect(frames[0]!.messageId).toBe("user:1234"); // payload-derived id (role:timestamp)
+    expect(frames[1]!.delta).toBe("typed in the tui");
+    expect(new Set(frames.map((f) => f.messageId)).size).toBe(1); // one id across the triple
+    h.relay.stop();
+  });
+
+  test("browser-typed turn: the echoed TEXT triple carries the CLIENT's messageId so the existing client dedup swallows it", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    // The web client sends its composer triple inbound; the injector injects
+    // only the text (client messageId cannot ride through sendUserMessage).
+    sendUserTriple(h, 201, "client-1", "hello there");
+    await h.waitFor(() => h.sendUserMessages[0] === "hello there");
+
+    // pi echoes the appended user message as message_start/message_end.
+    h.emit("message_start", { type: "message_start", message: realUserMessage("hello there", 5678) });
+    h.emit("message_end", { type: "message_end", message: realUserMessage("hello there", 5678) });
+    await h.waitFor(() => textFrames(h).some((f) => f.type === "TEXT_MESSAGE_END"));
+
+    const starts = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_START");
+    expect(starts).toHaveLength(1); // exactly one triple — no second render
+    expect(starts[0]!.messageId).toBe("client-1"); // CLIENT id → client dedup (local:client-1) matches
+    expect(starts[0]!.role).toBe("user");
+    const contents = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_CONTENT");
+    expect(contents).toHaveLength(1);
+    expect(contents[0]!.delta).toBe("hello there");
+    expect(contents[0]!.messageId).toBe("client-1");
+    const ends = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_END");
+    expect(ends).toHaveLength(1);
+    expect(ends[0]!.messageId).toBe("client-1");
+    h.relay.stop();
+  });
+
+  test("no misattribution: a TUI turn never claims a pending browser id, and the browser id survives for its own echo", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    // A browser turn is pending echo correlation...
+    sendUserTriple(h, 301, "client-9", "shared");
+    await h.waitFor(() => h.sendUserMessages[0] === "shared");
+
+    // ...but the NEXT user message is a TUI turn with different text: it must
+    // echo under the derived id, never under client-9.
+    h.emit("message_start", { type: "message_start", message: realUserMessage("typed in the tui", 99) });
+    h.emit("message_end", { type: "message_end", message: realUserMessage("typed in the tui", 99) });
+    await h.waitFor(() => textFrames(h).some((f) => f.type === "TEXT_MESSAGE_END"));
+    const tuiStart = textFrames(h).find((f) => f.type === "TEXT_MESSAGE_START");
+    expect(tuiStart!.messageId).toBe("user:99");
+
+    // The pending browser id is still unconsumed: its own echo claims it.
+    h.emit("message_start", { type: "message_start", message: realUserMessage("shared", 100) });
+    h.emit("message_end", { type: "message_end", message: realUserMessage("shared", 100) });
+    await h.waitFor(() => textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_END").length === 2);
+    const secondStart = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_START")[1];
+    expect(secondStart!.messageId).toBe("client-9");
+    h.relay.stop();
+  });
+});

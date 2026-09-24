@@ -19,7 +19,7 @@
 import { createTransport, type TransportHandle, type TransportStatusEvent, type InboundEnvelope, type AgUiFrameLike } from "./src/transport";
 import { createState, translate, type PiEvent, type ToolResultContentBlock, type TranslateState, type UIPromptKind } from "./src/translate";
 import { type DepsOnEvent, type PiEventHandler, type PiExtensionContext, type PiSDKOnEvent } from "./src/pi-sdk-on";
-import { agentMessageId, messageFrameRole, realAssistantMessageEventOf, roleOfAgentMessage } from "./src/pi-sdk-events"; // FLLWUP-12: real payload derivation (R-TYPE-1 vendored shapes)
+import { agentMessageId, messageFrameRole, realAssistantMessageEventOf, roleOfAgentMessage, userMessageText } from "./src/pi-sdk-events"; // FLLWUP-12: real payload derivation (R-TYPE-1 vendored shapes)
 import { resolvePiAgentDir, readHostSettings, hostMetadataFromOs } from "./src/pi-host";
 import { homedir, platform as osPlatform, arch as osArch } from "node:os";
 import { createInjector } from "./src/inject";
@@ -196,6 +196,12 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       transportRef.handle?.send({ type: "CUSTOM", name, value: { pi: name, data: value } });
     },
   });
+
+  // FLLWUP-94 (fix cycle 2) — pi-derived user message id → client AG-UI
+  // messageId, for echoed composer-injected turns. Set on message_start when
+  // the echo's text matches a pending injection; consumed on message_end
+  // (bounded at 64, oldest dropped, as a leak guard).
+  const echoSwap = new Map<string, string>();
 
   function applyFooter(next: FooterState, source?: ErrorSource): void {
     footer = next;
@@ -686,6 +692,42 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     const role = roleOfAgentMessage(e?.message);
     const messageId = agentMessageId(e?.message);
     if (!role || messageId === undefined) return;
+    // FLLWUP-94 (fix cycle 2) — live user-turn echo. The real SDK delivers a
+    // USER message as a whole message_start/message_end pair with NO
+    // assistantMessageEvent (agent-session.js:494-501 forwards only {message}),
+    // so deps.on("message_update") never fires for a locally typed turn and
+    // the live fold emitted nothing — the turn appeared only via the reload
+    // snapshot. Forward the message's text as a synthetic text event: the fold
+    // emits TEXT_MESSAGE_START{role:user} + TEXT_MESSAGE_CONTENT live, and
+    // message_end closes with TEXT_MESSAGE_END.
+    if (role === "user") {
+      const text = userMessageText(e?.message);
+      if (text !== undefined && text.length > 0) {
+        // Echo correlation (no double render): the web client optimistically
+        // folds its own sent message and dedupes an inbound user START by
+        // messageId or `local:<messageId>`. The injection path sends only the
+        // text — sendUserMessage → prompt() mints the pi user message's
+        // timestamp internally, so the client's AG-UI messageId cannot ride
+        // through injection. The injector remembers the client messageId per
+        // injected text; when the echo's text matches, forward the whole
+        // echo (start + synthetic update, and its end below) under the
+        // CLIENT's id so the existing client dedup swallows it. A TUI turn
+        // (never injected by the relay) keeps the derived user:<timestamp>
+        // id and renders live on every connected client.
+        const clientMsgId = injector.claimEcho(text);
+        if (clientMsgId !== undefined) {
+          echoSwap.set(messageId, clientMsgId);
+          if (echoSwap.size > 64) {
+            const oldest = echoSwap.keys().next().value;
+            if (oldest !== undefined) echoSwap.delete(oldest);
+          }
+        }
+        const outId = echoSwap.get(messageId) ?? messageId;
+        forward({ event: "message_start", messageId: outId, role });
+        forward({ event: "message_update", messageId: outId, events: [{ kind: "text", delta: text }] });
+        return;
+      }
+    }
     forward({ event: "message_start", messageId, role });
   });
   deps.on("message_update", (ev) => {
@@ -693,13 +735,14 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     const messageId = agentMessageId(e?.message);
     const local = realAssistantMessageEventOf(e?.assistantMessageEvent);
     if (messageId === undefined || local === null) return;
-    forward({ event: "message_update", messageId, events: [local] });
+    forward({ event: "message_update", messageId: echoSwap.get(messageId) ?? messageId, events: [local] });
   });
   deps.on("message_end", (ev) => {
     const e = ev as { message?: unknown } | null | undefined;
     const messageId = agentMessageId(e?.message);
     if (messageId === undefined || roleOfAgentMessage(e?.message) === undefined) return;
-    forward({ event: "message_end", messageId });
+    forward({ event: "message_end", messageId: echoSwap.get(messageId) ?? messageId });
+    echoSwap.delete(messageId); // the swap lives exactly one message lifecycle
   });
   deps.on("tool_result", (ev) => {
     const e = ev as { toolCallId?: unknown; content?: unknown } | null | undefined;

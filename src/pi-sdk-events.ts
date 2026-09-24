@@ -192,6 +192,33 @@ export function agentMessageId(msg: unknown): string | undefined {
 }
 
 /**
+ * FLLWUP-94 (fix cycle 2) — extract the text of a user AgentMessage. Real
+ * content shape is `string | (TextContent | ImageContent)[]`; text blocks
+ * join with "\n" (matching sendUserMessage's own textParts.join("\n")
+ * normalization, agent-session.js:1174). Total: non-objects, non-user roles,
+ * or malformed content → undefined; never throws. Image-only content yields
+ * "" (present but empty — callers gate on length).
+ */
+export function userMessageText(msg: unknown): string | undefined {
+  if (roleOfAgentMessage(msg) !== "user") return undefined;
+  const content = (msg as { content?: unknown }).content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return undefined;
+  let out = "";
+  for (const b of content) {
+    if (
+      typeof b === "object" &&
+      b !== null &&
+      (b as { type?: unknown }).type === "text" &&
+      typeof (b as { text?: unknown }).text === "string"
+    ) {
+      out += (out ? "\n" : "") + (b as { text: string }).text;
+    }
+  }
+  return out;
+}
+
+/**
  * Back-derive the role from an agentMessageId-minted string
  * (`<role>:<timestamp>`); undefined for anything else.
  */
