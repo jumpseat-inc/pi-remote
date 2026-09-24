@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-12
 title: "Reconcile handler payload narrowing with real SDK event payloads"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-4
 goal: Every forward() handler's defensive narrowing matches the real SDK's actual event payload shapes, so no live event is silently dropped by a field mismatch between the stand-in's assumed shape and the real payload.
@@ -62,3 +62,12 @@ applies the ruling and cites it; it does not re-ask.
 **Recorded execution mode (orchestrator routing, EV-69):** **Verify** — one
 owner, one skeptic, one judge; all five deterministic-merge criteria with
 criterion 3 scoped to the single Verify skeptic dispatch.
+
+## Run record
+
+- Runner took the card (mechanical path — narrowly-scoped, unambiguous,
+  single-area change; no deliberation). Routing note: `council_route` is not
+  available to this container's tool set; the recorded mode **Verify** from
+  the dispatch input is applied as authoritative and not re-recorded.
+- Surface-touching bit: **false** (handler narrowing and fixtures only — no
+  visible surface, copy, empty state, or error state a person reads).
