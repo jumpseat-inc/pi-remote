@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-39
 title: "Declare or annotate the vendored PiThinkingContent's omitted optional thinkingSignature/thoughtSignature fields"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-6
 goal: declare or annotate the omitted optional `thinkingSignature`/`thoughtSignature` fields on the vendored PiThinkingContent type (verify against the installed dist types as the first step).

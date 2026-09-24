@@ -15,10 +15,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 - EPIC-6 — "SDK vendoring residuals — FLLWUP-39/40 delivered in one council run"
-- FLLWUP-39 — "Declare or annotate the vendored PiThinkingContent's omitted optional thinkingSignature/thoughtSignature fields"
-- FLLWUP-40 — "Correct the FLLWUP-12 pairing test's source comment, which overstates what the test pins"
 
 ## In Progress
+- FLLWUP-39 — "Declare or annotate the vendored PiThinkingContent's omitted optional thinkingSignature/thoughtSignature fields"
+- FLLWUP-40 — "Correct the FLLWUP-12 pairing test's source comment, which overstates what the test pins"
 
 ## In Review
 
