@@ -97,3 +97,12 @@ the runner subtree upgrades the effective mode to Deliberate.
   Non-blocking note: runtime mirror remains a 3-key sanity check (unchanged,
   scope-excluded); first test's docstring claim outside this card's scope.
   No open objections. Verify-cycle count: 1 of 3 (no fix-and-reverify rounds).
+- Step 10 judge (job-9.3): **PASS** at head `e4fae7c`. Basis: the retitled
+  header accurately states what the test enforces; the conditional-type const
+  is a genuine compile-time gate (non-vacuous per the Skeptic's phantom
+  injection: tsc TS2322 at the const, bun test provably blind); gates green
+  (tsc exit 0; 273/1/0 with the Windows-gated skip the only non-pass); no
+  weakening (runtime mirror and its assertions retained verbatim; `probe`
+  removal observation-free). Human merge gate (step 11) substituted per
+  R-MERGE-1: deterministic merge check executed by this runner (mode Verify,
+  criterion 3 scoped to the single Verify skeptic dispatch).
