@@ -123,3 +123,10 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   overstated compile-time claim"; (2) "Correct the member-count discrepancy
   in FLLWUP-11's record"; (3) "Update AGENTS.md's 'Current state' once
   FLLWUP-12 lands". Awaiting the confirming ruling via ESCALATION.
+- Step 13 follow-ups APPLIED (resumed runner): the product-owner ruling
+  (job-13) ratified all three as File; recorded verbatim as FLLWUP-32,
+  FLLWUP-33, FLLWUP-34 on the board (Backlog). [Post-run correction,
+  FLLWUP-33] This record's "twelve" wording and "none exist on the real
+  ExtensionAPI" phrasing are superseded by the audit's count: 13 non-`on`
+  base members, of which the 2 kept members DO exist on the real SDK
+  (typed-to-real); only the removed 11 had no counterpart.

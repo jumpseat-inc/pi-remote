@@ -5,6 +5,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- FLLWUP-34 — "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
+- FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
+- FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 - FLLWUP-26 — "Scope §1.2/§5.7's 'security decision' vocabulary across per-delivery grant enforcement"
 - FLLWUP-19 — "Align PI-SPEC §7.2's no-lookup-state prose with the governing spec's server-state position"
 - FLLWUP-20 — "Align PI-SPEC §7.3's per-device lastAckedSeq sentence with the shipped single-watermark reality"
