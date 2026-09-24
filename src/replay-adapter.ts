@@ -27,6 +27,11 @@ import type { JsonlEntry, JsonlContentBlock, ToolResultContentBlock } from "./tr
 export interface SessionEntry {
   /** Real SDK: `SessionEntryBase.id`. Matches `JsonlEntry.entryId`. */
   id: string;
+  /** Real SDK: `SessionEntryBase.parentId` (null for a root entry). */
+  parentId: string | null;
+  /** Real SDK: `SessionEntryBase.timestamp`. Unused by the adapter.
+   * (Real SDK is ISO datetime strings; the fold ignores timestamps.) */
+  timestamp?: unknown;
   type:
     | "message"
     | "usage"
@@ -63,13 +68,22 @@ export interface SessionEntry {
   details?: unknown; // custom_message
 }
 
-type MessageBlocks = Exclude<NonNullable<NonNullable<SessionEntry["message"]>["content"]>, string>;
+type MessageBlock =
+  | { type: "text"; text: string }
+  | { type: "thinking"; thinking: string }
+  | { type: "toolCall"; id: string }
+  | { type: "image"; data?: unknown }
+  | { type: string; [k: string]: unknown };
+type MessageBlocks = MessageBlock[];
 
 function mapMessageContent(blocks: MessageBlocks): JsonlContentBlock[] {
   const out: JsonlContentBlock[] = [];
   for (const b of blocks) {
-    if (b.type === "text") out.push({ type: "text", text: b.text });
-    else if (b.type === "thinking") out.push({ type: "thought", text: b.thinking });
+    if (b.type === "text" && typeof (b as { text?: unknown }).text === "string") {
+      out.push({ type: "text", text: (b as { text: string }).text });
+    } else if (b.type === "thinking" && typeof (b as { thinking?: unknown }).thinking === "string") {
+      out.push({ type: "thought", text: (b as { thinking: string }).thinking });
+    }
     // toolCall blocks carry no user-visible text for the AG-UI snapshot;
     // image blocks are not representable on the text-only JsonlContentBlock
     // surface — both are skipped.
@@ -80,8 +94,11 @@ function mapMessageContent(blocks: MessageBlocks): JsonlContentBlock[] {
 function mapToolResultContent(blocks: MessageBlocks): ToolResultContentBlock[] {
   const out: ToolResultContentBlock[] = [];
   for (const b of blocks) {
-    if (b.type === "text") out.push({ type: "text", text: b.text });
-    else if (b.type === "image" && typeof b.data === "string") out.push({ type: "image", image: b.data });
+    if (b.type === "text" && typeof (b as { text?: unknown }).text === "string") {
+      out.push({ type: "text", text: (b as { text: string }).text });
+    } else if (b.type === "image" && typeof (b as { data?: unknown }).data === "string") {
+      out.push({ type: "image", image: (b as { data: string }).data });
+    }
   }
   return out;
 }
@@ -102,14 +119,14 @@ export function sessionEntriesToJsonl(entries: SessionEntry[]): JsonlEntry[] {
             content:
               typeof msg.content === "string"
                 ? [{ type: "text", text: msg.content }]
-                : mapMessageContent(msg.content ?? []),
+                : mapMessageContent((msg.content ?? []) as MessageBlocks),
           });
         } else if (msg.role === "assistant") {
           out.push({
             kind: "message",
             entryId: e.id,
             role: "assistant",
-            content: mapMessageContent(msg.content ?? []),
+            content: mapMessageContent((msg.content ?? []) as MessageBlocks),
           });
         } else if (msg.role === "toolResult") {
           out.push({
@@ -119,7 +136,7 @@ export function sessionEntriesToJsonl(entries: SessionEntry[]): JsonlEntry[] {
             // id doubles as the messageId for AG-UI correlation.
             messageId: e.id,
             toolCallId: msg.toolCallId ?? "",
-            content: mapToolResultContent(msg.content ?? []),
+            content: mapToolResultContent((msg.content ?? []) as MessageBlocks),
           });
         }
         // role "system" (base/system prompt) → not replayable, skip.
