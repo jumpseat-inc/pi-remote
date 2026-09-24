@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-38
 title: "Declare or annotate the vendored PiTextContent's omitted optional textSignature field"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-5
 goal: declare or annotate the omitted optional `textSignature` field on the vendored PiTextContent type (verify against the installed dist types as the first step).
@@ -63,3 +63,65 @@ applies the ruling and cites it; it does not re-ask.
 owner, one skeptic, one judge; all five deterministic-merge criteria with
 criterion 3 scoped to the single Verify skeptic dispatch. A generator seat in
 the runner subtree upgrades the effective mode to Deliberate.
+
+## Run record — /features-deliver EPIC-5 (2026-09-24)
+
+Mechanical/Verify path (steps 7–12). Card pre-verified by the facilitator
+against the installed dist types first, per the card's own first step: the
+real type is `TextContent` (pi-ai dist/types.d.ts:242–246, field
+`textSignature?: string` at :245) — the field **exists and is optional**; no
+`PiTextContent` name exists in the installed package. Surface-touching: no.
+
+- Step 8 owner (job-5.1): chose **DECLARE** (Real-Surface Verification
+deploys annotation only where the real payload genuinely lacks a field —
+this one genuinely has it, so the omission was a vendoring gap). Branch
+`owner/fllwup-38-text-signature` cut from origin/main b6e77bf; worktree
+`../pi-remote-fllwup-38`; PR **#42**, head `92ef66426faf8e6c55570dce1de848b378175729`;
+diff: src/pi-sdk-events.ts only, +7/−2 (`textSignature?: string` declared on
+`PiTextContent`, provenance pi-ai dist/types.d.ts:242–246, field at :245);
+package.json byte-identical (no SDK dependency). Owner gates: tsc exit 0;
+bun test 273 pass / 1 skip / 0 fail (skip = Windows-gated credential-ACL,
+expected). Incident: owner's initial push failed on the repo's https-rewrite
+(no https credentials) — pushed via per-invocation pushInsteadOf override;
+config restored byte-identical; main worktree untouched.
+- Step 9 skeptic (job-5.2, the single Verify skeptic dispatch): **NO-BLOCK**,
+verify cycle 1 of 3, no fix cycles. Six objections, all closed-green, each by
+an actual run: provenance lines reproduced verbatim (awk 242–246);
+package.json sha256 match; diff product-only; field declared optional;
+no runtime-behavior overclaim (declaration + comment only); gates green at
+head (tsc exit 0; 273/1/0). Gate-integrity probes: tsc proven able to fail
+(TS1128 on injected syntax break); tsc proven unable to detect
+mirror-fidelity defects (injected `text: number` stayed exit 0 — union not
+flow-connected), so fidelity is pinned by the provenance read, independently
+reproduced; bun test proven able to fail (injected runtime defect → 1 fail
+naming the expectation). All injections restored; restore proven by empty
+diff + sha256 match + full re-run green.
+- Step 10 judge (job-5.3): **PASS.** Basis: declaration present at head with
+provenance :245; gates green (tsc 0; 273/1/0); diff minimal and product-only.
+- Step 11 deterministic merge check (mode Verify, all five criteria, criterion
+3 scoped to job-5.2): (1) owner gates green in full; (2) `gh pr checks 42
+--json name,state,workflow` — all four `workflow=="gates"` rows state SUCCESS
+at head `92ef664…` (the SHA every other criterion was read against); (3) no
+blocking skeptic objection; (4) judge PASS; (5) no Needs Human state or
+outstanding ruling. Merged per R-MERGE-1 with
+`gh pr merge 42 --squash --match-head-commit 92ef664…` — ordinary merge, no
+`--admin` (R-ADMIN-1 unused; main unprotected, mergeStateStatus CLEAN).
+Merged as **`7e050cb1fd22d4d789dfbc5847e5a345617af81e`**; CI confirmed green
+on the merged SHA (gates: success) before Done was set.
+- Step 12: local main reconciled from origin/main via merge commit a4a03a9
+successor (no force, main worktree stayed on its branch); validate.py clean;
+record commit pushed to main under R-PUSH-1.
+- Step 13: one follow-up candidate drafted (sibling signature-field
+omissions, `thinkingSignature`/`thoughtSignature` on the vendored
+`PiThinkingContent`). Recorded decision (council_followup_review, status ok,
+mode active), verbatim: `Mode: File — composite 0.48 < merge threshold 1.00
+— Declare or annotate the vendored PiThinkingContent's omitted optional
+thinkingSignature/thoughtSignature fields (active)`. The candidate is HELD,
+not filed: awaiting the confirming ruling (active mode applies only after
+confirmation); resumable by the next runner against this draft title. The
+skeptic's tsc-mirror-fidelity observation is not carded: [[Real-Surface
+Verification]] already pins vendored-surface fidelity on the provenance read
++ re-diff-on-upgrade, which this card's verification exercised — recorded
+here, doctrine-referential.
+- Verify-cycle count for this card: 1 of 3. Owner-gate and skeptic gate
+results recorded from actual runs, never from seat reports alone.

@@ -23,11 +23,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-38 — "Declare or annotate the vendored PiTextContent's omitted optional textSignature field"
 
 ## Needs Human
 
 ## Done
+- FLLWUP-38 — "Declare or annotate the vendored PiTextContent's omitted optional textSignature field"
 - FLLWUP-35 — "Add a fold-bookkeeping probe that catches a dropped message_start masked by the message_update fallback"
 - FLLWUP-34 — "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
 - EPIC-4 — "Real-host installability — reconcile the ExtensionAPI stand-in and handler payload narrowing with the installed pi SDK"
