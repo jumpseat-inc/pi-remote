@@ -9,7 +9,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-37 — "Watch the duplicated message-family role decoder between translate.ts and pi-sdk-events.ts"
 - FLLWUP-36 — "Ground emission-semantics claims in the event-constructing layer, not only the pass-through emitter"
 - FLLWUP-35 — "Add a fold-bookkeeping probe that catches a dropped message_start masked by the message_update fallback"
-- FLLWUP-34 — "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
 - FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 - FLLWUP-26 — "Scope §1.2/§5.7's 'security decision' vocabulary across per-delivery grant enforcement"
@@ -21,7 +20,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 
 ## Ready
-- EPIC-4 — "Real-host installability — reconcile the ExtensionAPI stand-in and handler payload narrowing with the installed pi SDK"
+- FLLWUP-34 — "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
 
 ## In Progress
 
@@ -30,6 +29,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Needs Human
 
 ## Done
+- EPIC-4 — "Real-host installability — reconcile the ExtensionAPI stand-in and handler payload narrowing with the installed pi SDK"
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 - FLLWUP-11 — "Reconcile the ExtensionAPI stand-in's non-on members with the real SDK surface"
 - FLLWUP-31 — "Correct AGENTS.md's stale 'Current state' claims (suite count and --headless routing)"

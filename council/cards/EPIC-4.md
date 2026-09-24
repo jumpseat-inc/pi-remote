@@ -1,7 +1,7 @@
 ---
 id: EPIC-4
 title: "Real-host installability — reconcile the ExtensionAPI stand-in and handler payload narrowing with the installed pi SDK"
-state: Ready
+state: Done
 owner: null
 epic: null
 goal: pi-remote loads against the installed pi SDK with no missing-member error and no silently-dropped live event — every non-on member of index.ts's ExtensionAPI stand-in either exists on the real SDK's ExtensionAPI or is removed, and every forward() handler's payload narrowing matches the real SDK's event payload shapes — observed as met when FLLWUP-11 and FLLWUP-12 are both Done with bunx tsc --noEmit exit 0 and bun test green.
@@ -86,3 +86,28 @@ applies the ruling and cites it; it does not re-ask.
 criteria with criterion 3 scoped to the single Verify skeptic dispatch. No
 deliberation: R-TYPE-1 and R-PAYLOAD-1 settle the design forks, so the work is
 implementation plus independent verification rather than spec derivation.
+
+## Closure — /features-deliver EPIC-4 (2026-09-24)
+
+Both children reached `Done`. `steward` (job-18) ruled the epic **`Done` (met)**
+— no residual bars closure. Every acceptance clause is discharged by observed
+artifacts: FLLWUP-11 (`a91a30b`) and FLLWUP-12 (`524bc90`) merged with `gates`
+SUCCESS on their head SHAs; owner gates green in full (FLLWUP-11 248 pass / 1
+Windows-gated skip / 0 fail; FLLWUP-12 270 pass / 1 skip / 0 fail); no
+missing-member error (real load through the installed production loader →
+`REAL LOAD OK`, gate proven non-vacuous by defect injection reproducing
+`pi.getSetting is not a function`); all eleven handler narrowings corrected to
+the real payload shapes, with one documented `tool_result` divergence
+(`messageId := toolCallId`) justified on the card under R-PAYLOAD-1. The
+permitted divergence does not breach "no silently-dropped live event": the
+event is emitted and fixtures feed real-shaped payloads.
+
+Recorded execution mode `Verify` ran on both cards; the Phase-1 rulings
+(R-TYPE-1, R-PAYLOAD-1, R-ORDER-1, R-PUSH-1, R-ADMIN-1, R-MERGE-1) were
+applied and cited throughout. Seven follow-ups were filed, each its own card:
+FLLWUP-32, FLLWUP-33, FLLWUP-34 (from FLLWUP-11) and FLLWUP-35–38 (from
+FLLWUP-12). `steward` promoted **FLLWUP-34** (Backlog → Ready) because its
+authorization precondition ("once FLLWUP-12 lands") is now satisfied, so a
+future run cannot re-assert the now-false installability block; FLLWUP-32/33
+and FLLWUP-35–38 remain ordinary Backlog. No card was retired, no child
+reopened.
