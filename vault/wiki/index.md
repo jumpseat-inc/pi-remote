@@ -7,6 +7,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 
 - [[EPIC-1 Decision Record]] — synthesis of the two autonomous delivery runs on pi-remote: 18 PRs, the converged doctrine, and the doors left open.
 - [[EPIC-2 Decision Record]] — synthesis of the run that produced docs/SERVER-SIDE-SPEC.md: the self-contained server-side spec, the normativity test, and the cross-artifact contradictions (since resolved by the residual run).
+- [[EPIC-3 Decision Record]] — synthesis of the four-card run that closed the device-flow residuals: run-hygiene conventions, two fixture pins, and the mode/record-push/workspace doctrine.
 
 ## Entities
 
@@ -34,7 +35,10 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Stable Keys]] — keys are free at authoring time, non-relitigable contract from merge; verbatim-ruled copy changes via own ruling only.
 - [[Spec Correction Governance]] — evidence-cited spec corrections ride the implementing PR; security-model changes go to steward.
 - [[Judge Object Rule]] — the step-10 judge evaluates the PR branch at the Skeptic-verified SHA, never pre-merge main.
-- [[Deterministic Merge Check]] — five mechanical criteria at one head SHA; merge pinned with --match-head-commit; mismatch is a HALT.
+- [[Deterministic Merge Check]] — mechanical merge gate keyed by the card's recorded execution mode (Direct = criteria 1/2/5; Verify/Deliberate = all five); merge pinned with --match-head-commit.
+- [[Execution-Mode Recording]] — the recorded dispatch mode is read from the run substrate, not a seat's report; Direct is the self-correcting default that never HALTs.
+- [[Record-Push Discipline]] — the step-12 direct-to-main record push needs a run-scoped Phase-1 authorization before the first push; unauthorized is a HALT.
+- [[Run Workspace Isolation]] — owner branches cut from origin/main (card PRs product-only) and the shared main worktree's branch state is immutable.
 - [[Fixture-Green Honesty]] — acceptance claims only what is proven; partial coverage announced at the surface itself.
 - [[Cheapest To Reverse]] — the standing tiebreaker when no test can decide; sometimes the pricier-to-write option wins.
 - [[Verify Cycle Cap]] — three verify-fix cycles per card; closed-red at the cap exits to the orchestrator; bounded extensions by ruling.
@@ -71,3 +75,4 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[FLLWUP-3 Design Position r1]] — unmapped live events round 1: proposals and falsifiable predictions.
 - [[FLLWUP-3 Design Position r3]] — FINAL: flips to the partialResult split; payload-variant dispatch-key doctrine.
 - [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]] — three-card batch: --headless flag routing, RFC 8628 §3.5 slowdown, error_description surfacing; new cause-distinguished-expiry doctrine.
+- [[EPIC-3 Run (FLLWUP-27..30)]] — the four-card run delivering that batch's residuals: AGENTS.md hygiene rules, committed red-at-base fixtures, steward closure with the FLLWUP-31 residual.

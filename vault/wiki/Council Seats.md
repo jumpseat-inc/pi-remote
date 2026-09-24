@@ -4,7 +4,7 @@ type: entity
 summary: The ruling, verification, and working seats of the council process, with the authority map that re-homed human powers for autonomous runs.
 aliases: [council, seats, ruling seats]
 tags: [entity/process]
-sources: ["[[EV-1 Ruling]]", "[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]"]
+sources: ["[[EV-1 Ruling]]", "[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]"]
 created: 2026-09-02
 updated: 2026-09-23
 ---
@@ -18,8 +18,10 @@ Two governance lessons the corpus demonstrates: recorded *preferences* are advis
 
 **Batch-run mechanics (device-flow polish run).** `steward` sequences a human-promoted batch of `Ready` cards as a portfolio ruling — order, gating, and epic-mixing — and may fix a precondition (FLLWUP-25 gated on a prior product-owner copy ruling). A Skeptic block that turns on user-visible copy returns the card to `In Progress` **and routes to `product-owner` first** — the owner may not change ruled copy, so it cannot be an owner fix (FLLWUP-24). A behavior the Skeptic proves only by ad-hoc probe files a follow-up so it becomes fixture-pinned (FLLWUP-28/29; see [[Fixture-Green Honesty]]). Seat worktree discipline: seats operate only inside their own isolated worktree — a `git checkout` in the shared main worktree left it detached and broke the facilitator's rebase (FLLWUP-30).
 
+**Epic closure and the follow-up confirmation path (EPIC-3 run).** `steward` is the epic closer: it ruled EPIC-3 `Done` with the run's one residual announced at the closure record ([[Fixture-Green Honesty]]). The follow-up decision gate's confirmation path runs under autonomy too: a `council-runner` returned `DONE` carrying a step-13 candidate whose recorded decision was `Mode: File` but held confirmation-pending; the orchestrator routed the draft to `product-owner`, which confirmed `File` (rejecting `Merge` and `Drop`) before the card (FLLWUP-31) was written. The card's execution mode is read from the run substrate, not a seat's report ([[Execution-Mode Recording]]), and both run-hygiene rules now live in `AGENTS.md` ([[Run Workspace Isolation]]).
+
 ## Related
-[[Judge Object Rule]], [[Verify Cycle Cap]], [[Spec Correction Governance]], [[Cause-Distinguished Expiry]], [[EPIC-1 Decision Record]]
+[[Judge Object Rule]], [[Verify Cycle Cap]], [[Spec Correction Governance]], [[Cause-Distinguished Expiry]], [[Execution-Mode Recording]], [[Run Workspace Isolation]], [[Record-Push Discipline]], [[EPIC-3 Decision Record]], [[EPIC-1 Decision Record]]
 
 ## Sources
-[[EV-1 Ruling]], [[EV-1 Step-10 Judge-Object Ruling]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]
+[[EV-1 Ruling]], [[EV-1 Step-10 Judge-Object Ruling]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]]

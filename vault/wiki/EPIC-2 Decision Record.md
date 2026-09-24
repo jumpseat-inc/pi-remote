@@ -26,7 +26,7 @@ updated: 2026-09-23
 **Process lessons.** The self-containment mandate was enforced mechanically (EV-14's grep audit plus soft-phrase read-through), and the conformance audit ran council-side, recorded on the card — the two-audit split kept the page clean while keeping the verification honest. Provider idle timeouts killed two EV-13 instances at the same long-generation step; the chunked-write mitigation (compose large documents in bounded tool calls) resolved it without a model change.
 
 ## Related
-[[Server-Side Spec]], [[Self-Containment Audit]], [[Normativity Test]], [[Spec Correction Governance]], [[Fixture-Green Honesty]], [[Closed Vocabulary Discipline]], [[EPIC-1 Decision Record]], [[pi-remote]]
+[[Server-Side Spec]], [[Self-Containment Audit]], [[Normativity Test]], [[Spec Correction Governance]], [[Fixture-Green Honesty]], [[Closed Vocabulary Discipline]], [[EPIC-1 Decision Record]], [[EPIC-3 Decision Record]], [[pi-remote]]
 
 ## Sources
 Provenance: council cards EV-9..EV-14 and EPIC-2 (Phase 1 rulings R1-R6), PRs #20-25 (SHA-pinned merges: fd4df38a, 7170212, 6376e6e, 2dc4e06, 1951cd2, a8690c4). No vault/raw/ file — deviation stated above.

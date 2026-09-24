@@ -25,8 +25,10 @@ A three-card batch run (2026-09-23): three merged PRs (#30/#31/#32), one fix cyc
 
 **Follow-ups filed (FLLWUP-27..30).** FLLWUP-27 (owner branches off `origin/main` so card PRs are product-only — BUG-1's PR carried the run's own council commits); FLLWUP-28 (pin cancellation during the 5 s slowdown — probe-proven only); FLLWUP-29 (pin the attended PKCE path's no-detail boundary — probe-proven only); FLLWUP-30 (no seat `git checkout` in the shared main worktree — a seat left the main worktree detached and the facilitator's rebase then moved the detached HEAD). FLLWUP-27/28/29/30 came from the decisions gate (`active`) rendering a `File` disposition.
 
+**Delivered (2026-09-23):** all four were delivered by the [[EPIC-3 Run (FLLWUP-27..30)]] — the two hygiene rules written into `AGENTS.md` ([[Run Workspace Isolation]]) and both probe-only gaps turned into committed fixtures ([[Fixture-Green Honesty]]). The run closed EPIC-3 `Done`.
+
 ## Related
-[[Cause-Distinguished Expiry]], [[Copy Honesty Doctrine]], [[Stable Keys]], [[RFC Conformance Posture]], [[Spec Correction Governance]], [[Council Seats]], [[Fixture-Green Honesty]], [[login.ts]], [[index.ts]], [[RFC References]]
+[[EPIC-3 Run (FLLWUP-27..30)]], [[Cause-Distinguished Expiry]], [[Copy Honesty Doctrine]], [[Stable Keys]], [[RFC Conformance Posture]], [[Spec Correction Governance]], [[Council Seats]], [[Fixture-Green Honesty]], [[login.ts]], [[index.ts]], [[RFC References]]
 
 ## Sources
 `vault/raw/2026-09-02-po-fllwup-24-slowdown-expiry.md`, `vault/raw/2026-09-02-po-fllwup-25-error-description.md`; card faces BUG-1 / FLLWUP-24 / FLLWUP-25; PRs #30/#31/#32 (pinned merges `d790716`, `d63e942`, `c9a570f`).
