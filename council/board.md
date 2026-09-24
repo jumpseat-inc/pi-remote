@@ -21,11 +21,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-36 — "Ground emission-semantics claims in the event-constructing layer, not only the pass-through emitter"
 
 ## Needs Human
 
 ## Done
+- FLLWUP-36 — "Ground emission-semantics claims in the event-constructing layer, not only the pass-through emitter"
 - FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 - FLLWUP-37 — "Watch the duplicated message-family role decoder between translate.ts and pi-sdk-events.ts"
