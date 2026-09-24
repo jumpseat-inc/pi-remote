@@ -5,6 +5,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- FLLWUP-38 — "Declare or annotate the vendored PiTextContent's omitted optional textSignature field"
+- FLLWUP-37 — "Watch the duplicated message-family role decoder between translate.ts and pi-sdk-events.ts"
+- FLLWUP-36 — "Ground emission-semantics claims in the event-constructing layer, not only the pass-through emitter"
+- FLLWUP-35 — "Add a fold-bookkeeping probe that catches a dropped message_start masked by the message_update fallback"
 - FLLWUP-34 — "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
 - FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
