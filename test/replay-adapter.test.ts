@@ -1,23 +1,40 @@
 /**
- * EV-8 — SessionEntry → JsonlEntry adapter dedicated test (spec §5.4).
+ * EV-8 / FLLWUP-11 — SessionEntry → JsonlEntry adapter tests.
+ *
+ * Fixtures use the REAL installed pi SDK session-entry shape
+ * (dist/core/session-manager.d.ts): `{ id, parentId, timestamp, type, … }`
+ * with the message payload embedded as `message: AgentMessage`
+ * (pi-ai `Message`: roles system | user | assistant | toolResult).
  */
 import { describe, expect, test } from "bun:test";
 import { sessionEntriesToJsonl, type SessionEntry } from "../src/replay-adapter";
 
 describe("sessionEntriesToJsonl", () => {
-  test("maps a message with text + thought blocks", () => {
+  test("maps user + assistant message entries (real embedded-message shape)", () => {
     const out = sessionEntriesToJsonl([
       {
-        entryId: "e1",
+        id: "e0",
+        parentId: null,
+        timestamp: "2026-01-01T00:00:00.000Z",
         type: "message",
-        role: "assistant",
-        content: [
-          { type: "thought", text: "hmm" },
-          { type: "text", text: "hello" },
-        ],
+        message: { role: "user", content: "hi" },
       },
+      {
+        id: "e1",
+        parentId: "e0",
+        timestamp: "2026-01-01T00:00:01.000Z",
+        type: "message",
+        message: {
+          role: "assistant",
+          content: [
+            { type: "thinking", thinking: "hmm" },
+            { type: "text", text: "hello" },
+          ],
+        },
+      } as unknown as SessionEntry,
     ]);
     expect(out).toEqual([
+      { kind: "message", entryId: "e0", role: "user", content: [{ type: "text", text: "hi" }] },
       {
         kind: "message",
         entryId: "e1",
@@ -30,67 +47,112 @@ describe("sessionEntriesToJsonl", () => {
     ]);
   });
 
-  test("defaults message role to assistant when absent", () => {
-    const out = sessionEntriesToJsonl([{ entryId: "e1", type: "message", content: [] }]);
-    expect(out[0]).toMatchObject({ kind: "message", role: "assistant" });
-  });
-
-  test("maps tool_result with content", () => {
+  test("maps an assistant toolCall + toolResult message pair", () => {
     const out = sessionEntriesToJsonl([
       {
-        entryId: "e2",
-        type: "tool_result",
-        messageId: "m1",
-        toolCallId: "tc1",
-        content: [{ type: "text", text: "42" }],
-      },
+        id: "e1",
+        parentId: null,
+        timestamp: "t",
+        type: "message",
+        message: {
+          role: "assistant",
+          content: [
+            { type: "text", text: "running" },
+            { type: "toolCall", id: "tc1", name: "bash", arguments: {} },
+          ],
+        },
+      } as unknown as SessionEntry,
+      {
+        id: "e2",
+        parentId: "e1",
+        timestamp: "t",
+        type: "message",
+        message: {
+          role: "toolResult",
+          toolCallId: "tc1",
+          toolName: "bash",
+          content: [{ type: "text", text: "42" }],
+          isError: false,
+        },
+      } as unknown as SessionEntry,
     ]);
     expect(out).toEqual([
+      { kind: "message", entryId: "e1", role: "assistant", content: [{ type: "text", text: "running" }] },
+      { kind: "tool_result", entryId: "e2", messageId: "e2", toolCallId: "tc1", content: [{ type: "text", text: "42" }] },
+    ]);
+  });
+
+  test("skips system messages and toolCall/thinking-only assistant noise is reduced to kept blocks", () => {
+    const out = sessionEntriesToJsonl([
       {
-        kind: "tool_result",
-        entryId: "e2",
-        messageId: "m1",
-        toolCallId: "tc1",
-        content: [{ type: "text", text: "42" }],
-      },
+        id: "s0",
+        parentId: null,
+        timestamp: "t",
+        type: "message",
+        message: { role: "system", content: "base prompt" },
+      } as unknown as SessionEntry,
+      {
+        id: "e1",
+        parentId: null,
+        timestamp: "t",
+        type: "message",
+        message: { role: "assistant", content: [{ type: "toolCall", id: "tc9", name: "x", arguments: {} }] },
+      } as unknown as SessionEntry,
+    ]);
+    expect(out).toEqual([
+      { kind: "message", entryId: "e1", role: "assistant", content: [] },
     ]);
   });
 
   test("maps compaction, model_change, thinking_level_change, session_info", () => {
     const out = sessionEntriesToJsonl([
-      { entryId: "c1", type: "compaction", summary: "s" },
-      { entryId: "m1", type: "model_change", model: "gpt-5" },
-      { entryId: "t1", type: "thinking_level_change", level: "high" },
-      { entryId: "i1", type: "session_info", info: { a: 1 } },
+      { id: "c1", parentId: null, timestamp: "t", type: "compaction", summary: "s" } as unknown as SessionEntry,
+      { id: "m1", parentId: null, timestamp: "t", type: "model_change", provider: "openai", modelId: "gpt-5" } as unknown as SessionEntry,
+      { id: "t1", parentId: null, timestamp: "t", type: "thinking_level_change", thinkingLevel: "high" } as unknown as SessionEntry,
+      { id: "i1", parentId: null, timestamp: "t", type: "session_info", name: "my session" } as unknown as SessionEntry,
     ]);
     expect(out).toEqual([
       { kind: "compaction", entryId: "c1", summary: "s" },
-      { kind: "model_change", entryId: "m1", model: "gpt-5" },
+      { kind: "model_change", entryId: "m1", model: "openai/gpt-5" },
       { kind: "thinking_level_change", entryId: "t1", level: "high" },
-      { kind: "session_info", entryId: "i1", info: { a: 1 } },
+      { kind: "session_info", entryId: "i1", info: "my session" },
     ]);
   });
 
-  test("maps bash_execution, custom, custom_message", () => {
+  test("maps custom and custom_message via customType/details", () => {
     const out = sessionEntriesToJsonl([
-      { entryId: "b1", type: "bash_execution", data: { cmd: "ls" } },
-      { entryId: "cu1", type: "custom", name: "x", data: 1 },
-      { entryId: "cm1", type: "custom_message", name: "y", data: 2 },
+      { id: "cu1", parentId: null, timestamp: "t", type: "custom", customType: "x", data: 1 } as unknown as SessionEntry,
+      { id: "cm1", parentId: null, timestamp: "t", type: "custom_message", customType: "y", details: 2 } as unknown as SessionEntry,
     ]);
     expect(out).toEqual([
-      { kind: "bash_execution", entryId: "b1", data: { cmd: "ls" } },
       { kind: "custom", entryId: "cu1", name: "x", data: 1 },
       { kind: "custom_message", entryId: "cm1", name: "y", data: 2 },
     ]);
   });
 
+  test("skips usage / branch_summary / context_edit / label entries (no JSONL representation)", () => {
+    const out = sessionEntriesToJsonl([
+      { id: "u1", parentId: null, timestamp: "t", type: "usage", kind: "cache_warm", provider: "p", model: "m", usage: {} } as unknown as SessionEntry,
+      { id: "b1", parentId: null, timestamp: "t", type: "branch_summary", fromId: "x", summary: "s" } as unknown as SessionEntry,
+      { id: "l1", parentId: null, timestamp: "t", type: "label", targetId: "x", label: "L" } as unknown as SessionEntry,
+      { id: "ce1", parentId: null, timestamp: "t", type: "context_edit", targetId: "x", replacement: null } as unknown as SessionEntry,
+    ] as unknown as SessionEntry[]);
+    expect(out).toEqual([]);
+  });
+
   test("skips unrecognized entry types (forward-compatible)", () => {
     const out = sessionEntriesToJsonl([
-      { entryId: "e1", type: "message", content: [] },
-      { entryId: "unknown", type: "future_kind" as SessionEntry["type"] },
+      {
+        id: "e1",
+        parentId: null,
+        timestamp: "t",
+        type: "message",
+        message: { role: "user", content: "hi" },
+      },
+      { id: "unknown", parentId: null, timestamp: "t", type: "future_kind" } as unknown as SessionEntry,
     ]);
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ kind: "message" });
+    expect(out[0]).toMatchObject({ kind: "message", role: "user" });
   });
 
   test("empty input → empty output", () => {
