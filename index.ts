@@ -17,8 +17,9 @@
  * See docs/superpowers/specs/2026-08-31-EV-8-design.md and docs/PI-SPEC.md §8.
  */
 import { createTransport, type TransportHandle, type TransportStatusEvent, type InboundEnvelope, type AgUiFrameLike } from "./src/transport";
-import { createState, translate, type AssistantMessageEvent, type PiEvent, type ToolResultContentBlock, type TranslateState, type UIPromptKind } from "./src/translate";
+import { createState, translate, type PiEvent, type ToolResultContentBlock, type TranslateState, type UIPromptKind } from "./src/translate";
 import { type DepsOnEvent, type PiEventHandler, type PiExtensionContext, type PiSDKOnEvent } from "./src/pi-sdk-on";
+import { messageKey, realAssistantMessageEventOf, roleOfAgentMessage } from "./src/pi-sdk-events"; // FLLWUP-12: real payload derivation (R-TYPE-1 vendored shapes)
 import { resolvePiAgentDir, readHostSettings, hostMetadataFromOs } from "./src/pi-host";
 import { homedir, platform as osPlatform, arch as osArch } from "node:os";
 import { createInjector } from "./src/inject";
@@ -616,31 +617,63 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
   deps.on("agent_settled", () => forward({ event: "agent_settled" }));
   deps.on("turn_start", () => forward({ event: "turn_start" }));
   deps.on("turn_end", () => forward({ event: "turn_end" }));
+  // FLLWUP-12 (R-PAYLOAD-1) — narrowing corrected to the REAL SDK payload
+  // shapes (dist/core/extensions/types.d.ts; vendored mirrors in
+  // src/pi-sdk-events.ts). The real message_* payloads are {type, message:
+  // AgentMessage} — no top-level messageId/role/events — so the AG-UI
+  // messageId is DERIVED from the message object's identity (stable across
+  // the message's lifetime; agent-session.js forwards the same object to
+  // start/update/end and mutates it in place), and role from message.role.
+  // tool_result carries no message id at all: the toolCallId doubles as the
+  // messageId (the live twin of the replay path's entry-id-as-messageId
+  // decision, src/replay-adapter.ts) — the card's one documentation-only
+  // divergence, justified on the card face. Handlers return undefined: the
+  // real tool_result is an afterToolCall hook whose return value mutates the
+  // tool result (runner.js emitToolResult).
   deps.on("message_start", (ev) => {
-    const e = ev as { messageId?: unknown; role?: unknown } | null | undefined;
-    if (!e || typeof e.messageId !== "string" || (e.role !== "assistant" && e.role !== "user")) return;
-    forward({ event: "message_start", messageId: e.messageId, role: e.role });
+    const e = ev as { message?: unknown } | null | undefined;
+    const role = roleOfAgentMessage(e?.message);
+    const messageId = messageKey(e?.message);
+    if (!role || messageId === undefined) return;
+    forward({ event: "message_start", messageId, role });
   });
   deps.on("message_update", (ev) => {
-    const e = ev as { messageId?: unknown; events?: unknown } | null | undefined;
-    if (!e || typeof e.messageId !== "string" || !Array.isArray(e.events)) return;
-    forward({ event: "message_update", messageId: e.messageId, events: e.events as AssistantMessageEvent[] });
+    const e = ev as { message?: unknown; assistantMessageEvent?: unknown } | null | undefined;
+    const messageId = messageKey(e?.message);
+    const local = realAssistantMessageEventOf(e?.assistantMessageEvent);
+    if (messageId === undefined || local === null) return;
+    forward({ event: "message_update", messageId, events: [local] });
   });
   deps.on("message_end", (ev) => {
-    const e = ev as { messageId?: unknown } | null | undefined;
-    if (!e || typeof e.messageId !== "string") return;
-    forward({ event: "message_end", messageId: e.messageId });
+    const e = ev as { message?: unknown } | null | undefined;
+    const messageId = messageKey(e?.message);
+    if (messageId === undefined || roleOfAgentMessage(e?.message) === undefined) return;
+    forward({ event: "message_end", messageId });
   });
   deps.on("tool_result", (ev) => {
-    const e = ev as { messageId?: unknown; toolCallId?: unknown; content?: unknown } | null | undefined;
-    if (!e || typeof e.messageId !== "string" || typeof e.toolCallId !== "string" || !Array.isArray(e.content)) return;
-    forward({ event: "tool_result", messageId: e.messageId, toolCallId: e.toolCallId, content: e.content as ToolResultContentBlock[] });
+    const e = ev as { toolCallId?: unknown; content?: unknown } | null | undefined;
+    if (!e || typeof e.toolCallId !== "string" || !Array.isArray(e.content)) return;
+    const content: ToolResultContentBlock[] = [];
+    for (const b of e.content) {
+      // Real blocks are (TextContent | ImageContent) — mirror the replay
+      // adapter's mapping: text blocks flatten in, image blocks pass as data.
+      if (typeof b !== "object" || b === null) continue;
+      const blk = b as { type?: unknown; text?: unknown; data?: unknown };
+      if (blk.type === "text" && typeof blk.text === "string") {
+        content.push({ type: "text", text: blk.text });
+      } else if (blk.type === "image" && typeof blk.data === "string") {
+        content.push({ type: "image", image: blk.data });
+      }
+    }
+    forward({ event: "tool_result", messageId: e.toolCallId, toolCallId: e.toolCallId, content });
   });
   deps.on("ui.confirm", (ev) => {
     const e = ev as { promptKind?: unknown; prompt?: unknown } | null | undefined;
     if (!e || typeof e.promptKind !== "string" || typeof e.prompt !== "string") return;
     forward({ event: "ui.confirm", promptKind: e.promptKind, prompt: e.prompt });
   });
+  // FLLWUP-12 — real payloads carry kind/title top-level (UIPromptEndEvent); the
+  // narrowing below is already honest — kept as-is (recorded on the card face).
   deps.on("ui_prompt_end", (ev) => {
     const e = ev as { kind?: unknown; title?: unknown } | null | undefined;
     if (!e) return;
@@ -650,6 +683,8 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       title: typeof e.title === "string" ? e.title : undefined,
     });
   });
+  // FLLWUP-12 — real payloads carry kind/title top-level (UIPromptStartEvent);
+  // already honest — kept as-is (recorded on the card face).
   deps.on("ui_prompt_start", (ev) => {
     const e = ev as { kind?: unknown; title?: unknown } | null | undefined;
     if (!e) return;
