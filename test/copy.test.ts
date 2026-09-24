@@ -329,48 +329,75 @@ describe("integration: controller copy resolution under id locale", () => {
 });
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // R3 — entry-point locale sourcing: env over setting, fail-open en
+// (FLLWUP-11: the seam is now process.env + <configDir>/settings.json — the
+// documented local capabilities — not the stand-in's getSetting/env members,
+// which have no counterpart on the real ExtensionAPI.)
 // ---------------------------------------------------------------------------
 describe("entry-point locale sourcing (R3)", () => {
-  function fakePi(env: Record<string, string | undefined>, settings: Record<string, unknown>) {
+  function fakePi() {
     const registered: string[] = [];
     return {
-      configDir: () => "/tmp/pi-remote-copy-test",
-      getSetting: (name: string) => settings[name],
-      env: (name: string) => env[name],
-      version: () => "1.0.0",
-      platform: () => "linux",
-      arch: () => "x64",
-      sessionId: () => "sess",
-      setStatus: () => {},
-      sendUserMessage: async () => {},
-      isIdle: () => true,
-      readActiveBranch: async () => [],
-      input: async () => undefined,
       registerCommand: (name: string, _opts: unknown) => {
         registered.push(name);
       },
-      on: () => {},
+      on: () => () => {},
+      sendUserMessage: () => {},
       registered,
     };
   }
 
-  test("PI_REMOTE_LOCALE env wins over the setting", async () => {
-    const entry = (await import("../index")).default;
-    const pi = fakePi({ PI_REMOTE_LOCALE: "id" }, { "piRemote.locale": "fr" });
-    entry(pi as never);
-    expect(getLocale()).toBe("id");
+  function withEnv(extra: Record<string, string | undefined>, fn: () => void): void {
+    const saved: Record<string, string | undefined> = {};
+    for (const k of Object.keys(extra)) saved[k] = process.env[k];
+    for (const [k, v] of Object.entries(extra)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    try {
+      fn();
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  }
+
+  function writeSettings(configDir: string, settings: Record<string, unknown> | null): void {
+    const fs = require("node:fs");
+    fs.rmSync(configDir, { recursive: true, force: true });
+    if (settings !== null) {
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(`${configDir}/settings.json`, JSON.stringify({ piRemote: settings }));
+    }
+  }
+
+  test("PI_REMOTE_LOCALE env wins over the setting", () => {
+    const entry = (require("../index").default) as (pi: unknown) => void;
+    const configDir = "/tmp/pi-remote-fllwup11-r3-test";
+    writeSettings(configDir, { locale: "fr" });
+    withEnv({ PI_REMOTE_LOCALE: "id", PI_CODING_AGENT_DIR: configDir }, () => {
+      entry(fakePi());
+      expect(getLocale()).toBe("id");
+    });
     setLocale("en");
   });
 
-  test("setting applies when env is unset; unrecognized → en (fail-open)", async () => {
-    const entry = (await import("../index")).default;
-    let pi = fakePi({}, { "piRemote.locale": "id" });
-    entry(pi as never);
-    expect(getLocale()).toBe("id");
+  test("setting applies when env is unset; unrecognized fails open to en", () => {
+    const entry = (require("../index").default) as (pi: unknown) => void;
+    const configDir = "/tmp/pi-remote-fllwup11-r3-test";
+    writeSettings(configDir, { locale: "id" });
+    withEnv({ PI_CODING_AGENT_DIR: configDir }, () => {
+      entry(fakePi());
+      expect(getLocale()).toBe("id");
+    });
+    writeSettings(configDir, { locale: "fr" });
+    withEnv({ PI_CODING_AGENT_DIR: configDir }, () => {
+      entry(fakePi());
+      expect(getLocale()).toBe("en");
+    });
     setLocale("en");
-    pi = fakePi({}, { "piRemote.locale": "fr" });
-    entry(pi as never);
-    expect(getLocale()).toBe("en");
   });
 });

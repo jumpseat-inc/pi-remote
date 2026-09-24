@@ -18,7 +18,9 @@
  */
 import { createTransport, type TransportHandle, type TransportStatusEvent, type InboundEnvelope, type AgUiFrameLike } from "./src/transport";
 import { createState, translate, type AssistantMessageEvent, type PiEvent, type ToolResultContentBlock, type TranslateState, type UIPromptKind } from "./src/translate";
-import { type DepsOnEvent, type PiEventHandler, type PiSDKOnEvent } from "./src/pi-sdk-on";
+import { type DepsOnEvent, type PiEventHandler, type PiExtensionContext, type PiSDKOnEvent } from "./src/pi-sdk-on";
+import { resolvePiAgentDir, readHostSettings, hostMetadataFromOs } from "./src/pi-host";
+import { homedir, platform as osPlatform, arch as osArch } from "node:os";
 import { createInjector } from "./src/inject";
 import {
   createTunnel,
@@ -44,25 +46,36 @@ import { replayActiveBranch, resyncDoneFrame } from "./src/history";
 // Types
 // ---------------------------------------------------------------------------
 
-/** Minimal structural stand-in for the pi ExtensionAPI (not vendored here). */
+/**
+ * FLLWUP-11 — the pi-remote entry surface, reconciled with the installed SDK's
+ * real ExtensionAPI (dist/core/extensions/types.d.ts ~978, verified 2026-09-24;
+ * provenance per R-TYPE-1, re-diff on SDK upgrades). The previous stand-in's
+ * twelve non-`on` members have NO counterpart on the real API (the loader's
+ * runtime api object in dist/core/extensions/loader.js ~200 confirms it), so
+ * `pi.configDir()` at load was a TypeError in a real host. Disposition:
+ *
+ *  - kept (real members): on, registerCommand, sendUserMessage — typed against
+ *    their real signatures.
+ *  - re-homed to the real context surface: ctx.ui.setStatus, ctx.ui.input,
+ *    ctx.isIdle(), ctx.sessionManager (sessionId, readActiveBranch) — captured
+ *    lazily from real SDK callbacks (the factory receives only `pi`).
+ *  - re-homed to documented local capabilities (src/pi-host.ts): configDir
+ *    (PI_CODING_AGENT_DIR → $HOME/.pi/agent), getSetting (settings.json
+ *    `piRemote` key), env (process.env), platform/arch (node:os). `version`
+ *    is dropped: hostMetadata is informational (SERVER-SIDE-SPEC) and the SDK
+ *    has no version accessor.
+ *
+ * The only structural vendor pi-remote consumes from the context is typed in
+ * src/pi-sdk-on.ts (PiExtensionContext); session entries flow through the
+ * adapter vendor in src/replay-adapter.ts (real SessionEntry shape).
+ */
 export interface ExtensionAPI {
-  registerCommand(name: string, opts: { description: string; handler: (args: string | undefined) => void | Promise<void> }): void;
-  on(event: PiSDKOnEvent, handler: PiEventHandler): void;
-  sendUserMessage(content: string, opts?: { deliverAs?: "steer" | "followUp" }): Promise<void>;
-  /** Resolve a setting (e.g. `piRemote.serverUrl`) or return undefined. */
-  getSetting(name: string): unknown;
-  /** Resolve an environment variable. */
-  env(name: string): string | undefined;
-  setStatus(scope: string, text: string | undefined): void;
-  /** Request a one-line input from the user (ctx.ui.input). */
-  input(prompt: string): Promise<string | undefined>;
-  sessionId(): string;
-  readActiveBranch(): SessionEntry[] | Promise<SessionEntry[]>;
-  isIdle(): boolean;
-  configDir(): string;
-  version(): string;
-  platform(): string;
-  arch(): string;
+  /** Real: on overloads return an unsubscribe function. */
+  on(event: PiSDKOnEvent, handler: PiEventHandler): () => void;
+  /** Real: handler is (args: string, ctx) => Promise<void>. */
+  registerCommand(name: string, opts: { description?: string; handler: (args: string, ctx: PiExtensionContext) => Promise<void> }): void;
+  /** Real: void return; content is string | (TextContent | ImageContent)[]. */
+  sendUserMessage(content: string, opts?: { deliverAs?: "steer" | "followUp"; expandPromptTemplates?: boolean }): void;
 }
 
 export type ErrorSource =
@@ -79,7 +92,8 @@ export interface RemoteControllerDeps {
   sessionId: () => string;
   setStatus: (sentence: string | undefined) => void;
   print: (line: string) => void;
-  sendUserMessage: (content: string, opts?: { deliverAs?: "steer" | "followUp" }) => Promise<void>;
+  /** FLLWUP-11: real SDK sendUserMessage returns void; hosts may wrap async. */
+  sendUserMessage: (content: string, opts?: { deliverAs?: "steer" | "followUp" }) => void | Promise<void>;
   isStreaming: () => boolean;
   resolvePendingPrompt: (promptId: string, result: unknown, deviceId?: string) => boolean | Promise<boolean>;
   readActiveBranch: () => SessionEntry[] | Promise<SessionEntry[]>;
@@ -667,44 +681,69 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
 // ---------------------------------------------------------------------------
 
 export default function (pi: ExtensionAPI): void {
-  const configDir = pi.configDir();
-  const setting = pi.getSetting("piRemote.serverUrl");
-  const serverUrl = (pi.env("PI_REMOTE_SERVER_URL") ?? (typeof setting === "string" ? setting : undefined)) as string | undefined;
+  // FLLWUP-11 — the ExtensionFactory receives only `pi`; ExtensionContext
+  // arrives per event/command handler, so ctx-dependent members are captured
+  // lazily. requireCtx() fails loud if a ctx-dependent dep is ever touched
+  // before any host callback delivered a context.
+  let ctxHolder: PiExtensionContext | null = null;
+  const requireCtx = (): PiExtensionContext => {
+    if (!ctxHolder) throw new Error("pi-remote: no host context yet (no command or event callback has run)");
+    return ctxHolder;
+  };
+
+  // Documented local capabilities (src/pi-host.ts): config dir, settings.json
+  // `piRemote` values, node:os metadata. env reads process.env directly.
+  const configDir = resolvePiAgentDir({ env: process.env, homedir: homedir() });
+  const settings = readHostSettings({ configDir });
+  const settingString = (key: string): string | undefined => {
+    const v = settings[key];
+    return typeof v === "string" ? v : undefined;
+  };
+  const serverUrl = process.env.PI_REMOTE_SERVER_URL ?? settingString("serverUrl");
 
   // FLLWUP-4 (ruling OJ3): locale sourcing follows the entry-point precedence
   // of env over setting; setLocale normalizes anything unrecognized to "en".
-  const localeSetting = pi.getSetting("piRemote.locale");
-  setLocale(
-    pi.env("PI_REMOTE_LOCALE") ??
-      (typeof localeSetting === "string" ? localeSetting : undefined)
-  );
+  setLocale(process.env.PI_REMOTE_LOCALE ?? settingString("locale"));
 
   const controller = createRemoteController({
     configDir,
     serverUrl,
+    // Real context surface; process.cwd() is only the load-time fallback
+    // before the first real ctx arrives.
     sessionName: process.cwd().split("/").pop() ?? "",
     cwd: process.cwd(),
-    hostMetadata: { piVersion: String(pi.version()), platform: pi.platform(), arch: pi.arch() },
-    sessionId: () => pi.sessionId(),
-    setStatus: (s) => pi.setStatus("pi-remote", s),
+    hostMetadata: hostMetadataFromOs({ platform: osPlatform, arch: osArch }),
+    sessionId: () => requireCtx().sessionManager.getSessionId(),
+    setStatus: (s) => requireCtx().ui.setStatus("pi-remote", s),
     print: (line) => console.log(line),
     sendUserMessage: (c, o) => pi.sendUserMessage(c, o),
-    isStreaming: () => !pi.isIdle(),
+    isStreaming: () => !requireCtx().isIdle(),
     resolvePendingPrompt: () => false,
-    readActiveBranch: () => pi.readActiveBranch(),
-    inputPrompt: (prompt) => pi.input(prompt),
+    readActiveBranch: () => Promise.resolve(requireCtx().sessionManager.getBranch()),
+    inputPrompt: (prompt) => requireCtx().ui.input(prompt),
     fetch: globalThis.fetch,
     WebSocket,
-    command: (name, handler) => pi.registerCommand(name, { description: "pi-remote", handler: (args) => handler(args) }),
+    command: (name, handler) =>
+      pi.registerCommand(name, {
+        description: "pi-remote",
+        handler: async (args, cmdCtx) => {
+          ctxHolder = cmdCtx;
+          await handler(args === undefined ? undefined : args);
+        },
+      }),
     on: (event, handler) => {
       if (event === "ui.confirm") return; // fixture-only seam — never forwarded to the SDK
-      pi.on(event, handler);
+      pi.on(event, (ev, ctx) => {
+        ctxHolder = ctx as PiExtensionContext;
+        return handler(ev, ctx);
+      });
     },
   });
 
   // session_shutdown fires for every reason (quit/reload/new/resume/fork):
   // each routes to the shared idempotent teardown (spec §4.4).
-  pi.on("session_shutdown", () => {
+  pi.on("session_shutdown", (_ev, ctx) => {
+    ctxHolder = ctx as PiExtensionContext;
     void controller.onShutdown();
   });
 }
