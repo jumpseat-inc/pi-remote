@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-37
 title: "Watch the duplicated message-family role decoder between translate.ts and pi-sdk-events.ts"
-state: Ready
+state: In Review
 owner: null
 epic: EPIC-5
 goal: track and scope removal of the duplicated role decoder (forced by the G-12 no-runtime-imports purity rule; lifting G-12 is steward authority, not this card's).
