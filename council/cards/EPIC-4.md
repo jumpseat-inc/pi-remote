@@ -46,3 +46,43 @@ event payload shapes with fixtures feeding real-shaped payloads,
 `bunx tsc --noEmit` exits 0, and `bun test` is green. The extension's load
 against the installed SDK (or its type surface where runtime loading is not
 testable in-repo) raises no missing-member error.
+
+## Run rulings — /features-deliver EPIC-4 (2026-09-24)
+
+Recorded human decisions, for this run only; immutable for the run and binding
+on every seat, `steward` included. A runner that meets a dispute covered here
+applies the ruling and cites it; it does not re-ask.
+
+- **R-TYPE-1 (FLLWUP-11)** — SDK type-surface strategy: the needed real SDK
+  signatures are **vendored** into `src/` with provenance notes and a
+  re-diff-on-upgrade discipline (extending FLLWUP-9's `pi-sdk-on.ts` pattern);
+  the SDK is **not** added as a dependency. Each of the twelve non-`on`
+  stand-in members is verified against the installed SDK — typed against its
+  real signature where it exists, or removed with its usage re-homed to the
+  real surface (`ctx.ui.setStatus`, `ctx.ui.input`, `ctx.isIdle()`,
+  `ctx.sessionManager`, `ctx.cwd`) or a documented local capability
+  (`process.env`, `node:os`, local config-dir resolution).
+- **R-PAYLOAD-1 (FLLWUP-12)** — Handler narrowing is **corrected** to the real
+  payload shape for all eleven live subscriptions. A documentation-only
+  divergence is permitted only where the real payload genuinely lacks a field
+  the emitted frame needs, and the justification must be recorded on the card.
+  Fixtures feed real-shaped payloads.
+- **R-ORDER-1 (run-wide)** — Build order: FLLWUP-11 → FLLWUP-12.
+- **R-PUSH-1 (run-wide)** — Run-scoped authorization: the step-12 record
+  commit may be committed and pushed directly to `main` for this run only.
+  Never extended to any later run.
+- **R-ADMIN-1 (run-wide)** — Run-scoped authorization:
+  `gh pr merge <PR> --squash --admin --match-head-commit <X>` may be used if a
+  `main` ruleset blocks an ordinary merge. Unused while `main` is unprotected
+  (observed: 0 rulesets, branch-protection API 404). Never extended to any
+  later run.
+- **R-MERGE-1 (run-wide)** — This run is unattended. The orchestrator (and the
+  runner under the deterministic merge check) executes the merge check and the
+  merge without pausing for human confirmation, including the first merge of
+  the run.
+
+**Recorded execution mode (orchestrator routing, EV-69):** both cards record
+**Verify** — one owner, one skeptic, one judge; all five deterministic-merge
+criteria with criterion 3 scoped to the single Verify skeptic dispatch. No
+deliberation: R-TYPE-1 and R-PAYLOAD-1 settle the design forks, so the work is
+implementation plus independent verification rather than spec derivation.
