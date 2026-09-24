@@ -3,7 +3,7 @@ id: FLLWUP-33
 title: "Correct the member-count discrepancy in FLLWUP-11's record"
 state: Backlog
 owner: null
-epic: EPIC-4
+epic: EPIC-5
 goal: The card text says "twelve"; the base stand-in had 13 non-`on` members; the run record's "none exist on the real ExtensionAPI" phrasing is inaccurate for the 2 kept members.
 ---
 

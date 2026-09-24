@@ -3,7 +3,7 @@ id: FLLWUP-32
 title: "Fix the load-smoke test-2 header's overstated compile-time claim"
 state: Backlog
 owner: null
-epic: EPIC-4
+epic: EPIC-5
 goal: `test/pi-sdk-load.test.ts`'s second test header claims a compile-time guarantee its runtime body does not enforce; correct the comment or make the claim true.
 ---
 

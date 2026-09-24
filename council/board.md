@@ -20,6 +20,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 
 ## Ready
+- EPIC-5 — "SDK reconciliation residuals — the EPIC-4 run's seven follow-ups"
 - FLLWUP-34 — "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
 
 ## In Progress

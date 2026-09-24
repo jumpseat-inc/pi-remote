@@ -3,7 +3,7 @@ id: FLLWUP-34
 title: "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
 state: Ready
 owner: null
-epic: EPIC-4
+epic: EPIC-5
 goal: AGENTS.md's stale "not yet loadable" claim is half-overtaken by FLLWUP-11's landing; full update waits for FLLWUP-12.
 ---
 

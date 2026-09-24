@@ -3,7 +3,7 @@ id: FLLWUP-38
 title: "Declare or annotate the vendored PiTextContent's omitted optional textSignature field"
 state: Backlog
 owner: null
-epic: EPIC-4
+epic: EPIC-5
 goal: declare or annotate the omitted optional `textSignature` field on the vendored PiTextContent type (verify against the installed dist types as the first step).
 ---
 

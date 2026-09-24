@@ -3,7 +3,7 @@ id: FLLWUP-36
 title: "Ground emission-semantics claims in the event-constructing layer, not only the pass-through emitter"
 state: Backlog
 owner: null
-epic: EPIC-4
+epic: EPIC-5
 goal: make construction-layer grounding of emission-semantics claims a systematic check, not per-clause prose.
 ---
 
