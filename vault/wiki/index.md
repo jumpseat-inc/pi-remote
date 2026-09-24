@@ -44,7 +44,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Run Workspace Isolation]] — owner branches cut from origin/main (card PRs product-only) and the shared main worktree's branch state is immutable.
 - [[Fixture-Green Honesty]] — acceptance claims only what is proven; partial coverage announced at the surface itself.
 - [[Real-Surface Verification]] — a fixture-green stand-in proves nothing about the installed host; verify at the real boundary and prove the gate non-vacuous.
-- [[Emission-Semantics Fidelity]] — fixture the constructing layer's per-emission semantics (fresh spread-copies), not the pass-through emitter.
+- [[Emission-Semantics Fidelity]] — fixture the constructing layer's per-emission semantics (fresh spread-copies), not the pass-through emitter; systematized by FLLWUP-36 as a scripted probe (test/construction-grounding.test.ts) plus documented procedure (docs/construction-grounding.md).
 - [[Record Accuracy]] — a run record's counts and claims must match the audit they cite; its own honesty axis.
 - [[Runner Stall Recovery]] — size the stall window above the longest child dispatch; cancel plus one re-dispatch with a resumption note.
 - [[Cheapest To Reverse]] — the standing tiebreaker when no test can decide; sometimes the pricier-to-write option wins.
