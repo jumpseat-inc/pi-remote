@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 
 ## In Progress
-- FLLWUP-38 — "Declare or annotate the vendored PiTextContent's omitted optional textSignature field"
 
 ## In Review
+- FLLWUP-38 — "Declare or annotate the vendored PiTextContent's omitted optional textSignature field"
 
 ## Needs Human
 
