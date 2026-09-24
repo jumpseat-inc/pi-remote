@@ -46,17 +46,30 @@ and carries a cross-reference back to this document.
 `test/translate.test.ts` — test "FLLWUP-12 static pairing: translate.ts
 messageFrameRoleLocal decodes pi-sdk-events.ts agentMessageId ids (G-12 keeps
 them separate, so pin both directions)" (~line 428) performs a static
-source-text pairing of both sides:
+source-text pairing of both sides. It pins exactly two things:
 
-- both files must contain the `messageId.indexOf(":")` derivation;
-- the 400-character slice anchored at `export function messageFrameRole`
-  (pi-sdk-events.ts) and at `function messageFrameRoleLocal` (translate.ts)
-  must each allow `"assistant"` / `"user"` and must not allow `"system"` /
+- **Derivation-text presence**: both files must contain the
+  `messageId.indexOf(":")` derivation text.
+- **Role vocabulary within the signature windows**: the 400-character slice
+  anchored at `export function messageFrameRole` (pi-sdk-events.ts) and at
+  `function messageFrameRoleLocal` (translate.ts) must each contain
+  `"assistant"` and `"user"` and must not contain `"system"` /
   `"toolResult"`.
 
-If either side changes its minting/decoding rule, this test fails until both
-sides move together (or the test is consciously updated). Do not weaken this
-test while the duplication exists — it is the only drift guard.
+The test does **not** pin the value-level decode comparison itself. The
+signature windows include the return-type annotation
+(`): "assistant" | "user" | undefined {`), so the vocabulary assertions are
+satisfied by the type annotation regardless of what the body's decode
+comparison allows. This is a demonstrated false-green, not a hypothetical:
+dropping `"user"` from the decode comparison in `messageFrameRoleLocal`
+(`return role === "assistant" ? role : undefined;`) leaves the full suite
+green (273 pass / 1 skip / 0 fail, EV-69). A silent regression in the decode
+rule can therefore pass every gate in this repository. The pairing test is a
+textual-drift tripwire for the derivation text and role vocabulary, not a
+behavioral guard on the decode rule.
+
+Do not weaken this test while the duplication exists — but do not rely on it
+to catch value-level decode drift either; it will not.
 
 ## Removal scope (if G-12 is ever lifted)
 
