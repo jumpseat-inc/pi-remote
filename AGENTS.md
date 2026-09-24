@@ -19,8 +19,9 @@ that affects the wire format, replay, auth, or security model.
   replay/resync, input injection, OAuth2 login drivers, and credential
   storage are implemented. Layout: `index.ts` (entry, commands, live-event
   wiring) plus `src/` modules; tests live in `test/` (one suite per module).
-- The unit suite is green: `bunx tsc --noEmit` clean, `bun test` 218 pass /
-  1 Windows-gated skip.
+- The unit suite is green: `bunx tsc --noEmit` clean, `bun test` all-pass
+  (the only expected non-pass is the Windows-gated credential-ACL skip on
+  non-Windows runners).
 - **Not yet loadable in a real `pi` host.** `index.ts` binds a local
   `ExtensionAPI` stand-in whose non-`on` members (`getSetting`, `env`,
   `configDir`, `sessionId`, `readActiveBranch`, …) have no counterpart on
@@ -28,8 +29,9 @@ that affects the wire format, replay, auth, or security model.
   FLLWUP-12 (`council/cards/`, tracked in `council/board.md`) gate that
   reconciliation. Do not claim installability until they land.
 - The `/rc:login --headless` device flow (RFC 8628) is implemented in
-  `src/login.ts` but **not routed by the command surface** — `index.ts`
-  always runs the attended flow. Check the board before relying on it.
+  `src/login.ts` and routed by the command surface: `index.ts` parses the
+  `--headless` token from the command args and selects the device-flow
+  driver; without it the attended flow runs (BUG-1, PR #30).
 
 ## Configuration contract
 
