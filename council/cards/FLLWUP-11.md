@@ -10,21 +10,24 @@ goal: Every non-on member of index.ts's ExtensionAPI stand-in (getSetting, env, 
 ## Intent
 
 Filed from FLLWUP-9's step 13 (deliberation finding S-O5). FLLWUP-9 vendored the
-real SDK's typed `on()` union but left the stand-in's twelve other members
-untouched; the deliberation found they have no counterpart on the installed
-SDK's `ExtensionAPI` (pi-coding-agent/dist/core/extensions/types.d.ts) or its
-loader's runtime object — `pi.configDir()` would be a **TypeError at load** in
-a real pi host. Everything shipped so far is fixture-tested against the
-stand-in, so no live host has exercised this surface. This card reconciles the
-whole stand-in (not just `on`) and models `ExtensionHandler`'s
-`(event, ctx) => Promise<R|void>|R|void` return shape. Severity flag from the
+real SDK's typed `on()` union but left the stand-in's 13 other (non-`on`)
+members untouched; the deliberation found 11 of them have no counterpart on
+the installed SDK's `ExtensionAPI`
+(pi-coding-agent/dist/core/extensions/types.d.ts) or its loader's runtime
+object — `pi.configDir()` would be a **TypeError at load** in a real pi host.
+(The member audit — 13 non-`on` base members — corrected the deliberation's
+"twelve" count: the 2 kept members, `registerCommand` and `sendUserMessage`,
+do exist on the real SDK; the removed 11 did not.) Everything shipped so far
+is fixture-tested against the stand-in, so no live host has exercised this
+surface. This card reconciles the whole stand-in (not just `on`) and models
+`ExtensionHandler`'s `(event, ctx) => Promise<R|void>|R|void` return shape. Severity flag from the
 orchestrator: if the load-time TypeError is real, this is the highest-priority
 post-epic item — the extension may not load in production at all until it
 lands.
 
 ## Acceptance
 
-- Each of the twelve member names is verified against the installed SDK:
+- Each of the 13 non-`on` member names is verified against the installed SDK:
   exists (typed against the real signature) or removed with its usage
   replaced by the real SDK surface or a documented local capability.
 - The `ExtensionHandler` return shape matches the real SDK's
@@ -42,7 +45,7 @@ applies the ruling and cites it; it does not re-ask.
 - **R-TYPE-1 (this card)** — SDK type-surface strategy: the needed real SDK
   signatures are **vendored** into `src/` with provenance notes and a
   re-diff-on-upgrade discipline (extending FLLWUP-9's `pi-sdk-on.ts` pattern);
-  the SDK is **not** added as a dependency. Each of the twelve non-`on`
+  the SDK is **not** added as a dependency. Each of the 13 non-`on`
   stand-in members is verified against the installed SDK — typed against its
   real signature where it exists, or removed with its usage re-homed to the
   real surface (`ctx.ui.setStatus`, `ctx.ui.input`, `ctx.isIdle()`,
@@ -81,8 +84,10 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   `owner/fllwup-11-reconcile-standin` (base origin/main fa1a262), **PR #38**,
   head `937bdd337874ee7de89b92edeb2ddd48ba5fda3c`. Owner-reported gates:
   `bunx tsc --noEmit` exit 0; `bun test` 248 pass / 1 expected Windows-gated
-  skip / 0 fail. All twelve non-`on` members verified against the installed
-  SDK: none exist on the real `ExtensionAPI` — five re-homed to the real
+  skip / 0 fail. All 13 non-`on` members verified against the installed
+  SDK: the 2 kept members (`registerCommand`, `sendUserMessage`) exist on the
+  real `ExtensionAPI` and were kept typed against their real signatures; the
+  removed 11 had no counterpart on it — five re-homed to the real
   `ExtensionContext` surface, five to documented local capabilities
   (`src/pi-host.ts`), one (`version`) dropped; `ExtensionHandler` return union
   vendored with a compile-time assignability assertion. R-TYPE-1 applied
@@ -125,8 +130,4 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   FLLWUP-12 lands". Awaiting the confirming ruling via ESCALATION.
 - Step 13 follow-ups APPLIED (resumed runner): the product-owner ruling
   (job-13) ratified all three as File; recorded verbatim as FLLWUP-32,
-  FLLWUP-33, FLLWUP-34 on the board (Backlog). [Post-run correction,
-  FLLWUP-33] This record's "twelve" wording and "none exist on the real
-  ExtensionAPI" phrasing are superseded by the audit's count: 13 non-`on`
-  base members, of which the 2 kept members DO exist on the real SDK
-  (typed-to-real); only the removed 11 had no counterpart.
+  FLLWUP-33, FLLWUP-34 on the board (Backlog).
