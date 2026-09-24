@@ -112,3 +112,14 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   real); all removed members re-homed or dropped; gates confirmed
   (tsc 0 errors, 248/1/0). Human merge gate (step 11) substituted per
   R-MERGE-1: deterministic merge check executed by this runner.
+- Step 11/12: merged PR #38 as squash **a91a30b038d9bcf7ece36e17897940f9a0922723**
+  (`--match-head-commit 937bdd3…` held); CI green on the merged SHA (gates
+  run 35965654278, conclusion success, incl. windows job). Card Done on
+  card+board from that observed artifact. Step-12 record commit pushed to
+  main under R-PUSH-1 (7e85ec2).
+- Step 13 follow-ups: three candidates drafted; recorded decision (mode
+  active, confirmation-pending) is **File** for all three — HELD, no card
+  written, resumable by draft title: (1) "Fix the load-smoke test-2 header's
+  overstated compile-time claim"; (2) "Correct the member-count discrepancy
+  in FLLWUP-11's record"; (3) "Update AGENTS.md's 'Current state' once
+  FLLWUP-12 lands". Awaiting the confirming ruling via ESCALATION.
