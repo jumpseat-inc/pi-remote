@@ -1,7 +1,7 @@
 ---
 id: EPIC-5
 title: "SDK reconciliation residuals — the EPIC-4 run's seven follow-ups"
-state: Ready
+state: Done
 owner: null
 epic: null
 goal: Observed as met when FLLWUP-32 through FLLWUP-38 are all Done with bunx tsc --noEmit exit 0 and bun test green: the load-smoke test header's claim matches its body, the FLLWUP-11 run record's member count and "none exist on the real ExtensionAPI" phrasing are corrected, AGENTS.md no longer claims the extension is not loadable in a real pi host, a committed regression probe catches a dropped message_start masked by the message_update fallback, emission-semantics claims are grounded in the event-constructing layer, the duplicated message-family role decoder has a scoped removal home, and the vendored PiTextContent's textSignature field is declared or annotated.
@@ -67,3 +67,24 @@ Observed as met when FLLWUP-32 through FLLWUP-38 are all `Done`:
 
 `bunx tsc --noEmit` exits 0 and `bun test` is green throughout. Delivered by
 children FLLWUP-32 through FLLWUP-38; this card is not actionable on its own.
+
+## Run record — closed (2026-09-24)
+
+Closed by `steward` job-12 ratifying `Done` (all seven children `Done`, each
+merged with green `gates` on its merged SHA). Run id
+`2026-09-24T14-16-48-865Z-1369407-58h5bs`.
+
+| Child | Merge SHA | PR |
+|---|---|---|
+| FLLWUP-34 | `26f52bb` | #40 |
+| FLLWUP-35 | `a283f9a` | #41 |
+| FLLWUP-38 | `7e050cb` | #42 |
+| FLLWUP-37 | `3660df5` | #43 |
+| FLLWUP-32 | `3245631` | #44 |
+| FLLWUP-33 | `a69f0a0` | #45 |
+| FLLWUP-36 | `c758dd4` | #46 |
+
+Two run-filed follow-ups rest as ungrouped `Backlog` and do **not** bar
+closure: **FLLWUP-39** (PiThinkingContent signature fields) and
+**FLLWUP-40** (FLLWUP-12 pairing-test comment correction), both
+`epic: null`, both confirmed `File` by recorded `product-owner` rulings.

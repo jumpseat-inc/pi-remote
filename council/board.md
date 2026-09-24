@@ -16,7 +16,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 
 ## Ready
-- EPIC-5 — "SDK reconciliation residuals — the EPIC-4 run's seven follow-ups"
 
 ## In Progress
 
@@ -25,6 +24,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Needs Human
 
 ## Done
+- EPIC-5 — "SDK reconciliation residuals — the EPIC-4 run's seven follow-ups"
 - FLLWUP-36 — "Ground emission-semantics claims in the event-constructing layer, not only the pass-through emitter"
 - FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
