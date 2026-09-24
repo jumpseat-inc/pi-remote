@@ -107,3 +107,8 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   Two non-blocking doc nits noted (smoke-test-2 comment overstatement;
   card-text "twelve" vs actual 13 non-`on` members) — step-13 candidates.
   Verify-cycle count: 1 of 3 (no fix-and-reverify rounds needed).
+- Step 10 judge (job-11.4): **PASS.** Basis: strict-Proxy load smoke green;
+  no phantom `pi.` accesses (only sendUserMessage/registerCommand/on, all
+  real); all removed members re-homed or dropped; gates confirmed
+  (tsc 0 errors, 248/1/0). Human merge gate (step 11) substituted per
+  R-MERGE-1: deterministic merge check executed by this runner.
