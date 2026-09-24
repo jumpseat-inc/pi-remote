@@ -144,3 +144,10 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   pinned by static pairing test; vendored PiTextContent omits optional
   textSignature; millisecond timestamp-collision exposure unreachable in
   sequential emission). Verify-cycle count: 2 of 3.
+- Step 10 judge (job-15.5): **PASS.** Basis: 4 handlers corrected (object-identity
+  keys → payload-intrinsic `(role, timestamp)` derivation; tool_result on
+  toolCallId/content with the documented R-PAYLOAD-1 divergence), 7 already
+  honest, no live event in the eleven silently dropped by field mismatch;
+  gates confirmed; package.json byte-identical, SDK not a dependency. Human
+  merge gate (step 11) substituted per R-MERGE-1: deterministic merge check
+  executed by this runner.
