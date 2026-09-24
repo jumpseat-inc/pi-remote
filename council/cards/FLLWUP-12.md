@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-12
 title: "Reconcile handler payload narrowing with real SDK event payloads"
-state: In Review
+state: In Progress
 owner: owner/fllwup-12-reconcile-payload-narrowing (PR #39, head e1ef9c1)
 epic: EPIC-4
 goal: Every forward() handler's defensive narrowing matches the real SDK's actual event payload shapes, so no live event is silently dropped by a field mismatch between the stand-in's assumed shape and the real payload.
@@ -97,3 +97,19 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   tool set; recorded mode **Verify** applied as authoritative, no re-route.
   In Review set from the observed artifact: PR #39 OPEN, head e1ef9c1,
   base d36c6c9 (verified via gh pr view).
+- Step 9 skeptic, verify cycle 1 of 3 (job-15.2): **BLOCK** — one
+  **closed-red** objection. The corrected handlers' narrowing fields all exist
+  on the real payloads (field-level audit clean, 11/11), gates green at head
+  (tsc 0; 266/1/0), R-TYPE-1/R-PAYLOAD-1 conformance confirmed, PR hygiene
+  clean, defect-injection proved the suite non-vacuous — but the
+  message-family messageId derivation (WeakMap keyed on the `message` object's
+  identity) fails under the installed engine's actual emission semantics:
+  streamAssistantResponse spread-copies a fresh object per message_start /
+  message_update emission, so the wedge test (engine-verbatim semantics) wired
+  `TEXT_MESSAGE_START(msg-11)`, `TEXT_MESSAGE_START(msg-12)`, zero END — the
+  same silent-misroute class this card exists to close, relocated to unstable
+  object identity. Owner fixtures share one object across all three events,
+  encoding the false premise. Card returned to In Progress; the specific red
+  item handed back to the owner (fix cycle 1). Step-13 candidates noted by the
+  skeptic: engine-style fixture premise-testing; translate.ts message_update
+  fallback masking dropped starts; plan's emission-site-authority citation.
