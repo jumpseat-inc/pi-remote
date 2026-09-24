@@ -74,3 +74,39 @@ applies the ruling and cites it; it does not re-ask.
 owner, one skeptic, one judge; all five deterministic-merge criteria with
 criterion 3 scoped to the single Verify skeptic dispatch. A generator seat in
 the runner subtree upgrades the effective mode to Deliberate.
+
+## Run record — FLLWUP-33 (EPIC-5)
+
+- Routing recheck (step 9, EV-69): `council_route` is not available to this
+  container's tool set (observed EPIC-4 precedent, recorded on FLLWUP-11's
+  face); the recorded mode **Verify** from the dispatch input is applied as
+  authoritative and not re-recorded.
+- Surface-touching bit: **false** (council-record prose only; R-CLASS-1
+  rules `surface copy` n/a for this epic — no person-facing surface).
+- Step 8 owner (job-10.1): worktree `/home/tista/codes/pi-remote-fllwup-33`,
+  branch `owner/fllwup-33-record-count` cut from origin/main c824a62, **PR
+  #45**, head `efd13470dc1fe4af35780e5cd371b3945eacc767` (amended once for
+  line-wrap only, `--force-with-lease`). Diff = exactly
+  `council/cards/FLLWUP-11.md` (18+/17−), the card-specific product change:
+  five stale passages corrected in place (Intent, Acceptance, R-TYPE-1, run
+  record) to the audited 13 non-`on` count with the 2 kept members
+  (`registerCommand`, `sendUserMessage`) distinguished as existing on the
+  real SDK typed-to-real and the removed 11 as having no counterpart; the
+  redundant d36c6c9 `[Post-run correction]` note removed; frontmatter
+  byte-identical (md5 equal base vs head). Owner gates at head: tsc exit 0;
+  `bun test` 273 pass / 1 skip / 0 fail. Grounding: base stand-in at fa1a262
+  enumerated (13 non-`on`), `src/pi-host.ts` provenance header (11 removed).
+- Step 9 skeptic (job-10.2, single Verify dispatch): **NO-BLOCK** at pinned
+  head `efd1347`. Seven objections, all **closed-green**, each settled by a
+  run test: gates re-run independently (tsc exit 0; 273/1/0) with gate
+  integrity proven by defect injection (TS2322 in src/pi-host.ts → tsc exit
+  1; failing test file → bun test 0/1, both restored clean); diff hygiene
+  (exactly one file); frontmatter protection (md5 identical, first hunk at
+  line 10); count reconciliation from `git show fa1a262:index.ts` (13
+  non-`on`) + installed SDK types.d.ts:978 ExtensionAPI (registerCommand
+  @1021, sendUserMessage @1055 present; removed 11 absent) = 2+11=13;
+  breakdown 5+5+1=11 coherent with `src/pi-host.ts` and R-TYPE-1;
+  stale-phrase sweep 0 hits (two surviving "twelve" are quoted historical
+  references); record coherent end-to-end. Verify-cycle count: 1 of 3 (no
+  fix-and-reverify rounds). Non-blocking note: pre-existing "deliberation"/
+  "orchestrator" typos on unmodified lines, cosmetic, out of scope.
