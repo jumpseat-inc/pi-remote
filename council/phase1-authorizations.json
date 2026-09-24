@@ -1,0 +1,20 @@
+{
+  "run": "EPIC-5",
+  "recordedAt": "2026-09-24T14:56:32Z",
+  "source": "human Phase-1 rulings preflight (/features-deliver EPIC-5)",
+  "scope": "this run only — not extended to any later run",
+  "grants": [
+    {
+      "power": "direct-record-push-to-main",
+      "granted": true,
+      "basis": "Human granted 'Both (Recommended)' at the Phase-1 rulings preflight.",
+      "authorizes": "Phase-1 class-enumeration record and step-12 council record commits to be pushed directly to main for this run."
+    },
+    {
+      "power": "admin-merge-bypass",
+      "granted": true,
+      "basis": "Human granted 'Both (Recommended)' at the Phase-1 rulings preflight. main currently has no ruleset/branch protection, so this is a defensive pre-authorization only.",
+      "authorizes": "gh pr merge <PR> --squash --admin --match-head-commit <X> if a ruleset ever blocks a merge during this run."
+    }
+  ]
+}
