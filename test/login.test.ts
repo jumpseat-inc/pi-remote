@@ -429,6 +429,38 @@ describe("EV-7 attended flow", () => {
     rmSync(deps.configDir, { recursive: true, force: true });
   });
 
+  test("test 6b (PKCE S256): the challenge digests the code_verifier STRING, not the raw random bytes (FLLWUP-106)", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    const captured: { shaInput: Uint8Array | null } = { shaInput: null };
+    let challenge: string | null = null;
+    const deps = attendedDeps(c, {}, {
+      sha256: async (i: Uint8Array) => {
+        captured.shaInput = i;
+        return new Uint8Array(new Uint8Array(32).fill(7));
+      },
+      openUrl: async (url: string) => {
+        const u = new URL(url);
+        challenge = u.searchParams.get("code_challenge");
+        const redirect = u.searchParams.get("redirect_uri") ?? "";
+        await fetch(`${redirect}?code=C1&state=${u.searchParams.get("state")}`).catch(() => {});
+        return true;
+      },
+    });
+    loginEndpointRequestLog.length = 0;
+    await runAttendedLogin(deps, null);
+    const tokReq = c.requests.find((r) => r.url === c.tokenEndpoint);
+    const form = Object.fromEntries(new URLSearchParams(tokReq?.body ?? ""));
+    expect(captured.shaInput).not.toBeNull();
+    // RFC 7636: SHA256 is over the ASCII of the code_verifier, never the raw
+    // random bytes that produced it. On the buggy form this input was the
+    // raw bytes and this assertion is red.
+    expect(new TextDecoder().decode(captured.shaInput as Uint8Array)).toBe(
+      form["code_verifier"] as string
+    );
+    expect(challenge ?? "").toBe(b64urlRaw(new Uint8Array(new Uint8Array(32).fill(7))));
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
   test("test 14 (open-redirect / loopback guard): mismatched state or path → redirectMismatch, no token exchange", async () => {
     // Mismatched state.
     loginEndpointRequestLog.length = 0;

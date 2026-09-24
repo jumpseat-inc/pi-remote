@@ -515,6 +515,12 @@ export async function runAttendedLogin(
       typeof address === "object" && address !== null ? address.port : 0;
     const redirectUri = `http://127.0.0.1:${port}/callback`;
     const verifierBytes = rng(32);
+    // RFC 7636 §4.1/§4.2: code_verifier is the 43-char base64url of the random
+    // bytes, and code_challenge is BASE64URL(SHA256(ASCII(code_verifier))) — the
+    // digest is over the VERIFIER STRING, not the raw random bytes. Hashing the
+    // raw bytes made every attended exchange fail `invalid_grant` against the
+    // relay's spec-compliant s256Challenge (FLLWUP-106).
+    const verifier = base64url(verifierBytes);
 
     const authorizeUrl = new URL(discovered.doc.authorizationEndpoint);
     authorizeUrl.searchParams.set("client_id", "pi-remote");
@@ -522,7 +528,7 @@ export async function runAttendedLogin(
     authorizeUrl.searchParams.set("code_challenge_method", "S256");
     authorizeUrl.searchParams.set(
       "code_challenge",
-      base64url(await sha(verifierBytes))
+      base64url(await sha(new TextEncoder().encode(verifier)))
     );
     authorizeUrl.searchParams.set("redirect_uri", redirectUri);
     authorizeUrl.searchParams.set("scope", "pi-remote:host");
@@ -572,7 +578,7 @@ export async function runAttendedLogin(
         body: encodeForm({
           grant_type: "authorization_code",
           code: cb.code,
-          code_verifier: base64url(verifierBytes),
+          code_verifier: verifier,
           redirect_uri: redirectUri,
           client_id: "pi-remote",
         }),
