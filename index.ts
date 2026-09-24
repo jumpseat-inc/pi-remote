@@ -182,6 +182,11 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
   let epoch = 0;
   let teardownPromise: Promise<void> | null = null;
   const transportRef: { handle: TransportHandle | null } = { handle: null };
+  
+  // FLLWUP-92: Single-flight refresh — prevents concurrent rearm() calls from
+  // presenting the same (now-rotated) refresh token, which triggers the
+  // relay's replay detector and revokes the token family.
+  let inflightRefresh: Promise<{ accessToken: string; tokenExpiry: number; refreshToken?: string }> | null = null;
 
   const injector = createInjector({
     sendUserMessage: deps.sendUserMessage,
@@ -274,23 +279,54 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     let accessToken = cred.accessToken;
     if (now() >= cred.tokenExpiry) {
       // ONE silent refresh when a refresh token exists (spec §4.1).
+      // FLLWUP-92: Single-flight — if a refresh is already in progress,
+      // wait for it instead of starting a concurrent one. This prevents
+      // multiple rearm() calls from presenting the same (now-rotated) refresh
+      // token, which would trigger the relay's replay detector.
       if (!cred.refreshToken) {
         const err = new TunnelError("unauthenticated", "enrollment_expired", serverUrl);
         handleEnrollmentTerminal(err);
         throw err;
       }
       try {
-        const r = await refreshAccessToken(cred.refreshToken, {
-          serverUrl,
-          accessToken: cred.accessToken,
-          fetch: deps.fetch,
-          now,
-          discoveryCache,
-        });
-        const updated: EnrollmentCredential = { ...cred, accessToken: r.accessToken, tokenExpiry: r.expiresAt };
-        if (r.refreshToken) updated.refreshToken = r.refreshToken;
-        await saveCredentialAsync(updated, { configDir: deps.configDir });
-        accessToken = updated.accessToken;
+        let r: { accessToken: string; tokenExpiry: number; refreshToken?: string };
+        if (inflightRefresh !== null) {
+          // Wait for the in-flight refresh to complete instead of starting a new one
+          r = await inflightRefresh;
+          // Re-read the credential from disk after the refresh completes, since
+          // the first caller saved the updated credential and our `cred` is stale
+          const freshCred = readCredential({ configDir: deps.configDir });
+          if (freshCred && freshCred.tokenExpiry > cred.tokenExpiry) {
+            // Use the freshly-persisted credential
+            r = { accessToken: freshCred.accessToken, tokenExpiry: freshCred.tokenExpiry, refreshToken: freshCred.refreshToken };
+          }
+        } else {
+          // Start a new refresh and store the promise so concurrent callers wait
+          inflightRefresh = (async () => {
+            try {
+              const result = await refreshAccessToken(cred.refreshToken!, {
+                serverUrl,
+                accessToken: cred.accessToken,
+                fetch: deps.fetch,
+                now,
+                discoveryCache,
+              });
+              const updated: EnrollmentCredential = {
+                ...cred,
+                accessToken: result.accessToken,
+                tokenExpiry: result.expiresAt,
+              };
+              if (result.refreshToken) updated.refreshToken = result.refreshToken;
+              await saveCredentialAsync(updated, { configDir: deps.configDir });
+              return { accessToken: result.accessToken, tokenExpiry: result.expiresAt, refreshToken: result.refreshToken };
+            } finally {
+              // Clear the in-flight promise once complete (success or failure)
+              inflightRefresh = null;
+            }
+          })();
+          r = await inflightRefresh;
+        }
+        accessToken = r.accessToken;
       } catch (e) {
         if (isEnrollmentTerminal(e)) {
           handleEnrollmentTerminal(e);
