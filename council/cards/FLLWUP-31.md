@@ -94,3 +94,12 @@ and selects the device-flow driver; without it the attended flow runs (BUG-1, PR
 **Out-of-scope note (skeptic sweep, no objection):** the remaining `## Current
 state` sentences (FLLWUP-11/12 not-loadable, one-suite-per-module, `src/login.ts`
 implementation) remain accurate.
+
+**Step 13 — follow-ups.** One candidate drafted: "Make council/validate.py fail
+on duplicate board headings" (surfaced when the step-8 board edit left a second
+`## In Review` heading and `validate.py` still reported clean — it enforces card
+membership under the matching column, not heading uniqueness). Recorded decision
+via `council_followup_gate` (active): `Mode: File — composite 0.23 < merge
+threshold 1.00`; dedup pass found no existing card or sibling. Presented with
+its rendered line; the **human dropped it at the confirm gate** — no card filed,
+no board change.
