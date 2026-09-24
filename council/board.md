@@ -22,9 +22,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 
 ## In Progress
-- FLLWUP-35 — "Add a fold-bookkeeping probe that catches a dropped message_start masked by the message_update fallback"
 
 ## In Review
+- FLLWUP-35 — "Add a fold-bookkeeping probe that catches a dropped message_start masked by the message_update fallback"
 
 ## Needs Human
 

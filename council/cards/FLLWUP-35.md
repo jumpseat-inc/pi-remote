@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-35
 title: "Add a fold-bookkeeping probe that catches a dropped message_start masked by the message_update fallback"
-state: In Progress
+state: In Review
 owner: null
 epic: EPIC-5
 goal: add a regression probe ensuring a dropped `message_start` cannot be silently masked by the `message_update` fallback path (translate.ts's mid-join role back-derivation).
