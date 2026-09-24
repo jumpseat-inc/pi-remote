@@ -1,8 +1,8 @@
 ---
 id: FLLWUP-34
 title: "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
-state: In Review
-owner: null
+state: Done
+owner: owner/fllwup-34-agents-current-state (PR #40, merged 26f52bb)
 epic: EPIC-5
 goal: AGENTS.md's stale "not yet loadable" claim is half-overtaken by FLLWUP-11's landing; full update waits for FLLWUP-12.
 ---
@@ -72,3 +72,73 @@ applies the ruling and cites it; it does not re-ask.
 owner, one skeptic, one judge; all five deterministic-merge criteria with
 criterion 3 scoped to the single Verify skeptic dispatch. A generator seat in
 the runner subtree upgrades the effective mode to Deliberate.
+
+## Run record
+
+- Runner took the card (mechanical path — docs-only correction to one bullet
+  in AGENTS.md, unambiguous and single-area; no deliberation). Routing note:
+  `council_route` is not available to this container's tool set; the recorded
+  mode **Verify** from the dispatch input is applied as authoritative and not
+  re-recorded.
+- Precondition observed: FLLWUP-12 Done (PR #39, merged 524bc90) and
+  FLLWUP-11 Done (PR #38, merged a91a30b), both on the board's Done column —
+  the gating pair the stale bullet named has landed.
+- Surface-touching bit: **false** (AGENTS.md is an agent-guidance doc, not a
+  person-facing product surface; no visible surface, copy, empty state, or
+  error state changes). Phase-1 classes per R-CLASS-1: structured `n/a`.
+- Step 8 (job-2.1): delivered. Branch `owner/fllwup-34-agents-current-state`
+  (base origin/main 94d0550), **PR #40**, head
+  `5c19eb004dbcd3f8ba3226c1ca6d20f0247d68d4`. Diff product-only: AGENTS.md
+  (+8/−6) + plan file `docs/superpowers/plans/2026-09-24-FLLWUP-34-agents-current-state.md`
+  (+146); zero council/vault/.pi paths. The stale bullet ("Not yet loadable
+  in a real `pi` host" + its "Do not claim installability until they land"
+  instruction) replaced with a "**Loadable in a real `pi` host.**" bullet
+  stating the post-FLLWUP-11/12 reality — real load through the installed
+  production loader proven green (FLLWUP-11), strict-Proxy load smoke pinning
+  the entry to the real loader's member names, handler payload narrowing
+  reconciled to real SDK payloads with real-shaped fixtures (FLLWUP-12) —
+  event-framed, zero numbers pinned as eternal (FLLWUP-31 discipline),
+  ending "Do not claim beyond what is proven above". Owner gates: `bunx tsc
+  --noEmit` exit 0; `bun test` 270 pass / 1 Windows-gated skip / 0 fail.
+  Owner push anomaly, reported not improvised: origin push failed on the
+  repo-local `url.<https>.insteadOf` rewrite (no https credentials); push
+  succeeded over the explicit `ssh://git@github.com/…` URL form; no shared
+  config changed.
+- In Review set from the observed artifact: PR #40 OPEN, head 5c19eb0, base
+  main (verified via `gh pr view`).
+- Merge-check criterion 2 observed directly by the runner on the PR head:
+  `gh pr checks 40 --json name,state,workflow` → workflow `gates` state
+  SUCCESS (both jobs) at head 5c19eb0.
+- Step 9 skeptic, verify cycle 1 of 3 (job-2.2): **VERIFY-PASS — no open
+  objections, zero closed-red** (13 objections filed, all closed-green with
+  real output: head/branch/clean-state, product-only diff containment, stale
+  bullet gone + new text verbatim, tsc exit 0, bun test 270/1/0 twice, load
+  smoke proven non-vacuous by defect injection → red → restored → green,
+  both Done-card provenances verified ancestors of origin/main, no eternal
+  counts (zero numbers in the new bullet), no claim beyond proven, no stale
+  gating instruction surviving in the diff, PR state/head confirmed).
+  No fix cycles needed — verify cycle count: 1 of 3.
+- Step 10 judge (job-2.3): **PASS.** Basis: stale claim removed and replaced
+  correctly (loadability stated, both cards referenced, observe-and-state
+  discipline kept); gates green (tsc exit 0; 270 pass / 1 expected skip /
+  0 fail); PR #40 open at confirmed head with product-only diff.
+- Step 11/12: all five merge criteria held (mode Verify, criterion 3 scoped
+  to the single Verify skeptic dispatch): (1) owner gates green in full at
+  head 5c19eb0, re-run independently by the skeptic; (2) `gates` workflow
+  SUCCESS on the PR head SHA, read directly; (3) no blocking Skeptic
+  objection; (4) judge PASS (job-2.3); (5) no Needs Human state, no
+  outstanding ruling. Merged PR #40 as squash **26f52bbca6a886ca957425de244328bcee40de70**
+  with `--match-head-commit 5c19eb0…` held (ordinary merge; R-ADMIN-1
+  unused — main unprotected, 0 rulesets). CI green on the merged SHA
+  (gates run on 26f52bb, conclusion success; check-runs gates +
+  gates-windows both success at that head_sha). Card Done on card+board
+  from that observed artifact. Step-12 record commit pushed to main under
+  R-PUSH-1 (run-scoped). Local main fast-forward-unable (diverged by this
+  card's own record commits 1c6050e, fa9ada4) → documented union reconcile
+  via `git merge origin/main` (disjoint files, conflict-marker sweep clean,
+  validate clean).
+- Step 13: no follow-up candidates drafted — every surfaced item was folded
+  in (provenance card references kept in the replacement bullet), settled by
+  a skeptic test, or out-of-scope for this card; nothing remains that the
+  run surfaced but did not do. `council_followup_review` not called (no
+  candidates).
