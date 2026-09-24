@@ -12,13 +12,25 @@
  * real SDK carries more. The SDK is NOT a dependency (R-TYPE-1).
  *
  * Derivation helpers (R-PAYLOAD-1): the real payloads carry no message id,
- * so the AG-UI messageId is derived from the `message` object itself —
- * object identity is stable across a message's lifetime (agent-session.js
- * forwards the same `event.message` to message_start/update/end and mutates
- * it in place via _replaceMessageInPlace), so a WeakMap-backed key is a
- * faithful correlation key. All helpers are total: malformed input →
- * undefined/null, never a throw (tool_result is an afterToolCall hook whose
- * handler contract forbids throwing; runner.js emitToolResult 803–849).
+ * so the AG-UI messageId is DERIVED from payload-intrinsic data:
+ * `${role}:${timestamp}`. Grounding — real emission semantics (verified in
+ * the installed engine, closed-red FLLWUP-12 fix cycle 1): agent-loop.js
+ * streamAssistantResponse emits `message: { ...partialMessage }` on
+ * message_start AND on every message_update (agent-loop.js:284, 295–299),
+ * and the accumulated finalMessage object on message_end (:309) — object
+ * identity never survives an event, so identity-based keys minted a fresh
+ * key per emission (the defect this replaces). But the streamed partial is
+ * ONE accumulated object created once per assistant stream (pi-ai
+ * anthropic-messages.js:339 `const output = …`), and its `role`/`timestamp`
+ * are copied verbatim onto every spread-copy emission
+ * (assistant-message-frame.js cloneStartMessage), so (role, timestamp) is
+ * identical across all emissions of one logical message and distinct
+ * across message streams. Known bound: two same-role messages sharing one
+ * timestamp would fold into one AG-UI message (merged framing, not
+ * corruption); real timestamps are wall-clock at stream start.
+ * All helpers are total: malformed input → undefined/null, never a throw
+ * (tool_result is an afterToolCall hook whose handler contract forbids
+ * throwing; runner.js emitToolResult 803–849).
  */
 
 /** Real pi-ai content blocks (pi-ai dist/types.d.ts:242–266). */
@@ -119,26 +131,39 @@ export type LocalAssistantMessageEvent =
 // Derivation helpers (pure, total).
 // ---------------------------------------------------------------------------
 
-const keyStore = new WeakMap<object, string>();
-let keyCounter = 0;
+/**
+ * Role gate: only assistant/user messages open AG-UI message framing.
+ */
+export function roleOfAgentMessage(msg: unknown): "assistant" | "user" | undefined {
+  if (typeof msg !== "object" || msg === null) return undefined;
+  const role = (msg as { role?: unknown }).role;
+  return role === "assistant" || role === "user" ? role : undefined;
+}
 
 /**
- * Stable correlation key for an AgentMessage object: identity-based
- * (WeakMap-backed), stable across in-place mutation, undefined for
- * non-objects. Note on AGENTS.md's "never module-level mutable state": that
- * rule targets session-scoped state that would leak across a session switch
- * (tunnels, footers, fold state, prompt registries). This is a key MINT — an
- * opaque, monotonically-labeled counter with no session data in it; the fold
- * state that consumes the keys stays in TranslateState (closure-scoped).
+ * Payload-intrinsic AG-UI messageId for a message-family event: derived
+ * from (role, timestamp), the fields the real engine copies verbatim onto
+ * every emission of one logical message (see the file-header grounding
+ * note). Inverse of messageFrameRole: back-derives the role from the
+ * minted id. Total: non-objects and non-finite timestamps → undefined.
  */
-export function messageKey(msg: unknown): string | undefined {
-  if (typeof msg !== "object" || msg === null) return undefined;
-  let k = keyStore.get(msg);
-  if (k === undefined) {
-    k = `msg-${++keyCounter}`;
-    keyStore.set(msg, k);
-  }
-  return k;
+export function agentMessageId(msg: unknown): string | undefined {
+  const role = roleOfAgentMessage(msg);
+  if (role === undefined) return undefined;
+  const ts = (msg as { timestamp?: unknown }).timestamp;
+  if (typeof ts !== "number" || !Number.isFinite(ts)) return undefined;
+  return `${role}:${ts}`;
+}
+
+/**
+ * Back-derive the role from an agentMessageId-minted string
+ * (`<role>:<timestamp>`); undefined for anything else.
+ */
+export function messageFrameRole(messageId: string): "assistant" | "user" | undefined {
+  const idx = messageId.indexOf(":");
+  if (idx <= 0) return undefined;
+  const role = messageId.slice(0, idx);
+  return role === "assistant" || role === "user" ? role : undefined;
 }
 
 /** Real → local fold-union adapter; total (malformed → null, never throws). */
@@ -195,11 +220,4 @@ function toolCallOf(b: unknown): { id: string; name: string } | null {
   const blk = b as { type?: unknown; id?: unknown; name?: unknown };
   if (blk.type !== "toolCall" || typeof blk.id !== "string" || typeof blk.name !== "string") return null;
   return { id: blk.id, name: blk.name };
-}
-
-/** Role gate: only assistant/user messages open AG-UI message framing. */
-export function roleOfAgentMessage(msg: unknown): "assistant" | "user" | undefined {
-  if (typeof msg !== "object" || msg === null) return undefined;
-  const role = (msg as { role?: unknown }).role;
-  return role === "assistant" || role === "user" ? role : undefined;
 }

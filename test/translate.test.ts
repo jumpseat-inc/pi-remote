@@ -425,6 +425,29 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
     expect(src).not.toMatch(/import\s+.*\s+from/); // translate imports type definitions only — no runtime imports
   });
 
+  test("FLLWUP-12 static pairing: translate.ts messageFrameRoleLocal decodes pi-sdk-events.ts agentMessageId ids (G-12 keeps them separate, so pin both directions)", async () => {
+    const mint = await Bun.file(new URL("../src/pi-sdk-events.ts", import.meta.url)).text();
+    const fold = await Bun.file(new URL("../src/translate.ts", import.meta.url)).text();
+    // Both files must carry the same role:timestamp derivation. If either
+    // side changes its minting/decoding rule, this fails until both move
+    // together (or the pairing test is consciously updated).
+    const parse = (src: string) => src.match(/messageId\.indexOf\(":"\)/) !== null;
+    expect(parse(mint)).toBe(true); // messageFrameRole in pi-sdk-events.ts
+    expect(parse(fold)).toBe(true); // messageFrameRoleLocal in translate.ts
+    // Same allowed role set on both sides:
+    const roles = (src: string, anchor: string) => {
+      const i = src.indexOf(anchor);
+      expect(i).toBeGreaterThanOrEqual(0);
+      const slice = src.slice(i, i + 400);
+      expect(slice).toContain('"assistant"');
+      expect(slice).toContain('"user"');
+      expect(slice).not.toContain('"system"');
+      expect(slice).not.toContain('"toolResult"');
+    };
+    roles(mint, "export function messageFrameRole");
+    roles(fold, "function messageFrameRoleLocal");
+  });
+
   test("importing translate.ts has no side effects (module purity)", async () => {
     const before = (globalThis as Record<string, unknown>).__ev4_side_effect ?? "absent";
     await import("../src/translate");

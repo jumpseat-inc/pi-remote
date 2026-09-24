@@ -1,25 +1,41 @@
 import { describe, expect, test } from "bun:test";
-import { messageKey, realAssistantMessageEventOf, roleOfAgentMessage } from "../src/pi-sdk-events";
+import { agentMessageId, messageFrameRole, realAssistantMessageEventOf, roleOfAgentMessage } from "../src/pi-sdk-events";
 import type { MessageStartEvent } from "../src/pi-sdk-events";
 
 describe("FLLWUP-12: vendored real payload derivation helpers", () => {
-  test("messageKey: stable per object identity, distinct across objects, undefined on non-objects", () => {
-    const a = { role: "assistant" };
-    const b = { role: "assistant" }; // deep-equal, distinct object
-    expect(messageKey(a)).toBe(messageKey(a));
-    expect(messageKey(a)).not.toBe(messageKey(b));
-    expect(messageKey(null)).toBeUndefined();
-    expect(messageKey(undefined)).toBeUndefined();
-    expect(messageKey("m1")).toBeUndefined();
-    expect(messageKey(42)).toBeUndefined();
+  test("agentMessageId: (role, timestamp)-derived; identical across spread copies (real engine emits a fresh copy per event, agent-loop.js:284/295-299/309)", () => {
+    const a = { role: "assistant", timestamp: 1727123456789 };
+    const copy = { ...a, content: [{ type: "text", text: "hello" }] }; // what agent-loop.js emits per event
+    expect(agentMessageId(a)).toBe(agentMessageId(copy));
+    expect(agentMessageId(a)).toBe("assistant:1727123456789");
   });
 
-  test("messageKey: stable across in-place mutation (real SDK mutates event.message in place)", () => {
-    const msg: Record<string, unknown> = { role: "assistant", content: [] };
-    const k1 = messageKey(msg);
-    delete msg.role; // _replaceMessageInPlace does exactly this (agent-session.js:696)
-    msg.role = "assistant";
-    expect(messageKey(msg)).toBe(k1);
+  test("agentMessageId: distinct timestamps → distinct ids (separate assistant streams never collide)", () => {
+    expect(agentMessageId({ role: "assistant", timestamp: 1 })).not.toBe(agentMessageId({ role: "assistant", timestamp: 2 }));
+  });
+
+  test("agentMessageId: total — non-objects, wrong roles, non-finite timestamps → undefined", () => {
+    expect(agentMessageId(null)).toBeUndefined();
+    expect(agentMessageId(undefined)).toBeUndefined();
+    expect(agentMessageId("m1")).toBeUndefined();
+    expect(agentMessageId(42)).toBeUndefined();
+    expect(agentMessageId({ role: "system", timestamp: 0 })).toBeUndefined(); // role gate
+    expect(agentMessageId({ role: "assistant" })).toBeUndefined(); // missing timestamp
+    expect(agentMessageId({ role: "assistant", timestamp: Number.NaN })).toBeUndefined();
+    expect(agentMessageId({ role: "assistant", timestamp: Number.POSITIVE_INFINITY })).toBeUndefined();
+    expect(agentMessageId({ role: "assistant", timestamp: "0" })).toBeUndefined();
+  });
+
+  test("messageFrameRole: back-derives role from a minted id; undefined for foreign formats", () => {
+    expect(messageFrameRole("assistant:1727123456789")).toBe("assistant");
+    expect(messageFrameRole("user:0")).toBe("user");
+    expect(messageFrameRole("assistant:")).toBe("assistant"); // colon, empty ts — role still decodable
+    expect(messageFrameRole("msg-11")).toBeUndefined(); // replay path / opaque ids
+    expect(messageFrameRole("system:0")).toBeUndefined(); // gated roles
+    expect(messageFrameRole("toolResult:0")).toBeUndefined();
+    expect(messageFrameRole(":5")).toBeUndefined(); // empty role
+    expect(messageFrameRole("nouserr")).toBeUndefined(); // no colon
+    expect(messageFrameRole("")).toBeUndefined();
   });
 
   test("realAssistantMessageEventOf: text_delta/thinking_delta map with delta+contentIndex", () => {

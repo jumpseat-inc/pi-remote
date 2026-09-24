@@ -19,7 +19,7 @@
 import { createTransport, type TransportHandle, type TransportStatusEvent, type InboundEnvelope, type AgUiFrameLike } from "./src/transport";
 import { createState, translate, type PiEvent, type ToolResultContentBlock, type TranslateState, type UIPromptKind } from "./src/translate";
 import { type DepsOnEvent, type PiEventHandler, type PiExtensionContext, type PiSDKOnEvent } from "./src/pi-sdk-on";
-import { messageKey, realAssistantMessageEventOf, roleOfAgentMessage } from "./src/pi-sdk-events"; // FLLWUP-12: real payload derivation (R-TYPE-1 vendored shapes)
+import { agentMessageId, messageFrameRole, realAssistantMessageEventOf, roleOfAgentMessage } from "./src/pi-sdk-events"; // FLLWUP-12: real payload derivation (R-TYPE-1 vendored shapes)
 import { resolvePiAgentDir, readHostSettings, hostMetadataFromOs } from "./src/pi-host";
 import { homedir, platform as osPlatform, arch as osArch } from "node:os";
 import { createInjector } from "./src/inject";
@@ -621,9 +621,11 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
   // shapes (dist/core/extensions/types.d.ts; vendored mirrors in
   // src/pi-sdk-events.ts). The real message_* payloads are {type, message:
   // AgentMessage} — no top-level messageId/role/events — so the AG-UI
-  // messageId is DERIVED from the message object's identity (stable across
-  // the message's lifetime; agent-session.js forwards the same object to
-  // start/update/end and mutates it in place), and role from message.role.
+  // messageId is DERIVED from payload-intrinsic (role, timestamp) — fields
+  // the real engine copies verbatim onto every emission of one logical
+  // message (agent-loop.js spread-copies event.message per emission;
+  // agent-session.js mutates it in place — identity never survives an
+  // event, see src/pi-sdk-events.ts header) — and role from message.role.
   // tool_result carries no message id at all: the toolCallId doubles as the
   // messageId (the live twin of the replay path's entry-id-as-messageId
   // decision, src/replay-adapter.ts) — the card's one documentation-only
@@ -633,20 +635,20 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
   deps.on("message_start", (ev) => {
     const e = ev as { message?: unknown } | null | undefined;
     const role = roleOfAgentMessage(e?.message);
-    const messageId = messageKey(e?.message);
+    const messageId = agentMessageId(e?.message);
     if (!role || messageId === undefined) return;
     forward({ event: "message_start", messageId, role });
   });
   deps.on("message_update", (ev) => {
     const e = ev as { message?: unknown; assistantMessageEvent?: unknown } | null | undefined;
-    const messageId = messageKey(e?.message);
+    const messageId = agentMessageId(e?.message);
     const local = realAssistantMessageEventOf(e?.assistantMessageEvent);
     if (messageId === undefined || local === null) return;
     forward({ event: "message_update", messageId, events: [local] });
   });
   deps.on("message_end", (ev) => {
     const e = ev as { message?: unknown } | null | undefined;
-    const messageId = messageKey(e?.message);
+    const messageId = agentMessageId(e?.message);
     if (messageId === undefined || roleOfAgentMessage(e?.message) === undefined) return;
     forward({ event: "message_end", messageId });
   });

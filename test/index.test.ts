@@ -1200,6 +1200,43 @@ describe("FLLWUP-12: real-shaped payloads through the live path (R-PAYLOAD-1)", 
     h.relay.stop();
   });
 
+  test("wedge (skeptic): engine-verbatim spread-copy per emission → 1 START, 2 CONTENT, 1 END", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const types = () => h.relay.received.map((e) => e.frame?.type);
+
+    // Verbatim streamAssistantResponse emission semantics (pi-agent-core
+    // agent-loop.js:284/295-299/309): message_start and EVERY message_update
+    // emit `{ ...partialMessage }` — a fresh spread copy per event, of the
+    // accumulated partial (pi-ai mutates one `output` object in place and
+    // reassigns `partialMessage = event.partial`); message_end emits the
+    // accumulated finalMessage itself, a distinct object from every copy.
+    // Object identity NEVER survives an event. role/timestamp are copied
+    // verbatim onto every copy (assistant-message-frame.js
+    // cloneStartMessage) — they are the payload-intrinsic correlation data.
+    const startCopy = realAssistantMessage({ content: [{ type: "text", text: "" }] });
+    const updateCopy1 = { ...startCopy, content: [{ type: "text", text: "hello" }] };
+    const updateCopy2 = { ...startCopy, content: [{ type: "text", text: "hello world" }] };
+    const finalMessage = { ...startCopy, content: [{ type: "text", text: "hello world" }] };
+    h.emit("message_start", { type: "message_start", message: startCopy });
+    h.emit("message_update", { type: "message_update", message: updateCopy1, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "hello", partial: updateCopy1 } });
+    h.emit("message_update", { type: "message_update", message: updateCopy2, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: " world", partial: updateCopy2 } });
+    h.emit("message_end", { type: "message_end", message: finalMessage });
+    await h.waitFor(() => types().includes("TEXT_MESSAGE_END"));
+
+    const starts = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_START");
+    const contents = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_CONTENT");
+    const ends = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_END");
+    expect(starts).toHaveLength(1); // no double-START, no id churn per event
+    expect(contents.map((e) => (e.frame as { delta: string }).delta)).toEqual(["hello", " world"]);
+    expect(ends).toHaveLength(1); // no silent drop
+    const id = (starts[0]!.frame as { messageId: string }).messageId;
+    expect(contents.every((e) => (e.frame as { messageId: string }).messageId === id)).toBe(true);
+    expect((ends[0]!.frame as { messageId: string }).messageId).toBe(id);
+    h.relay.stop();
+  });
+
   test("malformed payloads (null, missing message, non-message role) → zero frames, no crash", async () => {
     const h = await makeHarness();
     await h.runCommand("rc");
