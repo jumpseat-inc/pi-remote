@@ -232,6 +232,21 @@ function fnv1a(input: string): string {
   return h.toString(16);
 }
 
+/**
+ * FLLWUP-12 — back-derive the fold role from a payload-derived live
+ * messageId (`<role>:<timestamp>`, minted by src/pi-sdk-events.ts
+ * agentMessageId) when a message_update arrives mid-join with no prior
+ * message_start. Local on purpose: G-12 forbids runtime imports in this
+ * pure fold. MUST stay in lockstep with pi-sdk-events.ts messageFrameRole
+ * (same minting rule); a static test pins both directions of the pairing.
+ */
+function messageFrameRoleLocal(messageId: string): "assistant" | "user" | undefined {
+  const idx = messageId.indexOf(":");
+  if (idx <= 0) return undefined;
+  const role = messageId.slice(0, idx);
+  return role === "assistant" || role === "user" ? role : undefined;
+}
+
 /** Flatten (TextContent | ImageContent)[] blocks to a single string (S8). */
 function flattenToolResultContent(blocks: ToolResultContentBlock[]): string {
   let out = "";
@@ -401,8 +416,11 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
     }
 
     case "message_update": {
+      // Mid-join (no prior message_start seen): open bookkeeping keyed by the
+      // event's own messageId — the id is payload-derived, so no lookup key is
+      // invented; the role is back-derived from the id itself.
       const st = openMessages.get(input.messageId) ?? {
-        role: "assistant" as const,
+        role: messageFrameRoleLocal(input.messageId) ?? "assistant",
         textStarted: false,
         thinkingPane: null,
         toolCalls: [],
@@ -442,6 +460,11 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
     }
 
     case "message_end": {
+      // Ids are payload-derived (role:timestamp); if message_end arrives for
+      // a message the fold never saw (or already closed), there is nothing
+      // open to close — emitting TEXT_MESSAGE_END from the id's back-derived
+      // role alone would produce an END without its START, so fall through
+      // silently. The wedge test pins END presence for the real flow.
       const st = openMessages.get(input.messageId);
       if (st) {
         closeThinking(st, frames);

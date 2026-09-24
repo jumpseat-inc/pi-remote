@@ -425,6 +425,29 @@ describe("EV-4 pure pi-to-AG-UI translation", () => {
     expect(src).not.toMatch(/import\s+.*\s+from/); // translate imports type definitions only — no runtime imports
   });
 
+  test("FLLWUP-12 static pairing: translate.ts messageFrameRoleLocal decodes pi-sdk-events.ts agentMessageId ids (G-12 keeps them separate, so pin both directions)", async () => {
+    const mint = await Bun.file(new URL("../src/pi-sdk-events.ts", import.meta.url)).text();
+    const fold = await Bun.file(new URL("../src/translate.ts", import.meta.url)).text();
+    // Both files must carry the same role:timestamp derivation. If either
+    // side changes its minting/decoding rule, this fails until both move
+    // together (or the pairing test is consciously updated).
+    const parse = (src: string) => src.match(/messageId\.indexOf\(":"\)/) !== null;
+    expect(parse(mint)).toBe(true); // messageFrameRole in pi-sdk-events.ts
+    expect(parse(fold)).toBe(true); // messageFrameRoleLocal in translate.ts
+    // Same allowed role set on both sides:
+    const roles = (src: string, anchor: string) => {
+      const i = src.indexOf(anchor);
+      expect(i).toBeGreaterThanOrEqual(0);
+      const slice = src.slice(i, i + 400);
+      expect(slice).toContain('"assistant"');
+      expect(slice).toContain('"user"');
+      expect(slice).not.toContain('"system"');
+      expect(slice).not.toContain('"toolResult"');
+    };
+    roles(mint, "export function messageFrameRole");
+    roles(fold, "function messageFrameRoleLocal");
+  });
+
   test("importing translate.ts has no side effects (module purity)", async () => {
     const before = (globalThis as Record<string, unknown>).__ev4_side_effect ?? "absent";
     await import("../src/translate");
@@ -717,5 +740,30 @@ describe("FLLWUP-8: ui_prompt_start raise mapping", () => {
     const { promptId, ...raiseCore } = r;
     expect(promptId).toEqual(expect.any(String));
     expect(raiseCore).toEqual(c); // {kind, title, schemaVersion:1} identical
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FLLWUP-12 probe — the live fold consumes derived-messageId PiEvents with
+// zero shape changes. The stand-in-payload dishonesty lives entirely in
+// index.ts's handlers (narrowing on fields the real payloads don't carry)
+// and the old fixtures; index.ts derives messageId/role/events from the real
+// payloads before calling forward(), so translate.ts's PiEvent surface is
+// already the correct normalized one. This test pins that claim.
+// ---------------------------------------------------------------------------
+describe("FLLWUP-12 probe: fold consumes derived-messageId PiEvents unchanged", () => {
+  test("message family keyed on derived ids emits START/CONTENT/END; tool_result emits TOOL_CALL_RESULT", () => {
+    let st = createState({ sessionId: "s", runId: "r" });
+    const r1 = translate({ event: "message_start", messageId: "derived-1", role: "assistant" }, st);
+    const r2 = translate({ event: "message_update", messageId: "derived-1", events: [{ kind: "text", delta: "hello" }] }, r1.state);
+    const r3 = translate({ event: "message_end", messageId: "derived-1" }, r2.state);
+    const all = [...r1.frames, ...r2.frames, ...r3.frames].map((f) => f.type);
+    expect(all).toEqual(["TEXT_MESSAGE_START", "TEXT_MESSAGE_CONTENT", "TEXT_MESSAGE_END"]);
+
+    const st2 = createState({ sessionId: "s", runId: "r" });
+    const tr = translate({ event: "tool_result", messageId: "derived-2", toolCallId: "call_1", content: [{ type: "text", text: "out" }] }, st2);
+    expect(tr.frames).toEqual([
+      { type: "TOOL_CALL_RESULT", messageId: "derived-2", toolCallId: "call_1", content: "out", role: "tool" },
+    ]);
   });
 });
