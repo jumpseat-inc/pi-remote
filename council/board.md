@@ -5,7 +5,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
-- FLLWUP-31 — "Update AGENTS.md's stale unit-suite count in Current state (218 pass → observed 234)"
 - FLLWUP-26 — "Scope §1.2/§5.7's 'security decision' vocabulary across per-delivery grant enforcement"
 - FLLWUP-19 — "Align PI-SPEC §7.2's no-lookup-state prose with the governing spec's server-state position"
 - FLLWUP-20 — "Align PI-SPEC §7.3's per-device lastAckedSeq sentence with the shipped single-watermark reality"
@@ -25,6 +24,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Needs Human
 
 ## Done
+- FLLWUP-31 — "Correct AGENTS.md's stale 'Current state' claims (suite count and --headless routing)"
 - EPIC-3 — "Run integrity and device-flow coverage — the device-flow polish run's four follow-ups"
 - FLLWUP-29 — "Pin the attended PKCE path's no-error_description boundary in the login suite"
 - FLLWUP-28 — "Pin cancellation during the device-flow slowdown wait in the login suite"
