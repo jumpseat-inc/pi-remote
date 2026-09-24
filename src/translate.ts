@@ -247,6 +247,8 @@ function fnv1a(input: string): string {
  * message_start. Local on purpose: G-12 forbids runtime imports in this
  * pure fold. MUST stay in lockstep with pi-sdk-events.ts messageFrameRole
  * (same minting rule); a static test pins both directions of the pairing.
+ * Duplication is tracked in docs/ROLE-DECODER-DUPLICATION.md (FLLWUP-37),
+ * which also states the removal scope should G-12 ever be lifted.
  */
 function messageFrameRoleLocal(messageId: string): "assistant" | "user" | undefined {
   const idx = messageId.indexOf(":");
