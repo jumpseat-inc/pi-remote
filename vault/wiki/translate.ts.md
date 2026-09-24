@@ -4,9 +4,9 @@ type: entity
 summary: The pure pi-to-AG-UI mapper — translate(input, state) → {frames, state} — the single translator shared by the live path and the replay path, with entryId-based discrimination.
 aliases: [the mapper, translation mapper]
 tags: [entity/module, translate]
-sources: ["[[EV-4 Ruling]]", "[[EV-5 Ruling]]", "[[FLLWUP-3 Design Position r3]]", "[[FLLWUP-5 Ruling]]"]
+sources: ["[[EV-4 Ruling]]", "[[EV-5 Ruling]]", "[[FLLWUP-3 Design Position r3]]", "[[FLLWUP-5 Ruling]]", "[[EPIC-4 Run (FLLWUP-11..12)]]"]
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-24
 ---
 Implements §4's mapping table as a pure fold: no I/O, no sockets, no session references (purity guards G-11/G-12 enforce it). Key shaped-by-ruling properties:
 
@@ -16,11 +16,12 @@ Implements §4's mapping table as a pure fold: no I/O, no sockets, no session re
 - `runId` is input-driven, never minted here (EV-4 Q2); STEP frames are omitted in replay; stepName = "turn"; thinking block ids `<assistantId>:think:<contentIndex>`.
 - FLLWUP-3 added the four runtime-dead families (`queue_update`, `bash_execution_update`, `auto_retry_*`, `summarization_retry_*`) with payload-variant dispatch keys (`pi.session.summary_retry_branch` / `_compaction`).
 - FLLWUP-6 removed the dead `user_input` strand; FLLWUP-4 mapped `urlExpired`'s remedy.
+- The live path was re-narrowed on the real SDK payloads by the [[EPIC-4 Run (FLLWUP-11..12)]] (FLLWUP-12): the message-family AG-UI `messageId` is now **payload-intrinsic** — `${role}:${timestamp}` via [[pi-sdk-events.ts]]'s `agentMessageId` — replacing an identity-derived key that broke under the engine's per-emission spread-copies ([[Emission-Semantics Fidelity]]). One documented divergence: `tool_result` mints `messageId := toolCallId`, because the real payload carries no message id (R-PAYLOAD-1).
 
 Shared unchanged by [[history.ts]] (replay) and [[index.ts]] (live) — the property that makes replay correct by construction.
 
 ## Related
-[[Spec Correction Governance]], [[Closed Vocabulary Discipline]], [[history.ts]], [[index.ts]], [[AG-UI]], [[FLLWUP-3 Design Position r3]]
+[[Spec Correction Governance]], [[Closed Vocabulary Discipline]], [[history.ts]], [[index.ts]], [[pi-sdk-events.ts]], [[Emission-Semantics Fidelity]], [[Real-Surface Verification]], [[EPIC-4 Decision Record]], [[AG-UI]], [[FLLWUP-3 Design Position r3]]
 
 ## Sources
-[[EV-4 Ruling]], [[EV-5 Ruling]], [[FLLWUP-3 Design Position r3]], [[FLLWUP-5 Ruling]]
+[[EV-4 Ruling]], [[EV-5 Ruling]], [[FLLWUP-3 Design Position r3]], [[FLLWUP-5 Ruling]], [[EPIC-4 Run (FLLWUP-11..12)]]

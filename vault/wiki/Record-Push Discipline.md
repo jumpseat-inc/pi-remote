@@ -4,9 +4,9 @@ type: concept
 summary: The step-12 direct-to-main record commit is a privileged write the authority map does not re-home; it needs a run-scoped Phase-1 authorization recorded before the first push, and an unauthorized push is a HALT.
 aliases: [record push, step-12 push, admin bypass, record-push authorization]
 tags: [concept/process, merge, security]
-sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]"]
+sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]"]
 created: 2026-09-23
-updated: 2026-09-23
+updated: 2026-09-24
 ---
 The autonomous run's durable state is the board and the card files. Step 12 commits the reconciliation and pushes it **directly to `main`** — the "push records as they happen" recipe that keeps a run recoverable ([[Run Workspace Isolation]]). The authority map re-homes exactly one merge-time power (the human merge gate → the [[Deterministic Merge Check]]) and says nothing about this push. Under a `main` ruleset that forbids direct updates, that push is a **second privileged write**.
 
@@ -14,10 +14,10 @@ The autonomous run's durable state is the board and the card files. Step 12 comm
 
 **The merge-side analogue.** `gh pr merge <PR> --squash --admin --match-head-commit <X>` is sanctioned under the same rule — only with a recorded, run-scoped authorization, and never extended. A run without one that a ruleset then blocks is a HALT (the protection doing its job), not an obstacle to defeat.
 
-**Observed.** The [[EPIC-3 Run (FLLWUP-27..30)]] recorded **R-PUSH-1** (direct record push) and **R-ADMIN-1** (`--admin` contingency) at Phase 1 before the first push; `main` was unprotected, so `--admin` went unused and every merge was ordinary squash with `--match-head-commit`. When a github.com outage interrupted one card after its merge, the runner left the record commits committed locally and the orchestrator rebased them onto `origin/main` on recovery — no force, no reset, no history rewrite.
+**Observed.** The [[EPIC-3 Run (FLLWUP-27..30)]] recorded **R-PUSH-1** (direct record push) and **R-ADMIN-1** (`--admin` contingency) at Phase 1 before the first push; `main` was unprotected, so `--admin` went unused and every merge was ordinary squash with `--match-head-commit`. When a github.com outage interrupted one card after its merge, the runner left the record commits committed locally and the orchestrator rebased them onto `origin/main` on recovery — no force, no reset, no history rewrite. The [[EPIC-4 Run (FLLWUP-11..12)]] re-recorded **R-PUSH-1**/**R-ADMIN-1** the same way (run-scoped, before its first push at `fa1a262`); `main` was again unprotected, `--admin` went unused, and six record commits landed directly under R-PUSH-1. Repo-specific constraint observed: the checkout rewrites `git@github.com:` URLs to `https://`, which has no credentials, so record pushes used the explicit `ssh://git@github.com/…` form.
 
 ## Related
-[[Deterministic Merge Check]], [[Run Workspace Isolation]], [[Council Seats]], [[EPIC-3 Decision Record]]
+[[Deterministic Merge Check]], [[Run Workspace Isolation]], [[Council Seats]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]]
 
 ## Sources
-[[EPIC-3 Run (FLLWUP-27..30)]]
+[[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]]

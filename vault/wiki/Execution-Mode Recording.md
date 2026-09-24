@@ -4,9 +4,9 @@ type: concept
 summary: The card's execution mode is read from the run substrate, not a seat's report — and because the runner re-derives its own path, recording Direct is the robust default that never HALTs.
 aliases: [execution mode, recorded mode, ROOT mode, mode Direct]
 tags: [concept/process, merge]
-sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]"]
+sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]"]
 created: 2026-09-23
-updated: 2026-09-23
+updated: 2026-09-24
 ---
 A card runs in one of three modes, and the [[Deterministic Merge Check]] is keyed to it:
 
@@ -36,8 +36,10 @@ An absent recorded mode also HALTs — inferring one is exactly the discretion t
 
 **Observed.** The [[EPIC-3 Run (FLLWUP-27..30)]] recorded `Direct` on all four cards and had zero mode trouble; the mismatch pattern above is the failure shape the Direct default exists to avoid.
 
+**`Verify`, and orchestrator-supplied mode (EPIC-4).** The [[EPIC-4 Run (FLLWUP-11..12)]] recorded **`Verify`** on both cards — the right mode when Phase-1 rulings have already settled the design forks: no deliberation/generators, but one owner, one skeptic, and one judge still run, so all five criteria hold with criterion 3 scoped to the single Verify skeptic dispatch. It also confirmed the parent-only claim from the other direction: the runner reported `council_route` **unavailable in its container**, so the recorded mode **handed in the dispatch input** was applied as authoritative and not re-recorded. `Verify` is safe when the runner always executes at least the mechanical path (owner + skeptic + judge); the HALT risk is a mode recorded stricter than what actually runs.
+
 ## Related
-[[Deterministic Merge Check]], [[Council Seats]], [[Record-Push Discipline]], [[EPIC-3 Decision Record]]
+[[Deterministic Merge Check]], [[Council Seats]], [[Record-Push Discipline]], [[Runner Stall Recovery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]]
 
 ## Sources
-[[EPIC-3 Run (FLLWUP-27..30)]]
+[[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]]

@@ -4,9 +4,9 @@ type: concept
 summary: The mechanical gate that replaced the human merge, keyed by the card's recorded execution mode (Direct = criteria 1/2/5; Verify and Deliberate = all five), pinned to the head SHA with --match-head-commit.
 aliases: [merge check, five criteria]
 tags: [concept/process, merge]
-sources: ["[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Execution-Mode Recording]]", "[[EPIC-3 Run (FLLWUP-27..30)]]"]
+sources: ["[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Execution-Mode Recording]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]"]
 created: 2026-09-02
-updated: 2026-09-23
+updated: 2026-09-24
 ---
 The autonomous run's merge gate, executed with no discretion — no seat may substitute judgment for any criterion, and none may be skipped for small changes:
 
@@ -20,8 +20,10 @@ The autonomous run's merge gate, executed with no discretion — no seat may sub
 
 **SHA pinning:** the merge is `gh pr merge <PR> --match-head-commit <X>` where X is the exact SHA criterion 2 was read against; if the flag is unavailable, re-read `headRefOid` immediately before merging and abort on mismatch. A mismatch is a HALT, not a retry. Across EPIC-1's 18 merges this pinned every merge; the one gates-windows flake (a bun 5s cold-start timeout, FLLWUP-16) was resolved by rerun + clean re-read, not by lowering the bar.
 
+**Observed (EPIC-4).** The [[EPIC-4 Run (FLLWUP-11..12)]] exercised the **`Verify`** form: all five criteria on each card, criterion 3 scoped to the single Verify skeptic dispatch. FLLWUP-11 (`a91a30b`) and FLLWUP-12 (`524bc90`) each merged with `gates` SUCCESS read on the pre-merge head SHA and re-confirmed on the merged SHA; FLLWUP-12 needed one verify fix cycle before its judge `PASS`. `--admin` was recorded (R-ADMIN-1) but unused — `main` was unprotected (0 rulesets, branch-protection API 404).
+
 ## Related
-[[Judge Object Rule]], [[Verify Cycle Cap]], [[Council Seats]], [[Execution-Mode Recording]], [[Record-Push Discipline]], [[EPIC-3 Decision Record]], [[EPIC-1 Decision Record]]
+[[Judge Object Rule]], [[Verify Cycle Cap]], [[Council Seats]], [[Execution-Mode Recording]], [[Record-Push Discipline]], [[EPIC-3 Decision Record]], [[EPIC-1 Decision Record]], [[EPIC-4 Decision Record]]
 
 ## Sources
-[[Judge Object Rule]], [[FLLWUP-5 Ruling]], [[Execution-Mode Recording]], [[EPIC-3 Run (FLLWUP-27..30)]]
+[[Judge Object Rule]], [[FLLWUP-5 Ruling]], [[Execution-Mode Recording]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]]

@@ -8,6 +8,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[EPIC-1 Decision Record]] — synthesis of the two autonomous delivery runs on pi-remote: 18 PRs, the converged doctrine, and the doors left open.
 - [[EPIC-2 Decision Record]] — synthesis of the run that produced docs/SERVER-SIDE-SPEC.md: the self-contained server-side spec, the normativity test, and the cross-artifact contradictions (since resolved by the residual run).
 - [[EPIC-3 Decision Record]] — synthesis of the four-card run that closed the device-flow residuals: run-hygiene conventions, two fixture pins, and the mode/record-push/workspace doctrine.
+- [[EPIC-4 Decision Record]] — synthesis of the two-card run that closed the installability gap: real-surface verification, emission-semantics fidelity, record accuracy, and runner stall recovery; its seven follow-ups now group under EPIC-5.
 
 ## Entities
 
@@ -26,6 +27,8 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[index.ts]] — command surface, live-path wiring, footer merge FSM, teardown for all five shutdown reasons.
 - [[copy.ts]] — dependency-free resolver; 22-key en→id table; announced partial-coverage boundary.
 - [[pi-sdk-on.ts]] — vendored typed on() union (36 SDK literals + ui.confirm synthetic escape); negative probe.
+- [[pi-host.ts]] — FLLWUP-11's local host-capability module: agent-dir resolution, fail-open settings read, node:os metadata; the five re-homed stand-in members.
+- [[pi-sdk-events.ts]] — FLLWUP-12's vendored real SDK payload shapes, the payload-intrinsic agentMessageId derivation, and the real→local fold adapter.
 
 ## Concepts
 
@@ -40,6 +43,10 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Record-Push Discipline]] — the step-12 direct-to-main record push needs a run-scoped Phase-1 authorization before the first push; unauthorized is a HALT.
 - [[Run Workspace Isolation]] — owner branches cut from origin/main (card PRs product-only) and the shared main worktree's branch state is immutable.
 - [[Fixture-Green Honesty]] — acceptance claims only what is proven; partial coverage announced at the surface itself.
+- [[Real-Surface Verification]] — a fixture-green stand-in proves nothing about the installed host; verify at the real boundary and prove the gate non-vacuous.
+- [[Emission-Semantics Fidelity]] — fixture the constructing layer's per-emission semantics (fresh spread-copies), not the pass-through emitter.
+- [[Record Accuracy]] — a run record's counts and claims must match the audit they cite; its own honesty axis.
+- [[Runner Stall Recovery]] — size the stall window above the longest child dispatch; cancel plus one re-dispatch with a resumption note.
 - [[Cheapest To Reverse]] — the standing tiebreaker when no test can decide; sometimes the pricier-to-write option wins.
 - [[Verify Cycle Cap]] — three verify-fix cycles per card; closed-red at the cap exits to the orchestrator; bounded extensions by ruling.
 - [[Footer Merge Policy]] — kind-first mergeTransport; live clears error on verified open; N=10 consecutive error-severity dialing.
@@ -76,3 +83,4 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[FLLWUP-3 Design Position r3]] — FINAL: flips to the partialResult split; payload-variant dispatch-key doctrine.
 - [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]] — three-card batch: --headless flag routing, RFC 8628 §3.5 slowdown, error_description surfacing; new cause-distinguished-expiry doctrine.
 - [[EPIC-3 Run (FLLWUP-27..30)]] — the four-card run delivering that batch's residuals: AGENTS.md hygiene rules, committed red-at-base fixtures, steward closure with the FLLWUP-31 residual.
+- [[EPIC-4 Run (FLLWUP-11..12)]] — the two-card run reconciling the ExtensionAPI stand-in and handler payload shapes with the installed pi SDK; real production-loader verification; seven follow-ups now under EPIC-5.

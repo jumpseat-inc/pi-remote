@@ -1,0 +1,26 @@
+---
+title: pi-sdk-events.ts
+type: entity
+summary: FLLWUP-12's vendored real SDK event payload shapes plus the payload-intrinsic derivation helpers (agentMessageId = role:timestamp), the real→local fold adapter, and the one documented tool_result divergence.
+aliases: [sdk event payloads, pi-sdk-events]
+tags: [entity/module, sdk, translate]
+sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]"]
+created: 2026-09-24
+updated: 2026-09-24
+---
+Created by FLLWUP-12 (R-TYPE-1/R-PAYLOAD-1) to hold the real SDK event payload mirrors and the derivation logic that replaces the old stand-in-shaped assumptions. Provenance is the installed SDK's `dist/core/extensions/types.d.ts` and `pi-ai dist/types.d.ts`; only the fields pi-remote consumes are declared, and the SDK is **not** a dependency. Re-diff on SDK upgrades.
+
+**Vendored payload shapes** (real, not stand-in): `MessageStartEvent` / `MessageUpdateEvent` / `MessageEndEvent` (each `{ type, message: AgentMessage, … }` — no `messageId`, no `events` field), the `AgentMessage` union, the `PiAssistantMessageEvent` `type`-union (every variant carries `partial`, `*_delta` carry `delta`, toolcall variants locate the block via `contentIndex`), `ToolResultEventBase` (carries `toolCallId`, not `messageId`), `UIPromptStartEvent`/`UIPromptEndEvent`, `TurnStartEvent`/`TurnEndEvent`, `AgentStartEvent`/`AgentSettledEvent`.
+
+**Derivation helpers (pure, total — malformed input → `undefined`/`null`, never a throw).**
+- `agentMessageId(msg)` = `${role}:${timestamp}` — payload-intrinsic, stable across every spread-copy emission of one logical message ([[Emission-Semantics Fidelity]]).
+- `messageFrameRole(messageId)` — the inverse, back-deriving the role; the local mirror used by [[translate.ts]] (`messageFrameRoleLocal`) is deliberately duplicated here because the G-12 no-runtime-imports purity rule forbids `translate.ts` importing this module (tracked for scoped removal by FLLWUP-37).
+- `realAssistantMessageEventOf(ev)` — the real→local fold-union adapter; `start`/`text_start`/`text_end`/`thinking_start`/`thinking_end`/`done`/`error` map to no fold action.
+
+**The one documented divergence** (R-PAYLOAD-1): `tool_result` has no message id in the real payload, so `messageId := toolCallId` — justified on the FLLWUP-12 card because the real payload genuinely lacks the field. Every other subscription was corrected, not annotated. Known bound: two same-role messages sharing one timestamp fold into one AG-UI message (merged framing, not corruption). Covered by `test/pi-sdk-events.test.ts` and the `index.test.ts` live-path fixtures.
+
+## Related
+[[Emission-Semantics Fidelity]], [[Real-Surface Verification]], [[translate.ts]], [[pi-sdk-on.ts]], [[pi-host.ts]], [[index.ts]], [[EPIC-4 Decision Record]]
+
+## Sources
+[[EPIC-4 Run (FLLWUP-11..12)]]
