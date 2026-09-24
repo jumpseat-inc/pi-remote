@@ -33,8 +33,13 @@
  * throwing; runner.js emitToolResult 803–849).
  */
 
-/** Real pi-ai content blocks (pi-ai dist/types.d.ts:242–266). */
-export interface PiTextContent { type: "text"; text: string }
+/** Real pi-ai content blocks (pi-ai dist/types.d.ts:242–266; TextContent
+ *  declared at :242–246, textSignature at :245). */
+export interface PiTextContent {
+  type: "text";
+  text: string;
+  textSignature?: string;
+}
 export interface PiThinkingContent { type: "thinking"; thinking: string }
 export interface PiImageContent { type: "image"; data: string; mimeType: string }
 export interface PiToolCall { type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> }
