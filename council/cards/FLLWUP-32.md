@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-32
 title: "Fix the load-smoke test-2 header's overstated compile-time claim"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-5
 goal: `test/pi-sdk-load.test.ts`'s second test header claims a compile-time guarantee its runtime body does not enforce; correct the comment or make the claim true.
@@ -106,3 +106,25 @@ the runner subtree upgrades the effective mode to Deliberate.
   removal observation-free). Human merge gate (step 11) substituted per
   R-MERGE-1: deterministic merge check executed by this runner (mode Verify,
   criterion 3 scoped to the single Verify skeptic dispatch).
+- Step 11/12: all five Verify-mode criteria held — (1) owner gates green in
+  full (tsc exit 0; `bun test` 273 pass / 1 skip / 0 fail, re-run
+  independently by the Skeptic at the head); (2) `gh pr checks 44 --json
+  name,state,workflow` keyed on `workflow=="gates"`: SUCCESS present on PR
+  head `e4fae7cca07e8ea5ad5a0dd6fc9e961b6c206e95` (both `gates` and
+  `gates-windows` rows); (3) single Verify skeptic NO-BLOCK; (4) judge PASS;
+  (5) no Needs Human state, no outstanding ruling. Merged PR #44 as squash
+  **3245631560294c4931a36d8d8055988db24eac32** (`--match-head-commit
+  e4fae7c…` held; ordinary merge — R-ADMIN-1 unused, `main` unprotected).
+  CI green on the merged SHA: `gates` run 36038748894, headSha
+  `3245631…`, conclusion success, both jobs (`gates`, `gates-windows`)
+  success. Step-12 reconcile: local main merged origin/main (`9c0d67f`),
+  validator clean, conflict-marker sweep clean. Card Done on card+board from
+  that observed artifact. Step-12 record commit pushed to main under
+  R-PUSH-1.
+- Step 13 follow-ups: none drafted — the run surfaced no deferred idea,
+  out-of-scope objection, or "we should also…". The Skeptic's non-blocking
+  notes are scope-excluded observations about unchanged neighboring claims
+  (the first test's docstring describes runtime behavior test 1's body does
+  enforce; the 3-key runtime mirror is unchanged from pre-fix), not new work
+  items. Nothing held; no candidate was surfaced for
+  `council_followup_review`.
