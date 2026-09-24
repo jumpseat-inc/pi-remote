@@ -19,12 +19,12 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-39 — "Declare or annotate the vendored PiThinkingContent's omitted optional thinkingSignature/thoughtSignature fields"
-- FLLWUP-40 — "Correct the FLLWUP-12 pairing test's source comment, which overstates what the test pins"
 
 ## Needs Human
 
 ## Done
+- FLLWUP-39 — "Declare or annotate the vendored PiThinkingContent's omitted optional thinkingSignature/thoughtSignature fields"
+- FLLWUP-40 — "Correct the FLLWUP-12 pairing test's source comment, which overstates what the test pins"
 - EPIC-5 — "SDK reconciliation residuals — the EPIC-4 run's seven follow-ups"
 - FLLWUP-36 — "Ground emission-semantics claims in the event-constructing layer, not only the pass-through emitter"
 - FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
