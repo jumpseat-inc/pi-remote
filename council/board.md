@@ -15,10 +15,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Ready
 - EPIC-4 — "Real-host installability — reconcile the ExtensionAPI stand-in and handler payload narrowing with the installed pi SDK"
-- FLLWUP-11 — "Reconcile the ExtensionAPI stand-in's non-on members with the real SDK surface"
 - FLLWUP-12 — "Reconcile handler payload narrowing with real SDK event payloads"
 
 ## In Progress
+- FLLWUP-11 — "Reconcile the ExtensionAPI stand-in's non-on members with the real SDK surface"
 
 ## In Review
 

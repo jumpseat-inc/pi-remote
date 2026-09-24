@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-11
 title: "Reconcile the ExtensionAPI stand-in's non-on members with the real SDK surface"
-state: Ready
+state: In Progress
 owner: null
 epic: EPIC-4
 goal: Every non-on member of index.ts's ExtensionAPI stand-in (getSetting, env, setStatus, input, sessionId, readActiveBranch, isIdle, configDir, version, platform, arch) either exists on the installed pi SDK's ExtensionAPI or is removed from the stand-in, so the extension loads against a real pi host without a TypeError.
