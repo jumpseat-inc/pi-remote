@@ -767,3 +767,50 @@ describe("FLLWUP-12 probe: fold consumes derived-messageId PiEvents unchanged", 
     ]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// FLLWUP-35 probe — a dropped message_start must not be silently masked by
+// the message_update mid-join fallback (openMessages.get(...) ?? {
+// role: messageFrameRoleLocal(...) ?? "assistant" }). The fallback continues
+// the fold on back-derived/defaulted role bookkeeping, so the loss is
+// unobservable in the emitted frames. The probe pins the observability
+// contract: a fallback-opened entry is marked midJoin, so a dropped start
+// is recorded as a detectable test failure instead of a silent substitution.
+// ---------------------------------------------------------------------------
+describe("FLLWUP-35 probe: a dropped message_start is observable, not masked by the message_update fallback", () => {
+  test("a message_update with no message_start bookkeeping opens a marked mid-join entry (drop is recorded, not substituted)", () => {
+    let state = createState({ sessionId: "s1", runId: "r1" });
+    const r = translate(
+      { event: "message_update", messageId: "user-1", events: [{ kind: "text", delta: "hello" }] },
+      state
+    );
+    const book = r.state.openMessages.get("user-1") as unknown as { midJoin?: boolean; role: string } | undefined;
+    expect(book).toBeDefined();
+    expect(book?.midJoin).toBe(true); // RED at base: the fallback entry is unmarked
+    expect(book?.role).toBe("user"); // back-derivation still recovers the role (behavior unchanged)
+  });
+
+  test("a start-opened entry is not marked mid-join (no false positive on the legitimate flow)", () => {
+    let state = createState({ sessionId: "s1", runId: "r1" });
+    const r1 = translate({ event: "message_start", messageId: "assistant-1", role: "assistant" }, state);
+    const r2 = translate(
+      { event: "message_update", messageId: "assistant-1", events: [{ kind: "text", delta: "hi" }] },
+      r1.state
+    );
+    const book = r2.state.openMessages.get("assistant-1") as unknown as { midJoin?: boolean; role: string } | undefined;
+    expect(book).toBeDefined();
+    expect(book?.midJoin).toBe(false);
+    expect(book?.role).toBe("assistant");
+  });
+
+  test("emitted frames for a dropped start are unchanged — the probe adds observability, not behavior", () => {
+    const frames = runSequence(
+      [{ event: "message_update", messageId: "assistant-1", events: [{ kind: "text", delta: "hello" }] }],
+      { sessionId: "s1", runId: "r1" }
+    );
+    expect(frames).toEqual([
+      { type: "TEXT_MESSAGE_START", messageId: "assistant-1", role: "assistant" },
+      { type: "TEXT_MESSAGE_CONTENT", messageId: "assistant-1", delta: "hello" },
+    ]);
+  });
+});
