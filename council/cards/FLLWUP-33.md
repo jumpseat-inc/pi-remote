@@ -110,3 +110,14 @@ the runner subtree upgrades the effective mode to Deliberate.
   references); record coherent end-to-end. Verify-cycle count: 1 of 3 (no
   fix-and-reverify rounds). Non-blocking note: pre-existing "deliberation"/
   "orchestrator" typos on unmodified lines, cosmetic, out of scope.
+- Step 10 judge (job-10.3): **PASS** at head `efd1347`. Basis: 13 non-`on`
+  count stated across Intent/R-TYPE-1/Acceptance/run record with the
+  deliberation's "twelve" attributed historically, not asserted; "none exist
+  on the real" phrasing eliminated (grep 0 hits), kept members distinguished
+  (exist on the real ExtensionAPI, typed-to-real) from the removed 11 (no
+  counterpart); protected facts byte-identical (frontmatter, owner line,
+  PR #38 / 937bdd3 / a91a30b / run 35965654278 / 7e85ec2); single-file diff
+  as the card-specific product change; audit breakdown 2+5+5+1=13 coherent
+  end-to-end. Human merge gate (step 11) substituted per R-MERGE-1:
+  deterministic merge check executed by this runner (mode Verify, criterion
+  3 scoped to the single Verify skeptic dispatch).
