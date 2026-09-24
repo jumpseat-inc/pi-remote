@@ -719,3 +719,28 @@ describe("FLLWUP-8: ui_prompt_start raise mapping", () => {
     expect(raiseCore).toEqual(c); // {kind, title, schemaVersion:1} identical
   });
 });
+
+// ---------------------------------------------------------------------------
+// FLLWUP-12 probe — the live fold consumes derived-messageId PiEvents with
+// zero shape changes. The stand-in-payload dishonesty lives entirely in
+// index.ts's handlers (narrowing on fields the real payloads don't carry)
+// and the old fixtures; index.ts derives messageId/role/events from the real
+// payloads before calling forward(), so translate.ts's PiEvent surface is
+// already the correct normalized one. This test pins that claim.
+// ---------------------------------------------------------------------------
+describe("FLLWUP-12 probe: fold consumes derived-messageId PiEvents unchanged", () => {
+  test("message family keyed on derived ids emits START/CONTENT/END; tool_result emits TOOL_CALL_RESULT", () => {
+    let st = createState({ sessionId: "s", runId: "r" });
+    const r1 = translate({ event: "message_start", messageId: "derived-1", role: "assistant" }, st);
+    const r2 = translate({ event: "message_update", messageId: "derived-1", events: [{ kind: "text", delta: "hello" }] }, r1.state);
+    const r3 = translate({ event: "message_end", messageId: "derived-1" }, r2.state);
+    const all = [...r1.frames, ...r2.frames, ...r3.frames].map((f) => f.type);
+    expect(all).toEqual(["TEXT_MESSAGE_START", "TEXT_MESSAGE_CONTENT", "TEXT_MESSAGE_END"]);
+
+    const st2 = createState({ sessionId: "s", runId: "r" });
+    const tr = translate({ event: "tool_result", messageId: "derived-2", toolCallId: "call_1", content: [{ type: "text", text: "out" }] }, st2);
+    expect(tr.frames).toEqual([
+      { type: "TOOL_CALL_RESULT", messageId: "derived-2", toolCallId: "call_1", content: "out", role: "tool" },
+    ]);
+  });
+});
