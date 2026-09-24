@@ -92,3 +92,18 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   is applied as authoritative and not re-recorded.
 - Surface-touching bit: **false** (type-surface and internal wiring only —
   no visible surface, copy, empty state, or error state a person reads).
+- Step 9 skeptic (job-11.3): **PASS, no open objections.** All objections
+  closed-green. Gates observed independently: `bunx tsc --noEmit` exit 0;
+  `bun test` 248 pass / 1 Windows-gated skip / 0 fail, exit 0. Decisive
+  probe: real load through the installed production loader
+  (`loadExtensionFromFactory`) → `REAL LOAD OK`, commands rc/rc:login/rc:off
+  registered, 11 subscriptions live; gate proven non-vacuous by defect
+  injection (`pi.getSetting is not a function` reproduced). Member audit:
+  13 non-`on` base members all accounted for (2 kept typed-to-real,
+  5 ctx re-home, 5 local capability, 1 dropped); zero phantom event names in
+  the vendored union. R-TYPE-1 conformance: provenance + re-diff notes
+  present; package.json zero-diff, no SDK dependency. PR diff = exactly the
+  7 card commits, zero council paths; head pinned 937bdd3, base fa1a262.
+  Two non-blocking doc nits noted (smoke-test-2 comment overstatement;
+  card-text "twelve" vs actual 13 non-`on` members) — step-13 candidates.
+  Verify-cycle count: 1 of 3 (no fix-and-reverify rounds needed).
