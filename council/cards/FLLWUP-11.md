@@ -69,3 +69,26 @@ applies the ruling and cites it; it does not re-ask.
 **Recorded execution mode (orchestrator routing, EV-69):** **Verify** — one
 owner, one skeptic, one judge; all five deterministic-merge criteria with
 criterion 3 scoped to the single Verify skeptic dispatch.
+
+## Run record — resumed runner (2026-09-24)
+
+- Resumed from cancelled runner job-10 (which had set In Progress at 45a825e
+  with no owner artifact); continued at step 8 per the resumption note.
+- Step 8, dispatch 1 (job-11.1): timed out at its 45-minute ceiling with no
+  artifact (worktree created, zero commits, no PR). Cancelled per dispatch
+  discipline; this was the single permitted re-dispatch.
+- Step 8, dispatch 2 (job-11.2): delivered. Branch
+  `owner/fllwup-11-reconcile-standin` (base origin/main fa1a262), **PR #38**,
+  head `937bdd337874ee7de89b92edeb2ddd48ba5fda3c`. Owner-reported gates:
+  `bunx tsc --noEmit` exit 0; `bun test` 248 pass / 1 expected Windows-gated
+  skip / 0 fail. All twelve non-`on` members verified against the installed
+  SDK: none exist on the real `ExtensionAPI` — five re-homed to the real
+  `ExtensionContext` surface, five to documented local capabilities
+  (`src/pi-host.ts`), one (`version`) dropped; `ExtensionHandler` return union
+  vendored with a compile-time assignability assertion. R-TYPE-1 applied
+  (vendored signatures, SDK not added as a dependency).
+- Routing recheck (step 9, EV-69): `council_route` is not available to this
+  container's tool set; the recorded mode **Verify** from the dispatch input
+  is applied as authoritative and not re-recorded.
+- Surface-touching bit: **false** (type-surface and internal wiring only —
+  no visible surface, copy, empty state, or error state a person reads).
