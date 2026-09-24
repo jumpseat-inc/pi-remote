@@ -530,16 +530,20 @@ describe("FLLWUP-5 S-O2: manual PiEvent construction (no ev as PiEvent cast)", (
     const types = () => h.relay.received.map((e) => e.frame?.type);
 
     // 1+2+3: message_start / message_update / message_end → TEXT_MESSAGE_START/CONTENT/END
-    h.emit("message_start", { event: "message_start", messageId: "m1", role: "assistant" });
-    h.emit("message_update", { event: "message_update", messageId: "m1", events: [{ kind: "text", delta: "hello" }] });
-    h.emit("message_end", { event: "message_end", messageId: "m1" });
+    // FLLWUP-12 (R-PAYLOAD-1): fixtures feed REAL SDK payload shapes —
+    // {type, message} + assistantMessageEvent, no top-level messageId/role/events.
+    const message = realAssistantMessage();
+    h.emit("message_start", { type: "message_start", message });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "hello", partial: message } });
+    h.emit("message_end", { type: "message_end", message });
     await h.waitFor(() => types().includes("TEXT_MESSAGE_END"));
     expect(types()).toContain("TEXT_MESSAGE_START");
     expect(types()).toContain("TEXT_MESSAGE_CONTENT");
     expect(types()).toContain("TEXT_MESSAGE_END");
 
-    // 4: tool_result → TOOL_CALL_RESULT
-    h.emit("tool_result", { event: "tool_result", messageId: "m2", toolCallId: "call_1", content: [{ type: "text", text: "out" }] });
+    // 4: tool_result → TOOL_CALL_RESULT (real payload: no messageId —
+    // toolCallId doubles as the derived messageId, R-PAYLOAD-1 divergence)
+    h.emit("tool_result", { type: "tool_result", toolName: "bash", toolCallId: "call_1", input: {}, content: [{ type: "text", text: "out" }], isError: false });
     await h.waitFor(() => types().includes("TOOL_CALL_RESULT"));
     const tc = h.relay.received.find((e) => e.frame?.type === "TOOL_CALL_RESULT")!.frame as { content: string };
     expect(tc.content).toBe("out");
@@ -705,8 +709,9 @@ describe("EV-8 runId", () => {
     const run1 = (h.relay.received.find((e) => e.frame?.type === "RUN_STARTED")!.frame as { runId: string }).runId;
 
     // fold a message then settle
-    h.emit("message_start", { event: "message_start", messageId: "m1", role: "user" });
-    h.emit("message_end", { event: "message_end", messageId: "m1" });
+    const userMessage = { role: "user", content: "x", timestamp: 0 }; // real UserMessage shape (FLLWUP-12)
+    h.emit("message_start", { type: "message_start", message: userMessage });
+    h.emit("message_end", { type: "message_end", message: userMessage });
     h.emit("agent_settled");
     await h.waitFor(() => h.relay.received.some((e) => e.frame?.type === "RUN_FINISHED"));
 
@@ -1036,6 +1041,224 @@ describe("FLLWUP-8: ui_prompt_start live raise path", () => {
     const promptId = fnv1a("custom\u0000");
     await answer(h, promptId, 1, "dev-bogus");
     await h.waitFor(() => resolvedOf(h).length === 1);
+    h.relay.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FLLWUP-12 — real-shaped payload regression (probe-4 silent-drop class).
+// Feeds the REAL SDK payload shapes (R-PAYLOAD-1: fixtures feed real-shaped
+// payloads) through index.ts's live handlers and asserts the expected AG-UI
+// frames on the relay. Self-contained: local payload builders only, NO import
+// of src/pi-sdk-events — this suite is the red-at-base record (card
+// FLLWUP-12), so it must compile at base d36c6c9 where that module doesn't
+// exist. Real shapes per pi-ai types.d.ts (Message/AssistantMessage) and
+// dist/core/extensions/types.d.ts (message_* payloads).
+// ---------------------------------------------------------------------------
+
+/** Real SDK AssistantMessage fixture (pi-ai types.d.ts:353). */
+function realAssistantMessage(over: { content?: unknown[] } = {}): Record<string, unknown> {
+  return {
+    role: "assistant",
+    content: over.content ?? [{ type: "text", text: "" }],
+    api: "anthropic",
+    provider: "anthropic",
+    model: "m",
+    usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+    stopReason: "stop",
+    timestamp: 0,
+  };
+}
+
+describe("FLLWUP-12: real-shaped payloads through the live path (R-PAYLOAD-1)", () => {
+  test("message family with real {message} payloads → TEXT frames with one derived messageId (probe-4 regression)", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const types = () => h.relay.received.map((e) => e.frame?.type);
+
+    const message = realAssistantMessage();
+    h.emit("message_start", { type: "message_start", message });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "hello", partial: message } });
+    h.emit("message_end", { type: "message_end", message });
+    await h.waitFor(() => types().includes("TEXT_MESSAGE_END"));
+
+    const start = h.relay.received.find((e) => e.frame?.type === "TEXT_MESSAGE_START")!.frame as { messageId: string; role: string };
+    const content = h.relay.received.find((e) => e.frame?.type === "TEXT_MESSAGE_CONTENT")!.frame as { messageId: string; delta: string };
+    const end = h.relay.received.find((e) => e.frame?.type === "TEXT_MESSAGE_END")!.frame as { messageId: string };
+    expect(start.role).toBe("assistant"); // role derived from message.role
+    expect(content.delta).toBe("hello");
+    // One identity-derived messageId across start/content/end:
+    expect(start.messageId).toBe(content.messageId);
+    expect(content.messageId).toBe(end.messageId);
+    h.relay.stop();
+  });
+
+  test("real thinking_delta → REASONING pane; toolcall_start/delta/end → TOOL_CALL frames with SDK ids", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const types = () => h.relay.received.map((e) => e.frame?.type);
+
+    const toolCallBlock = { type: "toolCall", id: "call_9", name: "bash", arguments: {} };
+    const message = realAssistantMessage({ content: [{ type: "thinking", thinking: "" }, toolCallBlock] });
+    h.emit("message_start", { type: "message_start", message });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "thinking_delta", contentIndex: 0, delta: "pondering", partial: message } });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "toolcall_start", contentIndex: 1, partial: message } });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "toolcall_delta", contentIndex: 1, delta: '{"cmd":', partial: message } });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "toolcall_end", contentIndex: 1, toolCall: toolCallBlock, partial: message } });
+    h.emit("message_end", { type: "message_end", message });
+    await h.waitFor(() => types().includes("TOOL_CALL_END"));
+
+    const reasoning = h.relay.received.filter((e) => e.frame?.type === "REASONING_MESSAGE_CONTENT");
+    expect(reasoning).toHaveLength(1);
+    expect((reasoning[0]!.frame as { delta: string }).delta).toBe("pondering");
+    const tcStart = h.relay.received.find((e) => e.frame?.type === "TOOL_CALL_START")!.frame as { toolCallId: string; toolCallName: string; parentMessageId: string };
+    expect(tcStart.toolCallId).toBe("call_9"); // SDK tool-call id, verbatim
+    expect(tcStart.toolCallName).toBe("bash");
+    const args = h.relay.received.find((e) => e.frame?.type === "TOOL_CALL_ARGS")!.frame as { toolCallId: string; delta: string };
+    expect(args.toolCallId).toBe("call_9");
+    expect(args.delta).toBe('{"cmd":');
+    const tcEnd = h.relay.received.find((e) => e.frame?.type === "TOOL_CALL_END")!.frame as { toolCallId: string };
+    expect(tcEnd.toolCallId).toBe("call_9");
+    // parentMessageId = the same derived messageId as the message family:
+    const start = h.relay.received.find((e) => e.frame?.type === "TEXT_MESSAGE_START");
+    if (start) {
+      expect(tcStart.parentMessageId).toBe((start.frame as { messageId: string }).messageId);
+    }
+    h.relay.stop();
+  });
+
+  test("tool_result real payload (no messageId) → TOOL_CALL_RESULT with toolCallId as derived messageId", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    h.emit("tool_result", { type: "tool_result", toolName: "bash", toolCallId: "call_1", input: { command: "ls" }, content: [{ type: "text", text: "out" }], isError: false });
+    await h.waitFor(() => h.relay.received.some((e) => e.frame?.type === "TOOL_CALL_RESULT"));
+    const tc = h.relay.received.find((e) => e.frame?.type === "TOOL_CALL_RESULT")!.frame as { messageId: string; toolCallId: string; content: string; role: string };
+    expect(tc.messageId).toBe("call_1"); // derivation: toolCallId doubles as messageId (R-PAYLOAD-1 divergence)
+    expect(tc.toolCallId).toBe("call_1");
+    expect(tc.content).toBe("out");
+    expect(tc.role).toBe("tool");
+    h.relay.stop();
+  });
+
+  test("identity correlation survives in-place mutation: end-after-mutation keeps the same messageId", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const types = () => h.relay.received.map((e) => e.frame?.type);
+
+    const message = realAssistantMessage();
+    h.emit("message_start", { type: "message_start", message });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "before", partial: message } });
+    // The real SDK mutates the message in place (_replaceMessageInPlace):
+    message.content = [{ type: "text", text: "after" }];
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "after", partial: message } });
+    h.emit("message_end", { type: "message_end", message });
+    await h.waitFor(() => types().includes("TEXT_MESSAGE_END"));
+
+    const contents = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_CONTENT");
+    expect(contents).toHaveLength(2);
+    const ids = new Set(contents.map((e) => (e.frame as { messageId: string }).messageId));
+    expect(ids.size).toBe(1); // same object identity → same derived messageId across mutation
+    const end = h.relay.received.find((e) => e.frame?.type === "TEXT_MESSAGE_END")!.frame as { messageId: string };
+    expect(ids.has(end.messageId)).toBe(true);
+    h.relay.stop();
+  });
+
+  test("mid-join text_delta (no prior message_start) still emits TEXT frames, no crash", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const types = () => h.relay.received.map((e) => e.frame?.type);
+
+    const message = realAssistantMessage();
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "late", partial: message } });
+    h.emit("message_end", { type: "message_end", message });
+    await h.waitFor(() => types().includes("TEXT_MESSAGE_END"));
+    const start = h.relay.received.find((e) => e.frame?.type === "TEXT_MESSAGE_START")!.frame as { messageId: string };
+    const content = h.relay.received.find((e) => e.frame?.type === "TEXT_MESSAGE_CONTENT")!.frame as { messageId: string; delta: string };
+    expect(content.delta).toBe("late");
+    expect(content.messageId).toBe(start.messageId);
+    h.relay.stop();
+  });
+
+  test("user message: real {message} payload → role user on TEXT_MESSAGE_START", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    const message = { role: "user", content: "hi", timestamp: 0 };
+    h.emit("message_start", { type: "message_start", message });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "hi", partial: message } });
+    h.emit("message_end", { type: "message_end", message });
+    await h.waitFor(() => h.relay.received.some((e) => e.frame?.type === "TEXT_MESSAGE_END"));
+    const start = h.relay.received.find((e) => e.frame?.type === "TEXT_MESSAGE_START")!.frame as { role: string; messageId: string };
+    expect(start.role).toBe("user");
+    h.relay.stop();
+  });
+
+  test("wedge (skeptic): engine-verbatim spread-copy per emission → 1 START, 2 CONTENT, 1 END", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const types = () => h.relay.received.map((e) => e.frame?.type);
+
+    // Verbatim streamAssistantResponse emission semantics (pi-agent-core
+    // agent-loop.js:284/295-299/309): message_start and EVERY message_update
+    // emit `{ ...partialMessage }` — a fresh spread copy per event, of the
+    // accumulated partial (pi-ai mutates one `output` object in place and
+    // reassigns `partialMessage = event.partial`); message_end emits the
+    // accumulated finalMessage itself, a distinct object from every copy.
+    // Object identity NEVER survives an event. role/timestamp are copied
+    // verbatim onto every copy (assistant-message-frame.js
+    // cloneStartMessage) — they are the payload-intrinsic correlation data.
+    const startCopy = realAssistantMessage({ content: [{ type: "text", text: "" }] });
+    const updateCopy1 = { ...startCopy, content: [{ type: "text", text: "hello" }] };
+    const updateCopy2 = { ...startCopy, content: [{ type: "text", text: "hello world" }] };
+    const finalMessage = { ...startCopy, content: [{ type: "text", text: "hello world" }] };
+    h.emit("message_start", { type: "message_start", message: startCopy });
+    h.emit("message_update", { type: "message_update", message: updateCopy1, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "hello", partial: updateCopy1 } });
+    h.emit("message_update", { type: "message_update", message: updateCopy2, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: " world", partial: updateCopy2 } });
+    h.emit("message_end", { type: "message_end", message: finalMessage });
+    await h.waitFor(() => types().includes("TEXT_MESSAGE_END"));
+
+    const starts = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_START");
+    const contents = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_CONTENT");
+    const ends = h.relay.received.filter((e) => e.frame?.type === "TEXT_MESSAGE_END");
+    expect(starts).toHaveLength(1); // no double-START, no id churn per event
+    expect(contents.map((e) => (e.frame as { delta: string }).delta)).toEqual(["hello", " world"]);
+    expect(ends).toHaveLength(1); // no silent drop
+    const id = (starts[0]!.frame as { messageId: string }).messageId;
+    expect(contents.every((e) => (e.frame as { messageId: string }).messageId === id)).toBe(true);
+    expect((ends[0]!.frame as { messageId: string }).messageId).toBe(id);
+    h.relay.stop();
+  });
+
+  test("malformed payloads (null, missing message, non-message role) → zero frames, no crash", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const count = () => h.relay.received.length;
+    const baseline = count();
+
+    h.emit("message_start", null);
+    h.emit("message_start", undefined);
+    h.emit("message_start", { type: "message_start" }); // missing message
+    h.emit("message_update", { type: "message_update", message: null, assistantMessageEvent: null });
+    h.emit("message_end", { type: "message_end", message: { role: "system", content: "sys", timestamp: 0 } }); // system role never frames
+    h.emit("tool_result", { type: "tool_result", toolName: "bash", toolCallId: 42, content: "not-an-array", isError: false }); // malformed fields
+    h.emit("tool_result", null);
+
+    await new Promise((r) => setTimeout(r, 30)); // let any wrongly-emitted frame land
+    expect(count()).toBe(baseline); // zero frames for malformed input, no crash
+    // And the fold still works after the malformed barrage:
+    const message = realAssistantMessage();
+    h.emit("message_start", { type: "message_start", message });
+    h.emit("message_update", { type: "message_update", message, assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "ok", partial: message } });
+    await h.waitFor(() => h.relay.received.some((e) => e.frame?.type === "TEXT_MESSAGE_CONTENT"));
     h.relay.stop();
   });
 });
