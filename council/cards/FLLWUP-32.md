@@ -66,3 +66,34 @@ applies the ruling and cites it; it does not re-ask.
 owner, one skeptic, one judge; all five deterministic-merge criteria with
 criterion 3 scoped to the single Verify skeptic dispatch. A generator seat in
 the runner subtree upgrades the effective mode to Deliberate.
+
+## Run record — FLLWUP-32 (EPIC-5)
+
+- Step 8 owner (job-9.1): fix shape = **make the body enforce the claim** —
+  compile-time conditional-type const `keyof ExtensionAPI extends
+  RealSurfaceKey ? true : never = true` (`RealSurfaceKey =
+  (typeof REAL_LOADER_API_KEYS)[number]`; `ExtensionAPI` type-imported from
+  `../index.ts`), old 3-key loop retained as a labeled runtime mirror, test
+  retitled to name the honest enforcement point (`bunx tsc --noEmit`, not
+  `bun test`). Defect injection at the owner: phantom member → TS2322
+  true→never; pre-fix body provably enforced nothing. Gates at head `e4fae7c`:
+  tsc exit 0; `bun test` 273 pass / 1 skip / 0 fail. PR #44 opened
+  (branch `owner/fllwup-32-test-header-honesty`, cut from origin/main
+  `ec6c16f`), diff product-only (exactly `test/pi-sdk-load.test.ts`).
+- Step 9 skeptic (job-9.2, single Verify dispatch): **NO-BLOCK** at head
+  `e4fae7cca07e8ea5ad5a0dd6fc9e961b6c206e95`. Gates re-run independently:
+  tsc exit 0; `bun test` 273/1/0 (skip = Windows-gated ACL test, tolerated).
+  Non-vacuity reproduced: phantom member on `index.ts`'s `ExtensionAPI` →
+  `test/pi-sdk-load.test.ts(109,11): error TS2322: Type 'true' is not
+  assignable to type 'never'`, tsc exit 1, reverted clean; same phantom under
+  the pre-fix body → tsc exit 0 (the false claim reproduces; card premise
+  confirmed). Header honesty: every clause of the new title tested (keyof =
+  all declared members; tsc trips; bun test provably blind — 273/1/0 with the
+  phantom). Non-weakening: 3-key loop retained verbatim, zero assertions
+  deleted/loosened; dropped `probe` verified observation-free (all imports of
+  `src/pi-sdk-on.ts` type-only). Diff hygiene: exactly one file, zero
+  council/docs paths. Arithmetic: 3 members on `ExtensionAPI`, 3/3 in
+  `REAL_LOADER_API_KEYS` — the `true` resolution is a genuine subset fact.
+  Non-blocking note: runtime mirror remains a 3-key sanity check (unchanged,
+  scope-excluded); first test's docstring claim outside this card's scope.
+  No open objections. Verify-cycle count: 1 of 3 (no fix-and-reverify rounds).
