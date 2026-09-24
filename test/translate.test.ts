@@ -779,15 +779,18 @@ describe("FLLWUP-12 probe: fold consumes derived-messageId PiEvents unchanged", 
 // ---------------------------------------------------------------------------
 describe("FLLWUP-35 probe: a dropped message_start is observable, not masked by the message_update fallback", () => {
   test("a message_update with no message_start bookkeeping opens a marked mid-join entry (drop is recorded, not substituted)", () => {
+    // A non-mint-shaped id (no `<role>:<timestamp>` colon): back-derivation
+    // returns undefined and the fallback silently defaults the role to
+    // "assistant" — the exact substitution this probe makes observable.
     let state = createState({ sessionId: "s1", runId: "r1" });
     const r = translate(
       { event: "message_update", messageId: "user-1", events: [{ kind: "text", delta: "hello" }] },
       state
     );
-    const book = r.state.openMessages.get("user-1") as unknown as { midJoin?: boolean; role: string } | undefined;
+    const book = r.state.openMessages.get("user-1");
     expect(book).toBeDefined();
     expect(book?.midJoin).toBe(true); // RED at base: the fallback entry is unmarked
-    expect(book?.role).toBe("user"); // back-derivation still recovers the role (behavior unchanged)
+    expect(book?.role).toBe("assistant"); // pinned fallback substitution — now observable, not silent
   });
 
   test("a start-opened entry is not marked mid-join (no false positive on the legitimate flow)", () => {
@@ -797,7 +800,7 @@ describe("FLLWUP-35 probe: a dropped message_start is observable, not masked by 
       { event: "message_update", messageId: "assistant-1", events: [{ kind: "text", delta: "hi" }] },
       r1.state
     );
-    const book = r2.state.openMessages.get("assistant-1") as unknown as { midJoin?: boolean; role: string } | undefined;
+    const book = r2.state.openMessages.get("assistant-1");
     expect(book).toBeDefined();
     expect(book?.midJoin).toBe(false);
     expect(book?.role).toBe("assistant");

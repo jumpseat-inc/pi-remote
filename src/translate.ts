@@ -190,6 +190,14 @@ export type Input = PiEvent | JsonlEntry;
 
 export interface OpenMessageState {
   role: "assistant" | "user";
+  /**
+   * FLLWUP-35 — true when this entry was opened by the message_update
+   * mid-join fallback rather than a message_start. Bookkeeping only: the
+   * fallback path's emitted frames are unchanged, but a dropped start is
+   * now recorded as observable fold state instead of being silently masked
+   * by the back-derived role substitution.
+   */
+  midJoin: boolean;
   /** TEXT_MESSAGE_START has been emitted for this message. */
   textStarted: boolean;
   /** The currently-open reasoning pane messageId, if any. */
@@ -307,6 +315,7 @@ function translateJsonl(input: JsonlEntry, state: TranslateState): FoldResult {
 
     const open: OpenMessageState = {
       role: input.role,
+      midJoin: false,
       textStarted,
       thinkingPane: null,
       toolCalls: [],
@@ -408,6 +417,7 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
       // Opens fold bookkeeping only; TEXT_MESSAGE_START fires on the first text delta.
       openMessages.set(input.messageId, {
         role: input.role,
+        midJoin: false,
         textStarted: false,
         thinkingPane: null,
         toolCalls: [],
@@ -421,6 +431,7 @@ function translateLive(input: PiEvent, state: TranslateState): FoldResult {
       // invented; the role is back-derived from the id itself.
       const st = openMessages.get(input.messageId) ?? {
         role: messageFrameRoleLocal(input.messageId) ?? "assistant",
+        midJoin: true,
         textStarted: false,
         thinkingPane: null,
         toolCalls: [],
