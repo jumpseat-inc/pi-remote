@@ -1,8 +1,8 @@
 ---
 id: FLLWUP-12
 title: "Reconcile handler payload narrowing with real SDK event payloads"
-state: In Progress
-owner: owner/fllwup-12-reconcile-payload-narrowing (PR #39, head e1ef9c1)
+state: In Review
+owner: owner/fllwup-12-reconcile-payload-narrowing (PR #39, head e502add)
 epic: EPIC-4
 goal: Every forward() handler's defensive narrowing matches the real SDK's actual event payload shapes, so no live event is silently dropped by a field mismatch between the stand-in's assumed shape and the real payload.
 ---
@@ -113,3 +113,34 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   item handed back to the owner (fix cycle 1). Step-13 candidates noted by the
   skeptic: engine-style fixture premise-testing; translate.ts message_update
   fallback masking dropped starts; plan's emission-site-authority citation.
+- Step 9 fix cycle 1 (job-15.3): delivered. Head pushed `e1ef9c1..e502add`
+  (`e502add9bf637aa57f216699b61e65a39fd69c3b`), PR #39 updated. Fix: the
+  WeakMap identity-keyed `messageKey` deleted; AG-UI messageId for the
+  message family now derived from payload-intrinsic `(role, timestamp)`
+  (`${role}:${timestamp}`, `agentMessageId` in src/pi-sdk-events.ts) —
+  grounded in the installed engine (agent-loop.js spread-copies per
+  start/update, accumulated finalMessage at end; role/timestamp copied
+  verbatim onto every emission and identical across one logical message).
+  Documented bound: two same-role messages sharing a timestamp fold into one
+  AG-UI message (merged framing, not a drop). No new divergence under
+  R-PAYLOAD-1. Skeptic's step-13 candidate (engine-style wedge fixture)
+  folded in: TDD red at e1ef9c1 (`waitFor timeout`, probe shows two STARTs
+  distinct ids zero END) → green at e502add (1 START / 2 CONTENT / 1 END,
+  one id). Gates re-run: tsc exit 0; `bun test` 270 pass / 1 Windows-gated
+  skip / 0 fail.
+- Step 9 skeptic re-verification, verify cycle 2 of 3 (job-15.4): **PASS, no
+  open objections** — cycle-1 closed-red empirically settled green at head
+  (transplanted wedge red at e1ef9c1 → closed-green at e502add; defect
+  injection into `agentMessageId` → wedge red, restored byte-for-byte →
+  green, gate proven non-vacuous). `(role, timestamp)` verified present
+  verbatim on every emission (types.d.ts:658–672; agent-loop.js:284/295-299/
+  309; anthropic-messages.js:339/355; assistant-message-frame.js:29/40).
+  No-ghost-END preserved; collision bound probed live (2 starts / 2 contents
+  / 2 ends / shared id — merged framing, zero content loss); R-TYPE-1
+  provenance refs verified against installed SDK; package.json byte-identical
+  base→head, SDK-free; ui.confirm byte-identical to base; cumulative diff
+  d36c6c9..e502add zero council/run-record paths. Gates observed: tsc exit 0;
+  270 pass / 1 skip / 0 fail. Step-13 candidates noted (decoder duplication
+  pinned by static pairing test; vendored PiTextContent omits optional
+  textSignature; millisecond timestamp-collision exposure unreachable in
+  sequential emission). Verify-cycle count: 2 of 3.
