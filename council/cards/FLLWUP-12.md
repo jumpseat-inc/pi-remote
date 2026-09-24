@@ -1,9 +1,9 @@
 ---
 id: FLLWUP-12
 title: "Reconcile handler payload narrowing with real SDK event payloads"
-state: Backlog
+state: Ready
 owner: null
-epic: EPIC-1
+epic: EPIC-4
 goal: Every forward() handler's defensive narrowing matches the real SDK's actual event payload shapes, so no live event is silently dropped by a field mismatch between the stand-in's assumed shape and the real payload.
 ---
 
