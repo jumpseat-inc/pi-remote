@@ -22,11 +22,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 
 ## Needs Human
 
 ## Done
+- FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 - FLLWUP-37 — "Watch the duplicated message-family role decoder between translate.ts and pi-sdk-events.ts"
 - FLLWUP-38 — "Declare or annotate the vendored PiTextContent's omitted optional textSignature field"

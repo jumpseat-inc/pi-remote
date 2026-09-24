@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-33
 title: "Correct the member-count discrepancy in FLLWUP-11's record"
-state: In Review
+state: Done
 owner: owner/fllwup-33-record-count (PR #45, head efd1347)
 epic: EPIC-5
 goal: The card text says "twelve"; the base stand-in had 13 non-`on` members; the run record's "none exist on the real ExtensionAPI" phrasing is inaccurate for the 2 kept members.
@@ -121,3 +121,18 @@ the runner subtree upgrades the effective mode to Deliberate.
   end-to-end. Human merge gate (step 11) substituted per R-MERGE-1:
   deterministic merge check executed by this runner (mode Verify, criterion
   3 scoped to the single Verify skeptic dispatch).
+- Step 11/12: all five Verify-mode criteria held — (1) owner gates green in
+  full (tsc exit 0; `bun test` 273 pass / 1 skip / 0 fail, re-run
+  independently by the Skeptic with defect-injection proofs of gate
+  integrity); (2) `gh pr checks 45 --json name,state,workflow` keyed on
+  `workflow=="gates"`: SUCCESS present on PR head
+  `efd13470dc1fe4af35780e5cd371b3945eacc767` (both `gates` and
+  `gates-windows` rows); (3) single Verify skeptic NO-BLOCK; (4) judge
+  PASS; (5) no Needs Human state, no outstanding ruling. Merged PR #45 as
+  squash **a69f0a0a86e434756984649ad39d4cf043ddf6cb** (`--match-head-commit
+  efd1347…` held; ordinary merge — R-ADMIN-1 unused, `main` unprotected:
+  0 rulesets, branch-protection API 404). CI green on the merged SHA:
+  `gates` and `gates-windows` check-runs on `a69f0a0…`, conclusion success,
+  both completed. Step-12 reconcile: local main merged origin/main
+  (78fbec2), validator clean, conflict-marker sweep clean. Card Done on
+  card+board from that observed artifact.
