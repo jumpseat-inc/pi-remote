@@ -20,10 +20,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-33 — "Correct the member-count discrepancy in FLLWUP-11's record"
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 
-## In Review
+## In Progress
 - FLLWUP-37 — "Watch the duplicated message-family role decoder between translate.ts and pi-sdk-events.ts"
 
-## Needs Human
+## In Review
 
 ## Needs Human
 
