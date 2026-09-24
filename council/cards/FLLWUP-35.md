@@ -1,7 +1,7 @@
 ---
 id: FLLWUP-35
 title: "Add a fold-bookkeeping probe that catches a dropped message_start masked by the message_update fallback"
-state: In Review
+state: Done
 owner: null
 epic: EPIC-5
 goal: add a regression probe ensuring a dropped `message_start` cannot be silently masked by the `message_update` fallback path (translate.ts's mid-join role back-derivation).
@@ -64,3 +64,50 @@ applies the ruling and cites it; it does not re-ask.
 owner, one skeptic, one judge; all five deterministic-merge criteria with
 criterion 3 scoped to the single Verify skeptic dispatch. A generator seat in
 the runner subtree upgrades the effective mode to Deliberate.
+
+## Run record — delivery (2026-09-24, Verify path)
+
+Delivered on PR [#41](https://github.com/jumpseat-inc/pi-remote/pull/41)
+(`owner/fllwup-35-fold-probe`, head `fcfcafd395341c4d7e5e20307ddc40f0e4548079`,
+cut from origin/main 9393151). Mechanical/Verify path: one owner (job-4.1),
+one skeptic (job-4.2), one judge (job-4.3); no deliberation, no spec file.
+
+- **Shape chosen: red-at-base probe + minimal instrumentation.** The fold's
+  emitted frames for a dropped start are byte-identical to a legitimate
+  mid-join, so a shape-only probe cannot fail — the card's stated
+  insufficiency. Probe pins `midJoin: true` bookkeeping on the fallback path
+  (`OpenMessageState` gains the marker; 3 construction sites;
+  `messageFrameRoleLocal` untouched, frame-neutrality byte-identical across 4
+  sequences).
+- **Red-at-base evidence** (skeptic-reproduced, mechanism-absent reds): probe
+  tests transplanted onto base 9393151 → `bun test test/translate.test.ts` 51
+  pass / 2 fail, exit 1 (`Expected: true / Received: undefined` at 792;
+  `Expected: false / Received: undefined` at 805; both name `book?.midJoin`).
+  At head the same command is 53 pass / 0 fail. Frame-only probe 3 passed at
+  base — demonstrating shape-only assertion insufficient.
+- **Defect injection at head** (message_start bookkeeping neutered): probe 2
+  red `Expected: false / Received: true` + the EV-4 user-role framing test
+  red, while the frame-only probe stayed green — the marker, not frame shape,
+  exposes the mask.
+- **Owner gates (skeptic-re-run, closed-green):** `bunx tsc --noEmit` exit 0;
+  `bun test` 273 pass / 1 skip / 0 fail (the skip is the Windows-gated
+  credential-ACL test on non-Windows). Verify cycle 1 of ≤3; no fix cycles
+  used.
+- **Judge: PASS** (basis on all three acceptance points; PR-head subject,
+  pre-merge frame).
+- **Deterministic merge check (mode Verify, criteria 1–5):** owner gates
+  green in full; `gh pr checks 41` keyed on `workflow=="gates"` →
+  `state: SUCCESS` on head `fcfcafd` (absent-check rule observed — the row
+  was present); no blocking skeptic objection; judge PASS; no Needs Human
+  state or outstanding ruling. Merged
+  `gh pr merge 41 --squash --match-head-commit fcfcafd395341c4d7e5e20307ddc40f0e4548079`
+  → squash commit `a283f9acb1dd10ce28dd035ab9c2e1e5e5f6d435` on main; ordinary
+  merge (main unprotected; R-ADMIN-1 unused). CI green on the merged SHA
+  (gates completed success, observed directly). Local main reconciled with
+  origin/main via union-keep merge `a4a03a9` — no conflict markers; validate
+  clean. R-PUSH-1 authorizes this record push.
+- **Non-blocking residual (open-untested):** the owner's exact injection
+  fail-count ("3 fail") was not reproducible as stated; the skeptic's own
+  injection produced 2 fail with the mechanism proven. Not a gate claim;
+  recorded for honesty, not blocking. Cited under R-CLASS-1 for the
+  surface-touching determination (no person-facing surface).
