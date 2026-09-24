@@ -1,7 +1,7 @@
 ---
 id: EPIC-6
 title: "SDK vendoring residuals — FLLWUP-39/40 delivered in one council run"
-state: Ready
+state: Done
 owner: null
 epic: null
 goal: Observed as met when FLLWUP-39 and FLLWUP-40 are both Done from a single council run in which one owner implementation (one branch and one PR) covers both changes, one Skeptic verification covers both, and one judge PASS covers both, with bunx tsc --noEmit exit 0 and bun test green.
@@ -88,3 +88,23 @@ applies the ruling and cites it; it does not re-ask.
 owner, one skeptic, one judge; all five deterministic-merge criteria with
 criterion 3 scoped to the single Verify skeptic dispatch. A generator seat in
 the runner subtree upgrades the effective mode to Deliberate.
+
+## Run record — closed (2026-09-24)
+
+Closed by `steward` job-15 ratifying `Done`. EPIC-6's goal was defined in
+run-mechanics terms, so the closure record states the evidence verbatim.
+
+- Run id: `2026-09-24T14-16-48-865Z-1369407-58h5bs`.
+- Single council runner: **job-14** (R-ONE-RUN-1 honored).
+- One owner implementation: **job-14.1**, one branch `owner/epic6-sdk-residuals`,
+  one PR **#47**, head `4f8423b6ff726c632109b6d71a7718c76edfd28b`.
+- One Skeptic verification: **job-14.2** (no blocking objection).
+- One judge: **job-14.3**, verdict **PASS**.
+- Merge: squash `cb0ba13df0f7bd592186f7d78f3e369058654a4d`; `gates` workflow
+  SUCCESS on the PR head **and** on the merged SHA.
+- Recorded execution mode: **Verify** (both cards, read via
+  `council_route op:authority` with runnerJobId job-14); criteria 1–5 satisfied.
+- Deliverables: FLLWUP-39 (PiThinkingContent `thinkingSignature` + PiToolCall
+  `thoughtSignature` declared with line-referenced provenance) and FLLWUP-40
+  (pairing-test source comment corrected, assertions byte-identical).
+- Follow-ups filed: none — no residual accepted.

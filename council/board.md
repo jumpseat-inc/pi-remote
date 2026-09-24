@@ -14,7 +14,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 
 ## Ready
-- EPIC-6 — "SDK vendoring residuals — FLLWUP-39/40 delivered in one council run"
 
 ## In Progress
 
@@ -23,6 +22,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Needs Human
 
 ## Done
+- EPIC-6 — "SDK vendoring residuals — FLLWUP-39/40 delivered in one council run"
 - FLLWUP-39 — "Declare or annotate the vendored PiThinkingContent's omitted optional thinkingSignature/thoughtSignature fields"
 - FLLWUP-40 — "Correct the FLLWUP-12 pairing test's source comment, which overstates what the test pins"
 - EPIC-5 — "SDK reconciliation residuals — the EPIC-4 run's seven follow-ups"
