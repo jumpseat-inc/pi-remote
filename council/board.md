@@ -23,9 +23,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - EPIC-5 — "SDK reconciliation residuals — the EPIC-4 run's seven follow-ups"
 
 ## In Progress
-- FLLWUP-34 — "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
 
 ## In Review
+- FLLWUP-34 — "Update AGENTS.md's 'Current state' once FLLWUP-12 lands"
 
 ## Needs Human
 
