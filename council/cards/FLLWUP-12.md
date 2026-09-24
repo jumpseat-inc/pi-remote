@@ -1,8 +1,8 @@
 ---
 id: FLLWUP-12
 title: "Reconcile handler payload narrowing with real SDK event payloads"
-state: In Progress
-owner: null
+state: In Review
+owner: owner/fllwup-12-reconcile-payload-narrowing (PR #39, head e1ef9c1)
 epic: EPIC-4
 goal: Every forward() handler's defensive narrowing matches the real SDK's actual event payload shapes, so no live event is silently dropped by a field mismatch between the stand-in's assumed shape and the real payload.
 ---
@@ -71,3 +71,29 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   the dispatch input is applied as authoritative and not re-recorded.
 - Surface-touching bit: **false** (handler narrowing and fixtures only — no
   visible surface, copy, empty state, or error state a person reads).
+- Step 8 (job-15.1): delivered. Branch `owner/fllwup-12-reconcile-payload-narrowing`
+  (base origin/main d36c6c9), **PR #39**, head
+  `e1ef9c16349e7ff3226903db74a80cd7872edb76`. Owner-reported gates:
+  `bunx tsc --noEmit` exit 0; `bun test` 266 pass / 1 Windows-gated skip / 0
+  fail. All eleven subscriptions reconciled per R-PAYLOAD-1: message_start /
+  message_update / message_end / tool_result corrected to the real payload
+  shapes (the four handlers that narrowed on fields the real payloads do not
+  carry — every real payload of those families was silently dropped before);
+  agent_start / agent_settled / turn_start / turn_end and ui_prompt_start /
+  ui_prompt_end verified already-honest, unchanged; the synthetic `ui.confirm`
+  seam untouched (not one of the eleven). New `src/pi-sdk-events.ts` vendors
+  the real payload interfaces + derivation helpers (R-TYPE-1: vendored
+  signatures, SDK not added as a dependency). Fixtures converted to
+  real-shaped payloads; 7-test FLLWUP-12 regression suite (red at base
+  28 pass/8 fail → 36 pass/0 fail at head); translate.ts normalized surface
+  unchanged, pinned by probe test. **One documentation-only divergence under
+  R-PAYLOAD-1's permission:** `tool_result → TOOL_CALL_RESULT` sets
+  `messageId = ev.toolCallId` — the real ToolResultEvent genuinely carries no
+  message id, the AG-UI frame requires one; justification: the tool call's own
+  stable SDK-supplied id doubles as the messageId (live twin of the replay
+  path's entry-id-as-messageId decision, src/replay-adapter.ts). Recorded on
+  the card per the ruling.
+- Step 8→9 routing recheck: `council_route` unavailable in this container's
+  tool set; recorded mode **Verify** applied as authoritative, no re-route.
+  In Review set from the observed artifact: PR #39 OPEN, head e1ef9c1,
+  base d36c6c9 (verified via gh pr view).
