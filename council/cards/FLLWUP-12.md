@@ -1,8 +1,8 @@
 ---
 id: FLLWUP-12
 title: "Reconcile handler payload narrowing with real SDK event payloads"
-state: In Review
-owner: owner/fllwup-12-reconcile-payload-narrowing (PR #39, head e502add)
+state: Done
+owner: owner/fllwup-12-reconcile-payload-narrowing (PR #39, merged 524bc90)
 epic: EPIC-4
 goal: Every forward() handler's defensive narrowing matches the real SDK's actual event payload shapes, so no live event is silently dropped by a field mismatch between the stand-in's assumed shape and the real payload.
 ---
@@ -151,3 +151,19 @@ criterion 3 scoped to the single Verify skeptic dispatch.
   gates confirmed; package.json byte-identical, SDK not a dependency. Human
   merge gate (step 11) substituted per R-MERGE-1: deterministic merge check
   executed by this runner.
+- Step 11/12: all five merge criteria held (mode Verify): (1) owner gates
+  green in full at head e502add (tsc exit 0; bun test 270 pass / 1
+  Windows-gated skip / 0 fail, observed by owner and skeptic independently);
+  (2) `gh pr checks 39` keyed on workflow=="gates": state SUCCESS on both
+  jobs, runs pinned to headSha e502add9bf637aa57f216699b61e65a39fd69c3b;
+  (3) no blocking Skeptic objection (verify cycle 2 PASS, zero open
+  objections); (4) judge verdict PASS (job-15.5); (5) no Needs Human state,
+  no outstanding ruling. Merged PR #39 as squash
+  **524bc90e0e49d838ed331a7ef17a22ead627c82d** with
+  `--match-head-commit e502add…` held (ordinary merge; R-ADMIN-1 unused —
+  main unprotected). CI green on the merged SHA (gates runs on 524bc90,
+  conclusion success). Card Done on card+board from that observed artifact.
+  Step-12 record commit pushed to main under R-PUSH-1 (run-scoped).
+  Local main fast-forward-unable (diverged by the run's record commits) →
+  documented union reconcile via `git merge origin/main` (ort, no conflicts,
+  conflict-marker sweep clean, validate clean).
