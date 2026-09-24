@@ -13,6 +13,7 @@
  * already-running / replacement-prompt constants. See docs/PI-SPEC.md §7.2.
  */
 
+import { createServer } from "node:http"
 import {
   discoverAuthServer,
   isTunnelError,
@@ -472,34 +473,46 @@ export async function runAttendedLogin(
   let settled = false;
   const state = base64url(rng(32));
 
-  const server = Bun.serve({
-    hostname: "127.0.0.1",
-    port: 0,
-    fetch: async (req: Request) => {
-      const url = new URL(req.url);
-      let result: CallbackResult;
-      if (req.method !== "GET" || url.pathname !== "/callback") {
-        result = { type: "mismatch" };
-      } else {
-        const code = url.searchParams.get("code");
-        const stateParam = url.searchParams.get("state");
-        if (!code) result = { type: "mismatch" };
-        else if (stateParam !== state) result = { type: "mismatch" };
-        else result = { type: "code", code };
-      }
-      if (!settled) {
-        settled = true;
-        settle(result);
-      }
-      return new Response("enrollment", {
-        status: result.type === "code" ? 200 : 400,
-      });
-    },
+  // FLLWUP-105: the loopback listener is built on node:http, NOT `Bun.serve`.
+  // pi's runtime exposes no `Bun` global, so a Bun-only listener made every
+  // attended `/rc:login` die with `Bun is not defined` before it could reach
+  // the browser — which also blocked re-enrolling a host whose FLLWUP-100
+  // ownerId was stale. node:http is available under both pi's Node runtime and
+  // Bun's (the test runner).
+  const server = createServer((req, res) => {
+    const url = new URL(req.url ?? "/", "http://127.0.0.1");
+    let result: CallbackResult;
+    if (req.method !== "GET" || url.pathname !== "/callback") {
+      result = { type: "mismatch" };
+    } else {
+      const code = url.searchParams.get("code");
+      const stateParam = url.searchParams.get("state");
+      if (!code) result = { type: "mismatch" };
+      else if (stateParam !== state) result = { type: "mismatch" };
+      else result = { type: "code", code };
+    }
+    if (!settled) {
+      settled = true;
+      settle(result);
+    }
+    res.statusCode = result.type === "code" ? 200 : 400;
+    res.setHeader("content-type", "text/plain");
+    res.end("enrollment");
+  });
+  // Bind the ephemeral port BEFORE the redirect URI is built (RFC 8252 §7.3).
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.removeListener("error", reject);
+      resolve();
+    });
   });
 
   ctl.cancelled = false;
   try {
-    const port = server.port;
+    const address = server.address();
+    const port =
+      typeof address === "object" && address !== null ? address.port : 0;
     const redirectUri = `http://127.0.0.1:${port}/callback`;
     const verifierBytes = rng(32);
 
@@ -597,7 +610,8 @@ export async function runAttendedLogin(
       }
     );
   } finally {
-    server.stop(true);
+    server.closeAllConnections?.();
+    server.close();
   }
 }
 
