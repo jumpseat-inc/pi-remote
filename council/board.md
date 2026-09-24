@@ -20,11 +20,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- FLLWUP-11 — "Reconcile the ExtensionAPI stand-in's non-on members with the real SDK surface"
 
 ## Needs Human
 
 ## Done
+- FLLWUP-11 — "Reconcile the ExtensionAPI stand-in's non-on members with the real SDK surface"
 - FLLWUP-31 — "Correct AGENTS.md's stale 'Current state' claims (suite count and --headless routing)"
 - EPIC-3 — "Run integrity and device-flow coverage — the device-flow polish run's four follow-ups"
 - FLLWUP-29 — "Pin the attended PKCE path's no-error_description boundary in the login suite"
