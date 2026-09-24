@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-32 — "Fix the load-smoke test-2 header's overstated compile-time claim"
 
 ## In Progress
-- FLLWUP-37 — "Watch the duplicated message-family role decoder between translate.ts and pi-sdk-events.ts"
 
 ## In Review
+- FLLWUP-37 — "Watch the duplicated message-family role decoder between translate.ts and pi-sdk-events.ts"
 
 ## Needs Human
 
