@@ -10,6 +10,7 @@
  * `pi.configDir()` a TypeError at load before this card.
  */
 import { describe, expect, test } from "bun:test";
+import type { ExtensionAPI } from "../index.ts";
 
 // The real installed SDK's ExtensionAPI member names (runtime api object,
 // loader.js ~200; types.d.ts ~978). Provenance per R-TYPE-1; re-diff on
@@ -97,14 +98,21 @@ describe("FLLWUP-11 load smoke", () => {
     }
   });
 
-  test("no member of index.ts's ExtensionAPI is absent from the real surface (minus documented local capabilities)", () => {
-    // Structural check via the type system instead of `keyof` runtime reflection:
-    // if a stand-in member is ever reintroduced that the real API lacks, the
-    // assignment below fails to compile — same guarantee, gate-level.
-    const probe = (require("../src/pi-sdk-on.ts") as typeof import("../src/pi-sdk-on"));
-    void probe;
-    const keys = Object.keys({ on: 1, registerCommand: 1, sendUserMessage: 1 });
-    for (const k of keys) {
+  test("every member of index.ts's ExtensionAPI is a real-surface member (compile-time check; enforced by `bunx tsc --noEmit`, not by bun test)", () => {
+    // Compile-time structural check via the type system instead of `keyof`
+    // runtime reflection: if a stand-in member is ever reintroduced on
+    // index.ts's ExtensionAPI that the real API lacks, the conditional type
+    // below resolves to `never` and the const fails to compile — caught by
+    // the typecheck gate (`bunx tsc --noEmit`), because bun test strips
+    // types at runtime and cannot enforce it. See REAL_LOADER_API_KEYS above.
+    type RealSurfaceKey = (typeof REAL_LOADER_API_KEYS)[number];
+    const surfaceIsSubset: keyof ExtensionAPI extends RealSurfaceKey
+      ? true
+      : never = true;
+    void surfaceIsSubset;
+    // Runtime mirror (sanity only — bun test strips the types above): the
+    // members index.ts exercises today must be present in the vendored list.
+    for (const k of Object.keys({ on: 1, registerCommand: 1, sendUserMessage: 1 })) {
       expect(REAL_LOADER_API_KEYS as readonly string[]).toContain(k);
     }
   });
