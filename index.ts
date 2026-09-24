@@ -621,7 +621,20 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       sha256: deps.sha256,
       openUrl: deps.openUrl,
       sleep: deps.sleep,
-      confirmReplacement: deps.confirmReplacement,
+      // FLLWUP-107: the replacement confirmation MUST use pi's UI prompt, not a
+      // raw `process.stdin` read. The stdin fallback (confirmViaStdin) detaches
+      // the TUI's input pipeline when the extension steals the Enter keypress —
+      // the login completes but the user can no longer type. An injected
+      // confirmReplacement (tests) still wins. Returning undefined
+      // (Escape/cancel) keeps the existing credential.
+      confirmReplacement:
+        deps.confirmReplacement ??
+        (async () => {
+          const answer = await deps.inputPrompt(
+            "Press Enter to replace the existing credential, or Escape to keep it.",
+          );
+          return answer !== undefined;
+        }),
       redirectTimeoutMs: deps.redirectTimeoutMs,
       discoveryCache,
       onState: (s) => {
