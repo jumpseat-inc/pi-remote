@@ -41,7 +41,8 @@ export type InjectResult =
 
 export interface InjectDeps {
   /** Inject remote text into the live session, pi-side. */
-  sendUserMessage: (content: string, opts?: { deliverAs?: DeliverAs }) => Promise<void>;
+  /** FLLWUP-11: the real SDK sendUserMessage returns void; async wrappers stay assignable. */
+  sendUserMessage: (content: string, opts?: { deliverAs?: DeliverAs }) => void | Promise<void>;
   /** SDK run-state at injection time (same synchronous tick as sendUserMessage). */
   isStreaming: () => boolean;
   /**
@@ -99,7 +100,10 @@ export function createInjector(deps: InjectDeps): Injector {
     tracked: boolean
   ): InjectResult {
     const deliverAs = deps.isStreaming() ? "steer" : undefined;
-    void deps.sendUserMessage(response, { deliverAs }).catch(() => {});
+    // FLLWUP-11: the real SDK sendUserMessage returns void; async host wrappers
+    // still may reject — swallow both failure modes (loud-once notice is the
+    // user-visible channel, not this call).
+    Promise.resolve(deps.sendUserMessage(response, { deliverAs })).catch(() => {});
     announceOnce(promptId);
     return { kind: "steered_fallback", promptId, occurrence, text: response, direct: false, deviceId, reason: "mode", tracked };
   }
