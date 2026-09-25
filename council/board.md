@@ -17,9 +17,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-14 — "Document remote raise-UI best-effort behavior for select, editor, and custom prompt kinds"
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 - EPIC-7 — "Default relay URL, attended-login cancellation, and --headless discoverability"
-- EV-17 — "Let the user cancel an attended `/rc:login`"
 
 ## Ready
+- EV-17 — "Let the user cancel an attended `/rc:login`"
 
 ## Deliberating
 
