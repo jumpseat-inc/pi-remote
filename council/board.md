@@ -21,9 +21,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
-- EV-15 — "Default the control-plane URL to `https://relay.jumpseat.sh`"
 
 ## In Review
+- EV-15 — "Default the control-plane URL to `https://relay.jumpseat.sh`"
 
 ## Needs Human
 
