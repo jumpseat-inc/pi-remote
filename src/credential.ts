@@ -231,6 +231,11 @@ export function readCredential(deps: StoreDeps): EnrollmentCredential | null {
       typeof parsed !== "object" ||
       parsed === null ||
       typeof parsed.serverUrl !== "string" ||
+      // EV-15: empty/whitespace-only serverUrl is corrupt — the guards this
+      // predicate replaces (rcCommand's `!serverUrl`, the login-seam gate) are
+      // gone now that the resolver is total, so the reader is the choke point.
+      // Trims, matching the resolver's emptiness rule (src/server-url.ts).
+      parsed.serverUrl.trim().length === 0 ||
       typeof parsed.accessToken !== "string" ||
       typeof parsed.tokenExpiry !== "number"
     ) {
