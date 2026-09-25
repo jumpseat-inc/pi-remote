@@ -8,12 +8,13 @@
  * single-sourced in `tunnel.ts`/`login.ts`.
  *
  * COVERAGE BOUNDARY (product-owner ruling OJ2 — announced at the surface):
- * `indonesianCopy` covers exactly the 22 keys consumed by `englishFor`
+ * `indonesianCopy` covers exactly the 21 keys consumed by `englishFor`
  * (tunnel.ts) and `loginEnglishFor` (login.ts): the 6 `tunnelReasonCopy`
  * user-line keys, the 7 `status.*` footer rows, the 3 transport-side
- * `tunnel.error.*` rows, and the 6 command-output rows (`rc.unenrolled`,
- * `rc.serverUrlRequired`, `rc.dialingInProgress`, `rc.offLifecycle`,
- * `shutdown.closed`, `rc:login.refusal`).
+ * `tunnel.error.*` rows, and the 5 command-output rows (`rc.unenrolled`,
+ * `rc.dialingInProgress`, `rc.offLifecycle`, `shutdown.closed`,
+ * `rc:login.refusal`). (EV-15 removed the serverUrl-required command row —
+ * the total resolver in `src/server-url.ts` makes its branch unreachable.)
  *
  * Remaining English under every locale, by design (missing keys fall back to
  * the English default, never crash):
@@ -23,7 +24,15 @@
  * - the keyless constants `ALREADY_LIVE_COPY` and
  *   `ACL_ENFORCEMENT_FAILED_NOTICE` (ruled verbatim by prior rulings; they
  *   change only through their own cards),
- * - the keyless `inputPrompt` literal at `index.ts:542`.
+ * - the keyless `/rc:login` URL prompt literal in `index.ts`'s
+ *   `rcLoginCommand` — since EV-15 the bracket-default consent sentence
+ *   (`Control-plane server URL [<resolved>]:` plus one English consent
+ *   sentence), English under every locale per this announced boundary and
+ *   the EV-15 product-owner ruling; any future keying is its own
+ *   boundary-expansion card carrying a verified Indonesian row.
+ *   (Supersedes the old citation of the `inputPrompt` literal at
+ *   `index.ts:542` — stale since before EV-15; the literal lives in
+ *   `rcLoginCommand`, cited structurally so the pointer cannot rot.)
  *
  * Locale sourcing (ruling OJ3, applied at the entry point in `index.ts`):
  * `PI_REMOTE_LOCALE` env → `piRemote.locale` setting → fail-open `"en"`.
@@ -70,7 +79,6 @@ export const indonesianCopy: Partial<Record<string, string>> = {
   "tunnel.error.urlExpired": "URL tunnel kedaluwarsa — jalankan /rc untuk dial ulang",
   // command-output rows (login.ts FOOTER_ROWS)
   "rc.unenrolled": "Kredensial enrollment tidak ditemukan — jalankan /rc:login",
-  "rc.serverUrlRequired": "URL control-plane belum dikonfigurasi — jalankan /rc:login",
   "rc.dialingInProgress": "Proses dial tunnel sedang berjalan — tunggu hingga selesai",
   "rc.offLifecycle": "Tunnel remote ditutup",
   "shutdown.closed": "Tunnel remote ditutup",

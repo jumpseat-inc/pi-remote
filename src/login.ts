@@ -49,7 +49,6 @@ const DEVICE_GRANT = [
 export type LoginMode = "attended" | "headless";
 
 export type LoginReason =
-  | "noServerUrl"
   | "unreachable"
   | "discoveryInvalid"
   | "browserOpenFailed"
@@ -76,7 +75,8 @@ export interface LoginReasonCopy {
 }
 
 export interface LoginDeps {
-  /** Resolved control-plane server URL (EV-8 resolves env>stored>prompt). */
+  /** Resolved control-plane server URL (EV-15: total — src/server-url.ts
+   *  resolves env → setting → stored credential → DEFAULT_SERVER_URL). */
   serverUrl: string;
   configDir: string;
   fetch: typeof fetch;
@@ -118,13 +118,10 @@ export const REPLACEMENT_PROMPT_COPY: string =
 
 type CopyRow = { userLineKey: string; userLine: string };
 
-/** The 13-row closed failure set (spec §1.2, verbatim English defaults). */
+/** The 12-row closed failure set (spec §1.2, verbatim English defaults).
+ *  EV-15 removed the no-URL failure row: `resolveServerUrl` (src/server-url.ts)
+ *  is total, so the driver always has a URL — the failure row is unreachable. */
 const FAILURE_ROWS: Record<LoginReason, CopyRow> = {
-  noServerUrl: {
-    userLineKey: "login.failure.noServerUrl",
-    userLine:
-      "No control-plane URL is configured. Set `piRemote.serverUrl` (or `PI_REMOTE_SERVER_URL`) and run /rc:login again.",
-  },
   unreachable: {
     userLineKey: "login.failure.unreachable",
     userLine:
@@ -265,8 +262,8 @@ export const FOOTER_ROWS: Record<string, string> = {
   "tunnel.error.urlExpired": "The tunnel URL expired — run /rc to re-dial",
   // command-output lines (spec §8 "add rows as needed").
   "rc.unenrolled": "No enrollment credential found — run /rc:login",
-  "rc.serverUrlRequired":
-    "No control-plane URL is configured — run /rc:login",
+  // EV-15 removed the serverUrl-required command row: the resolver is total, so a
+  // no-URL branch is unreachable (src/server-url.ts).
   "rc.dialingInProgress":
     "A tunnel dial is already in progress — wait for it to finish",
   "rc.offLifecycle": "Remote tunnel closed",
@@ -407,9 +404,9 @@ type Discovered =
   | { ok: false; outcome: LoginOutcome };
 
 async function discoverForLogin(deps: LoginDeps, headless: boolean): Promise<Discovered> {
-  if (!deps.serverUrl) {
-    return { ok: false, outcome: { kind: "failure", reason: "noServerUrl" } };
-  }
+  // EV-15: no `!deps.serverUrl` gate — `resolveServerUrl` is total, so the
+  // command layer always constructs the driver with a non-empty URL and the
+  // no-URL failure outcome is unreachable.
   const tDeps: TunnelHttpDeps = {
     serverUrl: deps.serverUrl,
     accessToken: "",
