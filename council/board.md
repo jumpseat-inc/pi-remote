@@ -24,11 +24,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
 
 ## Needs Human
 
 ## Done
+- EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
 - EV-15 — "Default the control-plane URL to `https://relay.jumpseat.sh`"
 - EPIC-6 — "SDK vendoring residuals — FLLWUP-39/40 delivered in one council run"
 - FLLWUP-39 — "Declare or annotate the vendored PiThinkingContent's omitted optional thinkingSignature/thoughtSignature fields"
