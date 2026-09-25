@@ -1,7 +1,7 @@
 {
   "council": {
     "consolidator": {
-      "model": "openrouter/xiaomi/mimo-v2.5",
+      "model": "openrouter/z-ai/glm-5.3-flash",
       "thinking": "high"
     },
     "council-runner": {
