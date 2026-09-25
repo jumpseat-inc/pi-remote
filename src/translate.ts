@@ -135,7 +135,10 @@ export type PiEvent =
   | { event: "message_update"; messageId: string; events: AssistantMessageEvent[] }
   | { event: "message_end"; messageId: string }
   | { event: "tool_execution_start"; toolCallId: string; toolName: string }
-  | { event: "tool_execution_update"; toolCallId: string; args?: unknown; partialResult?: string }
+  // FLLWUP-94: partialResult is `unknown`, not string — the real SDK types it
+  // `any` and bash's onUpdate passes the tool's own ToolResult-shaped object
+  // ({content, details}); emission stays presence-based (FLLWUP-3 §4 split).
+  | { event: "tool_execution_update"; toolCallId: string; args?: unknown; partialResult?: unknown }
   | { event: "tool_execution_end"; toolCallId: string; result?: unknown; isError?: boolean }
   | { event: "tool_result"; messageId: string; toolCallId: string; content: ToolResultContentBlock[] }
   | { event: "ui.confirm"; promptKind: string; prompt: string }

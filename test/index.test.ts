@@ -1262,3 +1262,251 @@ describe("FLLWUP-12: real-shaped payloads through the live path (R-PAYLOAD-1)", 
     h.relay.stop();
   });
 });
+
+// ---------------------------------------------------------------------------
+// FLLWUP-94 — tool_execution_* live wiring. The installed SDK emits
+// tool_execution_start/update/end during tool execution
+// (dist/core/extensions/types.d.ts:608–628; agent-session.js:528–553 forwards
+// them to extension handlers verbatim), but index.ts never subscribed, so
+// translate.ts's pi.tool.start/progress/end cases were dead code and the web
+// client's tool card never appeared. Payload shapes are REAL (R-PAYLOAD-1):
+// start {type, toolCallId, toolName, args}; update adds partialResult — the
+// tool's own partial result object ({content, details} for bash, not a
+// string); end {type, toolCallId, toolName, result, isError:boolean}.
+// ---------------------------------------------------------------------------
+
+/** Real SDK tool_execution payload builders (types.d.ts:608–628). */
+/** Real SDK tool_execution payload builders (types.d.ts:608–628). The wide
+ * parameter types are deliberate: malformed-payload tests must be able to
+ * build payloads the real narrowing would reject. */
+const toolStart = (toolCallId: unknown, toolName: unknown, args: unknown) => ({ type: "tool_execution_start", toolCallId, toolName, args });
+const toolUpdate = (toolCallId: unknown, toolName: unknown, args: unknown, partialResult: unknown) => ({ type: "tool_execution_update", toolCallId, toolName, args, partialResult });
+const toolEnd = (toolCallId: unknown, toolName: unknown, result: unknown, isError: unknown) => ({ type: "tool_execution_end", toolCallId, toolName, result, isError });
+
+/** Real bash partial/result objects: the tool's own ToolResult shape
+ * ({content, details}) — bundle chunk-JVUZSMYM.js onUpdate(snapshot) where
+ * snapshot = {content:[{type:"text",text}], details:{truncation}}. */
+const bashPartial = { content: [{ type: "text", text: "listing files…" }], details: {} };
+
+/** All CUSTOM pi.tool.* frames observed on the relay, in arrival order. */
+function toolCustomFrames(h: Harness): { name: string; value: { pi?: string; data?: Record<string, unknown> } }[] {
+  return h.relay.received
+    .map((e) => e.frame as { type?: string; name?: string; value?: { pi?: string; data?: Record<string, unknown> } })
+    .filter((f) => f?.type === "CUSTOM" && typeof f.name === "string" && f.name.startsWith("pi.tool."))
+    .map((f) => ({ name: f.name!, value: f.value! }));
+}
+
+describe("FLLWUP-94: tool_execution_* live wiring (R-PAYLOAD-1 real shapes)", () => {
+  test("tool_execution_start real payload → CUSTOM pi.tool.start with toolCallId + toolName", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    h.emit("tool_execution_start", toolStart("call_1", "bash", { command: "ls" }));
+    await h.waitFor(() => toolCustomFrames(h).some((f) => f.name === "pi.tool.start"));
+
+    const f = toolCustomFrames(h).find((x) => x.name === "pi.tool.start")!;
+    expect(f.value.pi).toBe("tool_execution_start");
+    expect(f.value.data).toEqual({ toolCallId: "call_1", toolName: "bash" });
+    h.relay.stop();
+  });
+
+  test("tool_execution_update real payload (args + OBJECT partialResult) → pi.tool.update then pi.tool.progress, in that order", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    // Real bash partialResult is the tool's own result-shaped OBJECT, not a string.
+    h.emit("tool_execution_update", toolUpdate("call_1", "bash", { command: "ls" }, bashPartial));
+    await h.waitFor(() => toolCustomFrames(h).some((f) => f.name === "pi.tool.progress"));
+
+    const frames = toolCustomFrames(h);
+    const upd = frames.find((x) => x.name === "pi.tool.update");
+    const prog = frames.find((x) => x.name === "pi.tool.progress");
+    expect(upd).toBeDefined();
+    expect(prog).toBeDefined();
+    expect(frames.findIndex((x) => x.name === "pi.tool.update")).toBeLessThan(frames.findIndex((x) => x.name === "pi.tool.progress"));
+    expect(upd!.value.data).toEqual({ toolCallId: "call_1", args: { command: "ls" } });
+    expect(prog!.value.data).toEqual({ toolCallId: "call_1", partialResult: bashPartial });
+    h.relay.stop();
+  });
+
+  test("tool_execution_end real payload → pi.tool.end with result + isError", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    const bashResult = { content: [{ type: "text", text: "a.txt\nb.txt" }], details: {} };
+    h.emit("tool_execution_end", toolEnd("call_1", "bash", bashResult, false));
+    await h.waitFor(() => toolCustomFrames(h).some((f) => f.name === "pi.tool.end"));
+
+    const f = toolCustomFrames(h).find((x) => x.name === "pi.tool.end")!;
+    expect(f.value.pi).toBe("tool_execution_end");
+    expect(f.value.data).toEqual({ toolCallId: "call_1", result: bashResult, isError: false });
+    h.relay.stop();
+  });
+
+  test("full lifecycle in SDK order → start, update, progress, end, then TOOL_CALL_RESULT, in emission order", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    h.emit("tool_execution_start", toolStart("call_7", "read", { path: "a.ts" }));
+    h.emit("tool_execution_update", toolUpdate("call_7", "read", { path: "a.ts" }, bashPartial));
+    h.emit("tool_execution_end", toolEnd("call_7", "read", { content: [{ type: "text", text: "src" }] }, false));
+    h.emit("tool_result", { type: "tool_result", toolName: "read", toolCallId: "call_7", input: { path: "a.ts" }, content: [{ type: "text", text: "src" }], isError: false });
+    await h.waitFor(() => h.relay.received.some((e) => e.frame?.type === "TOOL_CALL_RESULT"));
+
+    const seq = h.relay.received
+      .map((e) => e.frame as { type?: string; name?: string })
+      .filter((f) => f?.type === "CUSTOM" && f.name?.startsWith("pi.tool.") || f?.type === "TOOL_CALL_RESULT")
+      .map((f) => (f.type === "CUSTOM" ? f.name : f.type));
+    expect(seq).toEqual(["pi.tool.start", "pi.tool.update", "pi.tool.progress", "pi.tool.end", "TOOL_CALL_RESULT"]);
+    h.relay.stop();
+  });
+
+  test("malformed tool_execution payloads → zero pi.tool frames, no crash", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const baseline = h.relay.received.length;
+
+    h.emit("tool_execution_start", null);
+    h.emit("tool_execution_start", { type: "tool_execution_start" }); // no toolCallId
+    h.emit("tool_execution_start", toolStart(42, "bash", {})); // non-string toolCallId
+    h.emit("tool_execution_update", { type: "tool_execution_update", toolCallId: "c", toolName: 7 }); // non-string toolName
+    h.emit("tool_execution_end", toolEnd("c", "bash", {}, "not-a-boolean")); // non-boolean isError
+    h.emit("tool_execution_end", undefined);
+
+    await new Promise((r) => setTimeout(r, 30)); // let any wrongly-emitted frame land
+    expect(toolCustomFrames(h)).toEqual([]); // zero pi.tool frames for malformed input
+    expect(h.relay.received.length).toBe(baseline); // and zero frames at all
+    // The wiring still works after the malformed barrage:
+    h.emit("tool_execution_start", toolStart("call_ok", "bash", {}));
+    await h.waitFor(() => toolCustomFrames(h).some((f) => f.name === "pi.tool.start"));
+    h.relay.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FLLWUP-94 (fix cycle 2) — live user-turn echo. The real SDK delivers a USER
+// message as a whole message_start/message_end pair ({type, message} — no
+// assistantMessageEvent; agent-session.js forwards message_* with only
+// {message}), so deps.on("message_update") never fires for a locally typed
+// (TUI) turn and the live fold emits nothing — the turn appeared only via the
+// reload snapshot. The fix: message_start with role "user" forwards the
+// message's text as a synthetic message_update text event, so the fold emits
+// TEXT_MESSAGE_START{role:user} + TEXT_MESSAGE_CONTENT live and message_end
+// closes with TEXT_MESSAGE_END.
+//
+// Hard constraint (no double render): the web client optimistically folds its
+// own sent message (jumpseat ag-ui-timeline applyLocalUserMessage,
+// eventId local:<messageId>) and dedupes an inbound user START by messageId
+// or local:<messageId>. The injection path (src/inject.ts) sends only the
+// text — sendUserMessage → prompt() mints the pi user message (and its
+// timestamp) internally, so the client's AG-UI messageId cannot ride through
+// injection. Therefore the host correlates: the injector records the client
+// messageId per injected text, and when the echoed user message_start's text
+// matches, the echo is forwarded under the CLIENT's id — the existing client
+// dedup swallows it (jumpseat test "an inbound user-role START with a
+// messageId matching a local row adds no entry"); a TUI turn (never injected
+// by the relay) echoes under the derived user:<timestamp> id and renders live
+// on every connected client (jumpseat test "an inbound user-role START with
+// an unknown messageId opens one user row").
+// ---------------------------------------------------------------------------
+
+/** Real stored user-message shape (pi-agent-core UserMessage). */
+function realUserMessage(text: string, timestamp: number): Record<string, unknown> {
+  return { role: "user", content: [{ type: "text", text }], timestamp };
+}
+
+function textFrames(h: Harness): { type: string; messageId?: string; role?: string; delta?: string }[] {
+  return h.relay.received
+    .map((e) => e.frame as { type?: string; messageId?: string; role?: string; delta?: string })
+    .filter((f) => f?.type === "TEXT_MESSAGE_START" || f?.type === "TEXT_MESSAGE_CONTENT" || f?.type === "TEXT_MESSAGE_END")
+    .map((f) => ({ type: f.type!, messageId: f.messageId, role: f.role, delta: f.delta }));
+}
+
+function sendUserTriple(h: Harness, seq: number, messageId: string, text: string): void {
+  h.relay.broadcast({ v: 1, seq, ack: 0, deviceId: "dev-web", frame: { type: "TEXT_MESSAGE_START", messageId, role: "user" } });
+  h.relay.broadcast({ v: 1, seq: seq + 1, ack: 0, deviceId: "dev-web", frame: { type: "TEXT_MESSAGE_CONTENT", messageId, delta: text } });
+  h.relay.broadcast({ v: 1, seq: seq + 2, ack: 0, deviceId: "dev-web", frame: { type: "TEXT_MESSAGE_END", messageId } });
+}
+
+describe("FLLWUP-94 fix cycle 2: live user-turn echo (no assistantMessageEvent on user messages)", () => {
+  test("TUI user turn: real-shaped message_start+message_end (no assistantMessageEvent) → full user TEXT triple live, one derived id", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    // The REAL SDK path for a user message: message_start then message_end,
+    // whole message, no assistantMessageEvent, no message_update.
+    h.emit("message_start", { type: "message_start", message: realUserMessage("typed in the tui", 1234) });
+    h.emit("message_end", { type: "message_end", message: realUserMessage("typed in the tui", 1234) });
+    await h.waitFor(() => textFrames(h).some((f) => f.type === "TEXT_MESSAGE_END"));
+
+    const frames = textFrames(h);
+    const types = frames.map((f) => f.type);
+    expect(types).toEqual(["TEXT_MESSAGE_START", "TEXT_MESSAGE_CONTENT", "TEXT_MESSAGE_END"]);
+    expect(frames[0]!.role).toBe("user");
+    expect(frames[0]!.messageId).toBe("user:1234"); // payload-derived id (role:timestamp)
+    expect(frames[1]!.delta).toBe("typed in the tui");
+    expect(new Set(frames.map((f) => f.messageId)).size).toBe(1); // one id across the triple
+    h.relay.stop();
+  });
+
+  test("browser-typed turn: the echoed TEXT triple carries the CLIENT's messageId so the existing client dedup swallows it", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    // The web client sends its composer triple inbound; the injector injects
+    // only the text (client messageId cannot ride through sendUserMessage).
+    sendUserTriple(h, 201, "client-1", "hello there");
+    await h.waitFor(() => h.sendUserMessages[0] === "hello there");
+
+    // pi echoes the appended user message as message_start/message_end.
+    h.emit("message_start", { type: "message_start", message: realUserMessage("hello there", 5678) });
+    h.emit("message_end", { type: "message_end", message: realUserMessage("hello there", 5678) });
+    await h.waitFor(() => textFrames(h).some((f) => f.type === "TEXT_MESSAGE_END"));
+
+    const starts = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_START");
+    expect(starts).toHaveLength(1); // exactly one triple — no second render
+    expect(starts[0]!.messageId).toBe("client-1"); // CLIENT id → client dedup (local:client-1) matches
+    expect(starts[0]!.role).toBe("user");
+    const contents = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_CONTENT");
+    expect(contents).toHaveLength(1);
+    expect(contents[0]!.delta).toBe("hello there");
+    expect(contents[0]!.messageId).toBe("client-1");
+    const ends = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_END");
+    expect(ends).toHaveLength(1);
+    expect(ends[0]!.messageId).toBe("client-1");
+    h.relay.stop();
+  });
+
+  test("no misattribution: a TUI turn never claims a pending browser id, and the browser id survives for its own echo", async () => {
+    const h = await makeHarness();
+    await h.runCommand("rc");
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+
+    // A browser turn is pending echo correlation...
+    sendUserTriple(h, 301, "client-9", "shared");
+    await h.waitFor(() => h.sendUserMessages[0] === "shared");
+
+    // ...but the NEXT user message is a TUI turn with different text: it must
+    // echo under the derived id, never under client-9.
+    h.emit("message_start", { type: "message_start", message: realUserMessage("typed in the tui", 99) });
+    h.emit("message_end", { type: "message_end", message: realUserMessage("typed in the tui", 99) });
+    await h.waitFor(() => textFrames(h).some((f) => f.type === "TEXT_MESSAGE_END"));
+    const tuiStart = textFrames(h).find((f) => f.type === "TEXT_MESSAGE_START");
+    expect(tuiStart!.messageId).toBe("user:99");
+
+    // The pending browser id is still unconsumed: its own echo claims it.
+    h.emit("message_start", { type: "message_start", message: realUserMessage("shared", 100) });
+    h.emit("message_end", { type: "message_end", message: realUserMessage("shared", 100) });
+    await h.waitFor(() => textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_END").length === 2);
+    const secondStart = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_START")[1];
+    expect(secondStart!.messageId).toBe("client-9");
+    h.relay.stop();
+  });
+});

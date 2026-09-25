@@ -19,7 +19,7 @@
 import { createTransport, type TransportHandle, type TransportStatusEvent, type InboundEnvelope, type AgUiFrameLike } from "./src/transport";
 import { createState, translate, type PiEvent, type ToolResultContentBlock, type TranslateState, type UIPromptKind } from "./src/translate";
 import { type DepsOnEvent, type PiEventHandler, type PiExtensionContext, type PiSDKOnEvent } from "./src/pi-sdk-on";
-import { agentMessageId, messageFrameRole, realAssistantMessageEventOf, roleOfAgentMessage } from "./src/pi-sdk-events"; // FLLWUP-12: real payload derivation (R-TYPE-1 vendored shapes)
+import { agentMessageId, messageFrameRole, realAssistantMessageEventOf, roleOfAgentMessage, userMessageText } from "./src/pi-sdk-events"; // FLLWUP-12: real payload derivation (R-TYPE-1 vendored shapes)
 import { resolvePiAgentDir, readHostSettings, hostMetadataFromOs } from "./src/pi-host";
 import { homedir, platform as osPlatform, arch as osArch } from "node:os";
 import { createInjector } from "./src/inject";
@@ -182,6 +182,11 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
   let epoch = 0;
   let teardownPromise: Promise<void> | null = null;
   const transportRef: { handle: TransportHandle | null } = { handle: null };
+  
+  // FLLWUP-92: Single-flight refresh — prevents concurrent rearm() calls from
+  // presenting the same (now-rotated) refresh token, which triggers the
+  // relay's replay detector and revokes the token family.
+  let inflightRefresh: Promise<{ accessToken: string; tokenExpiry: number; refreshToken?: string }> | null = null;
 
   const injector = createInjector({
     sendUserMessage: deps.sendUserMessage,
@@ -191,6 +196,12 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       transportRef.handle?.send({ type: "CUSTOM", name, value: { pi: name, data: value } });
     },
   });
+
+  // FLLWUP-94 (fix cycle 2) — pi-derived user message id → client AG-UI
+  // messageId, for echoed composer-injected turns. Set on message_start when
+  // the echo's text matches a pending injection; consumed on message_end
+  // (bounded at 64, oldest dropped, as a leak guard).
+  const echoSwap = new Map<string, string>();
 
   function applyFooter(next: FooterState, source?: ErrorSource): void {
     footer = next;
@@ -274,23 +285,54 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     let accessToken = cred.accessToken;
     if (now() >= cred.tokenExpiry) {
       // ONE silent refresh when a refresh token exists (spec §4.1).
+      // FLLWUP-92: Single-flight — if a refresh is already in progress,
+      // wait for it instead of starting a concurrent one. This prevents
+      // multiple rearm() calls from presenting the same (now-rotated) refresh
+      // token, which would trigger the relay's replay detector.
       if (!cred.refreshToken) {
         const err = new TunnelError("unauthenticated", "enrollment_expired", serverUrl);
         handleEnrollmentTerminal(err);
         throw err;
       }
       try {
-        const r = await refreshAccessToken(cred.refreshToken, {
-          serverUrl,
-          accessToken: cred.accessToken,
-          fetch: deps.fetch,
-          now,
-          discoveryCache,
-        });
-        const updated: EnrollmentCredential = { ...cred, accessToken: r.accessToken, tokenExpiry: r.expiresAt };
-        if (r.refreshToken) updated.refreshToken = r.refreshToken;
-        await saveCredentialAsync(updated, { configDir: deps.configDir });
-        accessToken = updated.accessToken;
+        let r: { accessToken: string; tokenExpiry: number; refreshToken?: string };
+        if (inflightRefresh !== null) {
+          // Wait for the in-flight refresh to complete instead of starting a new one
+          r = await inflightRefresh;
+          // Re-read the credential from disk after the refresh completes, since
+          // the first caller saved the updated credential and our `cred` is stale
+          const freshCred = readCredential({ configDir: deps.configDir });
+          if (freshCred && freshCred.tokenExpiry > cred.tokenExpiry) {
+            // Use the freshly-persisted credential
+            r = { accessToken: freshCred.accessToken, tokenExpiry: freshCred.tokenExpiry, refreshToken: freshCred.refreshToken };
+          }
+        } else {
+          // Start a new refresh and store the promise so concurrent callers wait
+          inflightRefresh = (async () => {
+            try {
+              const result = await refreshAccessToken(cred.refreshToken!, {
+                serverUrl,
+                accessToken: cred.accessToken,
+                fetch: deps.fetch,
+                now,
+                discoveryCache,
+              });
+              const updated: EnrollmentCredential = {
+                ...cred,
+                accessToken: result.accessToken,
+                tokenExpiry: result.expiresAt,
+              };
+              if (result.refreshToken) updated.refreshToken = result.refreshToken;
+              await saveCredentialAsync(updated, { configDir: deps.configDir });
+              return { accessToken: result.accessToken, tokenExpiry: result.expiresAt, refreshToken: result.refreshToken };
+            } finally {
+              // Clear the in-flight promise once complete (success or failure)
+              inflightRefresh = null;
+            }
+          })();
+          r = await inflightRefresh;
+        }
+        accessToken = r.accessToken;
       } catch (e) {
         if (isEnrollmentTerminal(e)) {
           handleEnrollmentTerminal(e);
@@ -585,7 +627,20 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       sha256: deps.sha256,
       openUrl: deps.openUrl,
       sleep: deps.sleep,
-      confirmReplacement: deps.confirmReplacement,
+      // FLLWUP-107: the replacement confirmation MUST use pi's UI prompt, not a
+      // raw `process.stdin` read. The stdin fallback (confirmViaStdin) detaches
+      // the TUI's input pipeline when the extension steals the Enter keypress —
+      // the login completes but the user can no longer type. An injected
+      // confirmReplacement (tests) still wins. Returning undefined
+      // (Escape/cancel) keeps the existing credential.
+      confirmReplacement:
+        deps.confirmReplacement ??
+        (async () => {
+          const answer = await deps.inputPrompt(
+            "Press Enter to replace the existing credential, or Escape to keep it.",
+          );
+          return answer !== undefined;
+        }),
       redirectTimeoutMs: deps.redirectTimeoutMs,
       discoveryCache,
       onState: (s) => {
@@ -637,6 +692,42 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     const role = roleOfAgentMessage(e?.message);
     const messageId = agentMessageId(e?.message);
     if (!role || messageId === undefined) return;
+    // FLLWUP-94 (fix cycle 2) — live user-turn echo. The real SDK delivers a
+    // USER message as a whole message_start/message_end pair with NO
+    // assistantMessageEvent (agent-session.js:494-501 forwards only {message}),
+    // so deps.on("message_update") never fires for a locally typed turn and
+    // the live fold emitted nothing — the turn appeared only via the reload
+    // snapshot. Forward the message's text as a synthetic text event: the fold
+    // emits TEXT_MESSAGE_START{role:user} + TEXT_MESSAGE_CONTENT live, and
+    // message_end closes with TEXT_MESSAGE_END.
+    if (role === "user") {
+      const text = userMessageText(e?.message);
+      if (text !== undefined && text.length > 0) {
+        // Echo correlation (no double render): the web client optimistically
+        // folds its own sent message and dedupes an inbound user START by
+        // messageId or `local:<messageId>`. The injection path sends only the
+        // text — sendUserMessage → prompt() mints the pi user message's
+        // timestamp internally, so the client's AG-UI messageId cannot ride
+        // through injection. The injector remembers the client messageId per
+        // injected text; when the echo's text matches, forward the whole
+        // echo (start + synthetic update, and its end below) under the
+        // CLIENT's id so the existing client dedup swallows it. A TUI turn
+        // (never injected by the relay) keeps the derived user:<timestamp>
+        // id and renders live on every connected client.
+        const clientMsgId = injector.claimEcho(text);
+        if (clientMsgId !== undefined) {
+          echoSwap.set(messageId, clientMsgId);
+          if (echoSwap.size > 64) {
+            const oldest = echoSwap.keys().next().value;
+            if (oldest !== undefined) echoSwap.delete(oldest);
+          }
+        }
+        const outId = echoSwap.get(messageId) ?? messageId;
+        forward({ event: "message_start", messageId: outId, role });
+        forward({ event: "message_update", messageId: outId, events: [{ kind: "text", delta: text }] });
+        return;
+      }
+    }
     forward({ event: "message_start", messageId, role });
   });
   deps.on("message_update", (ev) => {
@@ -644,13 +735,14 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     const messageId = agentMessageId(e?.message);
     const local = realAssistantMessageEventOf(e?.assistantMessageEvent);
     if (messageId === undefined || local === null) return;
-    forward({ event: "message_update", messageId, events: [local] });
+    forward({ event: "message_update", messageId: echoSwap.get(messageId) ?? messageId, events: [local] });
   });
   deps.on("message_end", (ev) => {
     const e = ev as { message?: unknown } | null | undefined;
     const messageId = agentMessageId(e?.message);
     if (messageId === undefined || roleOfAgentMessage(e?.message) === undefined) return;
-    forward({ event: "message_end", messageId });
+    forward({ event: "message_end", messageId: echoSwap.get(messageId) ?? messageId });
+    echoSwap.delete(messageId); // the swap lives exactly one message lifecycle
   });
   deps.on("tool_result", (ev) => {
     const e = ev as { toolCallId?: unknown; content?: unknown } | null | undefined;
@@ -668,6 +760,31 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       }
     }
     forward({ event: "tool_result", messageId: e.toolCallId, toolCallId: e.toolCallId, content });
+  });
+  // FLLWUP-94 — the execution-lane trio. The real payloads are
+  // {type, toolCallId, toolName, args?/partialResult?/result?, isError}
+  // (dist/core/extensions/types.d.ts:608–628; agent-session.js:528–553
+  // forwards them verbatim; vendored mirrors in src/pi-sdk-events.ts).
+  // toolCallId/toolName are the string identity fields every variant carries;
+  // args/partialResult/result are `any` in the real SDK (bash's onUpdate
+  // passes the tool's own ToolResult-shaped object, never a string), so they
+  // flow through unvalidated-by-shape and translate.ts's presence-based
+  // conditional emission (FLLWUP-3 §4 split) decides the frames. isError is
+  // boolean in the real payload; a non-boolean is malformed → drop (S-O2).
+  deps.on("tool_execution_start", (ev) => {
+    const e = ev as { toolCallId?: unknown; toolName?: unknown } | null | undefined;
+    if (!e || typeof e.toolCallId !== "string" || typeof e.toolName !== "string") return;
+    forward({ event: "tool_execution_start", toolCallId: e.toolCallId, toolName: e.toolName });
+  });
+  deps.on("tool_execution_update", (ev) => {
+    const e = ev as { toolCallId?: unknown; toolName?: unknown; args?: unknown; partialResult?: unknown } | null | undefined;
+    if (!e || typeof e.toolCallId !== "string" || typeof e.toolName !== "string") return;
+    forward({ event: "tool_execution_update", toolCallId: e.toolCallId, args: e.args, partialResult: e.partialResult });
+  });
+  deps.on("tool_execution_end", (ev) => {
+    const e = ev as { toolCallId?: unknown; toolName?: unknown; result?: unknown; isError?: unknown } | null | undefined;
+    if (!e || typeof e.toolCallId !== "string" || typeof e.toolName !== "string" || typeof e.isError !== "boolean") return;
+    forward({ event: "tool_execution_end", toolCallId: e.toolCallId, result: e.result, isError: e.isError });
   });
   deps.on("ui.confirm", (ev) => {
     const e = ev as { promptKind?: unknown; prompt?: unknown } | null | undefined;

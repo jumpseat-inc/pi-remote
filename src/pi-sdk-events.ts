@@ -138,6 +138,15 @@ export interface ToolResultEventBase {
 
 export interface UIPromptStartEvent { type: "ui_prompt_start"; reason: "ui_prompt"; kind: string; title?: string }
 export interface UIPromptEndEvent { type: "ui_prompt_end"; reason: "ui_prompt"; kind: string; title?: string }
+
+/** Real ToolExecution*Event payloads (FLLWUP-94; types.d.ts:608–628;
+ * agent-session.js:528–553 forwards them verbatim to extension handlers).
+ * args/partialResult/result are `any` in the real SDK — bash's onUpdate
+ * passes the tool's own ToolResult-shaped object ({content, details},
+ * bundle chunk-JVUZSMYM.js), never a string. */
+export interface ToolExecutionStartEvent { type: "tool_execution_start"; toolCallId: string; toolName: string; args: unknown }
+export interface ToolExecutionUpdateEvent { type: "tool_execution_update"; toolCallId: string; toolName: string; args: unknown; partialResult: unknown }
+export interface ToolExecutionEndEvent { type: "tool_execution_end"; toolCallId: string; toolName: string; result: unknown; isError: boolean }
 export interface TurnStartEvent { type: "turn_start"; turnIndex: number; timestamp: number }
 /** Real TurnEndEvent minus the BoundaryState fields pi-remote's fold never
  * consumes (entries/context/continue/outcome are pi boundary-machinery
@@ -180,6 +189,33 @@ export function agentMessageId(msg: unknown): string | undefined {
   const ts = (msg as { timestamp?: unknown }).timestamp;
   if (typeof ts !== "number" || !Number.isFinite(ts)) return undefined;
   return `${role}:${ts}`;
+}
+
+/**
+ * FLLWUP-94 (fix cycle 2) — extract the text of a user AgentMessage. Real
+ * content shape is `string | (TextContent | ImageContent)[]`; text blocks
+ * join with "\n" (matching sendUserMessage's own textParts.join("\n")
+ * normalization, agent-session.js:1174). Total: non-objects, non-user roles,
+ * or malformed content → undefined; never throws. Image-only content yields
+ * "" (present but empty — callers gate on length).
+ */
+export function userMessageText(msg: unknown): string | undefined {
+  if (roleOfAgentMessage(msg) !== "user") return undefined;
+  const content = (msg as { content?: unknown }).content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return undefined;
+  let out = "";
+  for (const b of content) {
+    if (
+      typeof b === "object" &&
+      b !== null &&
+      (b as { type?: unknown }).type === "text" &&
+      typeof (b as { text?: unknown }).text === "string"
+    ) {
+      out += (out ? "\n" : "") + (b as { text: string }).text;
+    }
+  }
+  return out;
 }
 
 /**
