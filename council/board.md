@@ -5,6 +5,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- FLLWUP-41 — "Key the /rc:login consent sentence as login.urlPrompt with a verified Indonesian row (EV-15 boundary-expansion follow-up)"
+- FLLWUP-42 — "Fix src/copy.ts's section comment that still says \"exactly the 22 settled keys\" after EV-15's 21-key landing"
 - FLLWUP-26 — "Scope §1.2/§5.7's 'security decision' vocabulary across per-delivery grant enforcement"
 - FLLWUP-19 — "Align PI-SPEC §7.2's no-lookup-state prose with the governing spec's server-state position"
 - FLLWUP-20 — "Align PI-SPEC §7.3's per-device lastAckedSeq sentence with the shipped single-watermark reality"
