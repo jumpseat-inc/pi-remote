@@ -19,11 +19,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - EPIC-7 — "Default relay URL, attended-login cancellation, and --headless discoverability"
 
 ## Ready
-- EV-17 — "Let the user cancel an attended `/rc:login`"
 
 ## Deliberating
-
-## In Progress
+- EV-17 — "Let the user cancel an attended `/rc:login`"
 
 ## In Review
 
