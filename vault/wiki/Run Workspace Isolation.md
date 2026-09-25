@@ -4,7 +4,7 @@ type: concept
 summary: Two run-hygiene rules now written in AGENTS.md — an owner branch is cut from origin/main so card PRs stay product-only, and no seat mutates the shared main worktree's branch state.
 aliases: [run hygiene, workspace isolation, main worktree immutability, card PR hygiene]
 tags: [concept/process, council, git]
-sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]"]
+sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]"]
 created: 2026-09-23
 updated: 2026-09-23
 ---
@@ -14,10 +14,10 @@ A council run writes durable state (board, cards, preflight) into the repository
 
 **2. The shared main worktree is immutable (no `checkout`/`switch`/`reset`).** Seat reconnaissance and verification happen inside the seat's own isolated worktree. A `git checkout` in the shared main worktree left its HEAD detached mid-run, and the facilitator's subsequent rebase moved the detached HEAD instead of replaying the run's commits. Rule: the main worktree stays on its branch; all branch-state change (moving a pointer, checking out a commit, switching branches, rewinding history) happens via `git worktree add`.
 
-Both rules now live in the loader every seat reads first. The same immutability is mirrored in the packaged `owner`/`skeptic`/`council-runner` seat definitions ([[Council Seats]]).
+Both rules now live in the loader every seat reads first. The same immutability is mirrored in the packaged `owner`/`skeptic`/`council-runner` seat definitions ([[Council Seats]]). A [[Batched Card Delivery]] still uses exactly **one** owner worktree cut from `origin/main` — the batch changes nothing about the base or the product-only rule, it just means one worktree/PR carries both cards' product changes.
 
 ## Related
-[[Council Seats]], [[Record-Push Discipline]], [[Deterministic Merge Check]], [[Fixture-Green Honesty]], [[EPIC-3 Decision Record]]
+[[Council Seats]], [[Record-Push Discipline]], [[Deterministic Merge Check]], [[Batched Card Delivery]], [[Fixture-Green Honesty]], [[EPIC-3 Decision Record]], [[EPIC-6 Decision Record]]
 
 ## Sources
-[[EPIC-3 Run (FLLWUP-27..30)]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]
+[[EPIC-3 Run (FLLWUP-27..30)]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-6 Run (FLLWUP-39..40)]]

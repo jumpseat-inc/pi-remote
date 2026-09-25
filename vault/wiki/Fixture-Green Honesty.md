@@ -4,7 +4,7 @@ type: concept
 summary: Acceptance text may only claim what has been proven — runtime behavior requires runtime evidence, and knowingly partial coverage is announced at the surface itself.
 aliases: [fixture honesty, partial coverage announcement]
 tags: [concept/process, doctrine, testing]
-sources: ["[[FLLWUP-5 Ruling]]", "[[FLLWUP-4 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]"]
+sources: ["[[FLLWUP-5 Ruling]]", "[[FLLWUP-4 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]"]
 created: 2026-09-02
 updated: 2026-09-24
 ---
@@ -16,8 +16,10 @@ Two generalizations (FLLWUP-4 ruling): **partial coverage is announced at the su
 
 **Probe-proven ≠ fixture-pinned (device-flow polish run).** A behavior the Skeptic proves by an ad-hoc probe but no committed fixture covers is honest but not durable; each such gap files a card so the behavior becomes fixture-pinned — FLLWUP-28 (cancellation during the five-second slowdown) and FLLWUP-29 (the attended PKCE path's no-detail boundary) are the worked examples. **Both were delivered by the [[EPIC-3 Run (FLLWUP-27..30)]]:** each gap is now a committed, red-capable fixture carrying a seven-field red-at-base record, so the corollary's loop is closed, not merely queued.
 
+**Comment honesty (EPIC-6).** The [[EPIC-6 Run (FLLWUP-39..40)]] extended the announcement surface from code boundaries to **source comments**: FLLWUP-40 corrected a test's own comment that claimed a coupling the assertions did not enforce, leaving the assertions untouched ([[Record Accuracy]]'s third variant). This is the fixture-green principle applied to the comment that describes a fixture — the comment, like the acceptance text, may claim only what the test proves.
+
 ## Related
-[[Spec Correction Governance]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Run Workspace Isolation]], [[Real-Surface Verification]], [[Emission-Semantics Fidelity]], [[EPIC-4 Decision Record]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], FLLWUP-11
+[[Spec Correction Governance]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Run Workspace Isolation]], [[Real-Surface Verification]], [[Emission-Semantics Fidelity]], [[Record Accuracy]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], FLLWUP-11
 
 ## Sources
-[[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]]
+[[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]]

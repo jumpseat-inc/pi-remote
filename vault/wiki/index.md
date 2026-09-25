@@ -9,6 +9,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[EPIC-2 Decision Record]] — synthesis of the run that produced docs/SERVER-SIDE-SPEC.md: the self-contained server-side spec, the normativity test, and the cross-artifact contradictions (since resolved by the residual run).
 - [[EPIC-3 Decision Record]] — synthesis of the four-card run that closed the device-flow residuals: run-hygiene conventions, two fixture pins, and the mode/record-push/workspace doctrine.
 - [[EPIC-4 Decision Record]] — synthesis of the two-card run that closed the installability gap: real-surface verification, emission-semantics fidelity, record accuracy, and runner stall recovery; its seven follow-ups now group under EPIC-5.
+- [[EPIC-6 Decision Record]] — synthesis of the two-card single-runner run: batched card delivery, declare-or-annotate-with-reason for vendored fields, and the comment-level record-accuracy variant; EPIC-5's announced residuals now delivered (EPIC-5 run not yet ingested).
 
 ## Entities
 
@@ -40,6 +41,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Judge Object Rule]] — the step-10 judge evaluates the PR branch at the Skeptic-verified SHA, never pre-merge main.
 - [[Deterministic Merge Check]] — mechanical merge gate keyed by the card's recorded execution mode (Direct = criteria 1/2/5; Verify/Deliberate = all five); merge pinned with --match-head-commit.
 - [[Execution-Mode Recording]] — the recorded dispatch mode is read from the run substrate, not a seat's report; Direct is the self-correcting default that never HALTs.
+- [[Batched Card Delivery]] — one council-runner can deliver two cards in one run: one owner branch/PR, one Skeptic, one judge, with the epic goal encoding the mechanics.
 - [[Record-Push Discipline]] — the step-12 direct-to-main record push needs a run-scoped Phase-1 authorization before the first push; unauthorized is a HALT.
 - [[Run Workspace Isolation]] — owner branches cut from origin/main (card PRs product-only) and the shared main worktree's branch state is immutable.
 - [[Fixture-Green Honesty]] — acceptance claims only what is proven; partial coverage announced at the surface itself.
@@ -84,3 +86,4 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]] — three-card batch: --headless flag routing, RFC 8628 §3.5 slowdown, error_description surfacing; new cause-distinguished-expiry doctrine.
 - [[EPIC-3 Run (FLLWUP-27..30)]] — the four-card run delivering that batch's residuals: AGENTS.md hygiene rules, committed red-at-base fixtures, steward closure with the FLLWUP-31 residual.
 - [[EPIC-4 Run (FLLWUP-11..12)]] — the two-card run reconciling the ExtensionAPI stand-in and handler payload shapes with the installed pi SDK; real production-loader verification; seven follow-ups now under EPIC-5.
+- [[EPIC-6 Run (FLLWUP-39..40)]] — the two-card single-runner run (one owner/one Skeptic/one judge, PR #47) declaring the vendored thinking/tool-call signature fields and correcting the pairing-test comment; no vault/raw — deviation stated.
