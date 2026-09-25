@@ -30,6 +30,13 @@ that affects the wire format, replay, auth, or security model.
   subscriptions' handler narrowing was reconciled against the SDK's payload
   types, with real-shaped fixtures feeding the live path. Do not claim beyond
   what is proven above.
+- **Discoverable by the package loader.** The entry is root-level
+  `index.ts`, so `package.json` declares it via the `pi` manifest
+  (`"pi": { "extensions": ["./index.ts"] }`). Without that manifest pi's
+  loader scans only the conventional `extensions/` etc. dirs and discovers
+  zero extensions. `test/package-manifest.test.ts` pins the discovery
+  contract; do not move `index.ts` into `extensions/` (it would force
+  rewriting every `./src/*` import).
 - The `/rc:login --headless` device flow (RFC 8628) is implemented in
   `src/login.ts` and routed by the command surface: `index.ts` parses the
   `--headless` token from the command args and selects the device-flow

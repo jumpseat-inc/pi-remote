@@ -7,16 +7,14 @@ exposing the session over [AG-UI](https://docs.ag-ui.com/) so your other
 devices can watch and drive it — streaming replies, tool calls, and input —
 from anywhere. No inbound ports, no firewall changes.
 
-> **Status: implemented, but not yet loadable in a real `pi` host.** The
-> command surface, outbound transport, live translation, JSONL replay, input
+> **Status: implemented and loadable in a real `pi` host.** The command
+> surface, outbound transport, live translation, JSONL replay, input
 > injection, OAuth2 enrollment drivers, and credential storage are all
-> implemented, with a green unit suite (`bun test`: 218 pass / 1 Windows-gated
-> skip; `bunx tsc --noEmit`: clean). However, `index.ts` still resolves its
-> dependencies from a local `ExtensionAPI` **stand-in** whose non-`on` members
-> (`getSetting`, `env`, `configDir`, …) do not exist on the installed `pi` SDK
-> — a real host fails at load. Reconciling the entry point with the SDK is
-> tracked by FLLWUP-11 / FLLWUP-12 (`council/board.md`); until those land, the
-> package is not installable.
+> implemented, with a green unit suite (`bun test`: all-pass except the one
+> Windows-gated credential-ACL skip; `bunx tsc --noEmit`: clean). `index.ts`
+> binds the real `ExtensionAPI` surface (FLLWUP-11/12), and the package
+> declares its entry through the `pi` manifest's `extensions` field in
+> `package.json`, so pi's package loader discovers and loads it.
 >
 > The design is [`docs/PI-SPEC.md`](docs/PI-SPEC.md) for the host side and
 > [`docs/SERVER-SIDE-SPEC.md`](docs/SERVER-SIDE-SPEC.md) for the relay and
