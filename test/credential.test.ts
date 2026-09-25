@@ -109,6 +109,32 @@ describe("EV-7 credential store", () => {
     rmSync(cfg, { recursive: true, force: true });
   });
 
+  test("EV-15: empty/whitespace-only serverUrl is corrupt → null (predicate trims, matching the resolver)", () => {
+    const cfg = tempConfigDir();
+    const p = credentialPath({ configDir: cfg });
+    mkdirSync(join(cfg, "pi-remote"), { recursive: true });
+    writeFileSync(
+      p,
+      JSON.stringify({ serverUrl: "", accessToken: "at", tokenExpiry: 1 }),
+      "utf8"
+    );
+    expect(readCredential({ configDir: cfg })).toBeNull();
+    writeFileSync(
+      p,
+      JSON.stringify({ serverUrl: "   ", accessToken: "at", tokenExpiry: 1 }),
+      "utf8"
+    );
+    expect(readCredential({ configDir: cfg })).toBeNull();
+    // A real URL still reads back.
+    writeFileSync(
+      p,
+      JSON.stringify({ serverUrl: "https://cp.example", accessToken: "at", tokenExpiry: 1 }),
+      "utf8"
+    );
+    expect(readCredential({ configDir: cfg })?.serverUrl).toBe("https://cp.example");
+    rmSync(cfg, { recursive: true, force: true });
+  });
+
   test("buildWindowsAclArgv: exact icacls argv — tmp, /inheritance:r, /grant:r *SID:(M)", () => {
     expect(buildWindowsAclArgv("C:\\tmp\\cred.json.tmp-1", "S-1-5-21-1-2-3")).toEqual([
       "C:\\tmp\\cred.json.tmp-1",

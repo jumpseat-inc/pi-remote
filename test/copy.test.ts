@@ -38,7 +38,8 @@ function makeDeps(overrides?: Partial<RemoteControllerDeps>): {
   const printed: string[] = [];
   const deps: RemoteControllerDeps = {
     configDir: "/tmp/pi-remote-copy-test",
-    serverUrl: "https://cp.example.com",
+    envServerUrl: "https://cp.example.com",
+    settingServerUrl: undefined,
     sessionName: "copy-test",
     cwd: "/tmp",
     hostMetadata: { piVersion: "1.0", platform: "linux", arch: "x64" },
@@ -74,13 +75,13 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 // Item 1 — table-completeness drift alarm
 // ---------------------------------------------------------------------------
-describe("indonesianCopy coverage (22 keys)", () => {
+describe("indonesianCopy coverage (21 keys after EV-15)", () => {
   test("covers exactly tunnelReasonCopy keys ∪ FOOTER_ROWS keys, non-empty", () => {
     const expected = [
       ...Object.values(tunnelReasonCopy).map((c) => c.userLineKey),
       ...Object.keys(FOOTER_ROWS),
     ].sort();
-    expect(new Set(expected).size).toBe(22); // skeptic-verified: union size 22
+    expect(new Set(expected).size).toBe(21); // EV-15: − rc.serverUrlRequired, no addition (derivation untouched)
     expect(Object.keys(indonesianCopy).sort()).toEqual(expected);
     for (const [key, value] of Object.entries(indonesianCopy)) {
       expect(typeof value === "string" && value.length > 0).toBe(true);

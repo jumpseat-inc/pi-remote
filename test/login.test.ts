@@ -26,7 +26,8 @@ import { createTunnel, type TunnelHttpDeps } from "../src/tunnel";
 // ---------------------------------------------------------------------------
 
 const LOGIN_REASONS: LoginReason[] = [
-  "noServerUrl",
+  // EV-15 removed "noServerUrl": the resolver (src/server-url.ts) is total,
+  // so the driver always has a URL and the failure row is unreachable.
   "unreachable",
   "discoveryInvalid",
   "browserOpenFailed",
@@ -226,7 +227,7 @@ describe("EV-7 copy vocabulary", () => {
       ...LOGIN_REASONS.map((r) => loginReasonCopy[r]!.userLineKey),
       ...NON_FAILURE_KEYS,
     ];
-    expect(keys).toHaveLength(28);
+    expect(keys).toHaveLength(27); // EV-15: 13→12 failure rows, no addition
     for (const k of keys) {
       const resolved = loginEnglishFor(k);
       expect(resolved).not.toBe(k); // resolves, not identity
@@ -236,10 +237,9 @@ describe("EV-7 copy vocabulary", () => {
     expect(LOGIN_SUCCESS_COPY.length).toBeGreaterThan(0);
   });
 
-  test("test 2: closed-set invariant — failure keys exactly the 13-row set; stable login. keys; per-row tail marker", () => {
+  test("test 2: closed-set invariant — failure keys exactly the 12-row set; stable login. keys; per-row tail marker", () => {
     expect(Object.keys(loginReasonCopy).sort()).toEqual([...LOGIN_REASONS].sort());
     const tailMarker: Record<LoginReason, string | null> = {
-      noServerUrl: "run /rc:login again.",
       unreachable: "check your network and try again.",
       discoveryInvalid: "check the URL with your control-plane admin.",
       browserOpenFailed: "No credentials were saved",
@@ -1363,5 +1363,29 @@ describe("FLLWUP-29: attended PKCE tokenExchangeFailed never emits the error_des
     expect(logs).toContain(RULED);
     expect(logs).toContain(`Details from the server: \`${DESCRIPTION}\``);
     rmSync(configDir, { recursive: true, force: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EV-15 T13 — the noServerUrl removal is total: zero references in src/
+// ---------------------------------------------------------------------------
+describe("EV-15: noServerUrl / rc.serverUrlRequired removal", () => {
+  test("grep proves zero noServerUrl/serverUrlRequired references in src/", () => {
+    const { readdirSync, readFileSync, statSync } = require("node:fs") as typeof import("node:fs");
+    const { join } = require("node:path") as typeof import("node:path");
+    const srcDir = join(import.meta.dir, "..", "src");
+    const offenders: string[] = [];
+    const walk = (dir: string): void => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (name.endsWith(".ts")) {
+          const text = readFileSync(p, "utf8");
+          if (/noServerUrl|serverUrlRequired/.test(text)) offenders.push(p);
+        }
+      }
+    };
+    walk(srcDir);
+    expect(offenders).toEqual([]);
   });
 });

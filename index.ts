@@ -37,6 +37,7 @@ import {
 } from "./src/tunnel";
 import { renderCopy, setLocale } from "./src/copy";
 import { readCredential, saveCredentialAsync, type EnrollmentCredential } from "./src/credential";
+import { resolveServerUrl } from "./src/server-url";
 import { createLoginCommand, loginEnglishFor } from "./src/login";
 import type { LoginMode } from "./src/login";
 import { mergeTransport, transportErrorKey, STATUS_KEYS, type FooterState } from "./src/merge";
@@ -85,8 +86,13 @@ export type ErrorSource =
 
 export interface RemoteControllerDeps {
   configDir: string;
-  /** Resolved control-plane server URL: env > stored credential. May be undefined (J2). */
-  serverUrl: string | undefined;
+  /** Raw env tier (`PI_REMOTE_SERVER_URL`), passed through unchanged. Read
+   *  at the entry only (DI discipline — no env reads inside src/). The
+   *  controller resolves env → setting → stored credential → the built-in
+   *  default via `resolveServerUrl` (src/server-url.ts). */
+  envServerUrl: string | undefined;
+  /** Raw settings tier (`piRemote.serverUrl`), passed through unchanged. */
+  settingServerUrl: string | undefined;
   sessionName: string;
   cwd: string;
   hostMetadata: Record<string, string>;
@@ -197,6 +203,18 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     },
   });
 
+  // EV-15 — resolved-URL cache for the `<serverUrl>`-rendering surfaces.
+  // Initialized WITHOUT a credential read (explicit tiers only); refreshed at
+  // each of the three resolve sites (rearm, rcCommand, rcLoginCommand), where
+  // the credential is already in hand, before any error render that path can
+  // produce. Non-error footer states never consult it — the off footer stays
+  // byte-equal "Off"/"Mati" (showing the default there would claim an active
+  // dial target that doesn't exist).
+  let resolvedServerUrl = resolveServerUrl({
+    envUrl: deps.envServerUrl,
+    settingUrl: deps.settingServerUrl,
+  });
+
   // FLLWUP-94 (fix cycle 2) — pi-derived user message id → client AG-UI
   // messageId, for echoed composer-injected turns. Set on message_start when
   // the echo's text matches a pending injection; consumed on message_end
@@ -210,7 +228,7 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     } else {
       errorSource = null;
     }
-    deps.setStatus(renderFooter(footer, errorSource, activeHttp?.serverUrl ?? deps.serverUrl));
+    deps.setStatus(renderFooter(footer, errorSource, activeHttp?.serverUrl ?? resolvedServerUrl));
   }
 
   function view(): FooterView {
@@ -260,9 +278,14 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
   async function rearm(): Promise<CreateTunnelResult> {
     const epochAtStart = epoch;
     const cred = readCredential({ configDir: deps.configDir });
-    const serverUrl = deps.serverUrl ?? cred?.serverUrl;
-    if (!cred || !serverUrl) {
-      const err = new TunnelError("unauthenticated", "enrollment_expired", serverUrl ?? "");
+    const serverUrl = resolveServerUrl({
+      envUrl: deps.envServerUrl,
+      settingUrl: deps.settingServerUrl,
+      credentialUrl: cred?.serverUrl,
+    });
+    resolvedServerUrl = serverUrl; // refresh before any error render this path can produce
+    if (!cred) {
+      const err = new TunnelError("unauthenticated", "enrollment_expired", serverUrl);
       handleEnrollmentTerminal(err);
       throw err;
     }
@@ -542,12 +565,12 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       return;
     }
 
-    const serverUrl = deps.serverUrl ?? cred.serverUrl;
-    if (!serverUrl) {
-      applyFooter("not enrolled");
-      deps.print(loginEnglishFor("rc.serverUrlRequired"));
-      return;
-    }
+    const serverUrl = resolveServerUrl({
+      envUrl: deps.envServerUrl,
+      settingUrl: deps.settingServerUrl,
+      credentialUrl: cred.serverUrl,
+    });
+    resolvedServerUrl = serverUrl; // refresh before any error render this path can produce
 
     // Access token expired → ONE silent refresh (spec §4.1).
     let accessToken = cred.accessToken;
@@ -607,17 +630,46 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
     // BUG-1: parse the mode from argv. `--headless` is the literal token;
     // no flag (or any args without it) → attended (spec §7.2/§8, EV-7).
     const mode: LoginMode = (args ?? "").split(/\s+/).includes("--headless") ? "headless" : "attended";
-    let serverUrl = deps.serverUrl;
-    if (!serverUrl) {
-      // J2 — the URL prompt fires only out-of-band after /rc:login, never a bare /rc.
-      serverUrl = await deps.inputPrompt("Control-plane server URL (or leave blank for PI_REMOTE_SERVER_URL / piRemote.serverUrl):");
-    }
-    if (!serverUrl) {
-      deps.print(loginEnglishFor("login.failure.noServerUrl"));
-      applyFooter("off");
-      return;
-    }
+    // EV-15: the credential is read BEFORE the prompt so the prefill reflects
+    // the stored credential's tier, and the resolved value refreshes the
+    // footer-render cache before any error this path can produce.
     const existing = readCredential({ configDir: deps.configDir });
+    const resolved = resolveServerUrl({
+      envUrl: deps.envServerUrl,
+      settingUrl: deps.settingServerUrl,
+      credentialUrl: existing?.serverUrl,
+    });
+    resolvedServerUrl = resolved;
+    let serverUrl: string;
+    if (mode === "headless") {
+      // EV-15 behavior change: the device flow is non-interactive — the URL
+      // prompt never fires; the driver runs directly against the resolved
+      // target, named in one printed line so the target stays visible.
+      deps.print(`Enrolling this host against ${resolved} (headless device flow).`);
+      serverUrl = resolved;
+    } else {
+      // J2 — the URL prompt fires only out-of-band after /rc:login, never a
+      // bare /rc. Attended mode: the prompt fires unconditionally across all
+      // four resolve tiers — it is the consent moment for WHICH server the
+      // host enrolls against, and the override affordance when a tier is
+      // already set. The host surface has no editable prefill
+      // (ExtensionUIDialogOptions has no such capability), so "pre-filled"
+      // is delivered as the bracket-default title plus explicit application
+      // logic: empty/whitespace submission accepts the prefill.
+      // The consent sentence is keyless (English under every locale) per the
+      // announced copy boundary — see src/copy.ts's COVERAGE BOUNDARY.
+      const answer = await deps.inputPrompt(
+        `Control-plane server URL [${resolved}]:\nPress Enter to enroll this host against ${resolved}, or type a different URL to override:`,
+      );
+      if (answer === undefined) {
+        // Escape = cancel: driver never constructed, footer unchanged, no
+        // failure copy, no persisted credential.
+        return;
+      }
+      const trimmed = answer.trim();
+      // Empty submission = accept the prefill: enroll with exactly `resolved`.
+      serverUrl = trimmed.length > 0 ? trimmed : resolved;
+    }
     const cmd = createLoginCommand({
       serverUrl,
       configDir: deps.configDir,
@@ -853,7 +905,12 @@ export default function (pi: ExtensionAPI): void {
     const v = settings[key];
     return typeof v === "string" ? v : undefined;
   };
-  const serverUrl = process.env.PI_REMOTE_SERVER_URL ?? settingString("serverUrl");
+  // EV-15: the two raw explicit tiers, passed through unchanged. The load-time
+  // tier stays explicit-only — no credential read, no default here; the
+  // controller resolves env → setting → stored credential → the built-in
+  // default (src/server-url.ts).
+  const envServerUrl = process.env.PI_REMOTE_SERVER_URL;
+  const settingServerUrl = settingString("serverUrl");
 
   // FLLWUP-4 (ruling OJ3): locale sourcing follows the entry-point precedence
   // of env over setting; setLocale normalizes anything unrecognized to "en".
@@ -861,7 +918,8 @@ export default function (pi: ExtensionAPI): void {
 
   const controller = createRemoteController({
     configDir,
-    serverUrl,
+    envServerUrl,
+    settingServerUrl,
     // Real context surface; process.cwd() is only the load-time fallback
     // before the first real ctx arrives.
     sessionName: process.cwd().split("/").pop() ?? "",

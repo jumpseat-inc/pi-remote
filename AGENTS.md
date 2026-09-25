@@ -48,7 +48,7 @@ Two settings, each with an environment override:
 
 | Setting | Env override | Notes |
 | --- | --- | --- |
-| `piRemote.serverUrl` | `PI_REMOTE_SERVER_URL` | Control-plane base URL. Resolution: env → setting → stored credential → interactive prompt from `/rc:login`. Every endpoint is derived via RFC 8414 discovery; never hardcode paths. |
+| `piRemote.serverUrl` | `PI_REMOTE_SERVER_URL` | Control-plane base URL. Resolution: env → setting → stored credential → `https://relay.jumpseat.sh` default; the `/rc:login` prompt is the interactive override, pre-filled with the resolved value. Every endpoint is derived via RFC 8414 discovery; never hardcode paths. |
 | `piRemote.locale` | `PI_REMOTE_LOCALE` | `en` (default) or `id`; anything else normalizes to `en`. |
 
 Credentials are **never** read from environment variables — they live in
