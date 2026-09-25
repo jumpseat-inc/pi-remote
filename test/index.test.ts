@@ -14,6 +14,7 @@ import {
   type FooterView,
 } from "../index";
 import { loginEnglishFor } from "../src/login";
+import { setLocale } from "../src/copy";
 import { ALREADY_LIVE_COPY, tunnelReasonCopy } from "../src/tunnel";
 import type { TransportEnvelope, InboundEnvelope } from "../src/transport";
 
@@ -125,6 +126,16 @@ interface Harness {
 
 interface HarnessOptions {
   serverUrl?: string | undefined;
+  /** EV-15 raw env tier dep. Pass explicitly (even as `undefined`) to control
+   *  the env tier; without the key, opts.serverUrl (or the harness default)
+   *  populates it, mirroring the old collapsed dep's tests. */
+  envServerUrl?: string | undefined;
+  /** EV-15 raw settings tier dep. */
+  settingServerUrl?: string | undefined;
+  /** EV-15: serverUrl written into the persisted credential file. */
+  credentialServerUrl?: string;
+  /** EV-15: skip writing the credential file entirely (fresh host). */
+  noCredential?: boolean;
   credential?: { accessToken?: string; refreshToken?: string; tokenExpiry?: number };
   /** Override the control-plane tunnel fetch (POST /tunnels). Default returns a live relay tunnel. */
   tunnelFetch?: (
@@ -168,10 +179,18 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
   const fs = await import("node:fs");
   const mkdir = await import("node:fs/promises");
   await mkdir.mkdir("/tmp/pi-remote-ev8-test/pi-remote", { recursive: true });
-  fs.writeFileSync(
-    "/tmp/pi-remote-ev8-test/pi-remote/credentials.json",
-    JSON.stringify({ serverUrl: opts.serverUrl ?? "https://cp.example.com", ...cred })
-  );
+  if (!opts.noCredential) {
+    fs.writeFileSync(
+      "/tmp/pi-remote-ev8-test/pi-remote/credentials.json",
+      JSON.stringify({
+        serverUrl: opts.credentialServerUrl ?? opts.serverUrl ?? "https://cp.example.com",
+        ...cred,
+      })
+    );
+  } else {
+    // Fresh host: a prior test's credential file on the shared path must go.
+    fs.rmSync("/tmp/pi-remote-ev8-test/pi-remote/credentials.json", { force: true });
+  }
 
   let h!: Harness;
 
@@ -193,7 +212,13 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
 
   const deps: RemoteControllerDeps = {
     configDir: "/tmp/pi-remote-ev8-test",
-    serverUrl: opts.serverUrl === undefined ? "https://cp.example.com" : opts.serverUrl,
+    envServerUrl:
+      "envServerUrl" in opts
+        ? opts.envServerUrl
+        : opts.serverUrl === undefined
+          ? "https://cp.example.com"
+          : opts.serverUrl,
+    settingServerUrl: "settingServerUrl" in opts ? opts.settingServerUrl : undefined,
     sessionName: "test-session",
     cwd: "/tmp",
     hostMetadata: { piVersion: "1.0", platform: "linux", arch: "x64" },
@@ -443,7 +468,8 @@ describe("EV-8 teardown/rearm race", () => {
 
     const deps: RemoteControllerDeps = {
       configDir: "/tmp/pi-remote-ev8-race",
-      serverUrl: "https://cp.example.com",
+      envServerUrl: "https://cp.example.com",
+      settingServerUrl: undefined,
       sessionName: "s",
       cwd: "/",
       hostMetadata: { piVersion: "1", platform: "linux", arch: "x64" },
@@ -742,6 +768,9 @@ describe("EV-8 /rc:login (J5)", () => {
 
   test("from off and not enrolled: authorizing on driver begin, off on terminal (success)", async () => {
     const h = await makeHarness({
+      // EV-15: the attended prompt fires unconditionally — empty submission
+      // accepts the prefill (the resolved URL).
+      inputPrompt: async () => "",
       // The attended flow needs cryptographically-flat state/verifier to make
       // the loopback callback deterministic; inject a zero-byte rng.
       randomBytes: () => new Uint8Array(8),
@@ -784,7 +813,10 @@ describe("EV-8 /rc:login (J5)", () => {
   });
 
   test("from off: failure also returns the footer to off", async () => {
-    const h = await makeHarness({ redirectTimeoutMs: 500 });
+    const h = await makeHarness({
+      redirectTimeoutMs: 500,
+      inputPrompt: async () => "", // EV-15: accept the prefill
+    });
     h.deps.fetch = (async () => {
       throw new Error("network");
     }) as unknown as typeof fetch;
@@ -865,6 +897,7 @@ describe("EV-8 /rc:login (J5)", () => {
     const openUrls: string[] = [];
     const { logs, restore } = captureConsole();
     const h = await makeHarness({
+      inputPrompt: async () => "", // EV-15: accept the prefill
       randomBytes: () => new Uint8Array(8),
       openUrl: async (url) => {
         openUrls.push(url);
@@ -1507,6 +1540,292 @@ describe("FLLWUP-94 fix cycle 2: live user-turn echo (no assistantMessageEvent o
     await h.waitFor(() => textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_END").length === 2);
     const secondStart = textFrames(h).filter((f) => f.type === "TEXT_MESSAGE_START")[1];
     expect(secondStart!.messageId).toBe("client-9");
+    h.relay.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EV-15 — default control-plane URL (https://relay.jumpseat.sh), unconditional
+// attended prompt, headless skip. Pins per the settled spec's test plan.
+// ---------------------------------------------------------------------------
+describe("EV-15: default relay URL + prompt semantics", () => {
+  function captureConsoleOut(): { logs: string[]; restore: () => void } {
+    const logs: string[] = [];
+    const origLog = console.log;
+    console.log = (...a: unknown[]) => {
+      logs.push(a.join(" "));
+    };
+    return { logs, restore: () => (console.log = origLog) };
+  }
+
+  test("T2/A1: fresh host attended — prompt names the default; empty submission enrolls byte-equal", async () => {
+    const prompts: string[] = [];
+    const h = await makeHarness({
+      noCredential: true,
+      envServerUrl: undefined,
+      inputPrompt: async (p) => {
+        prompts.push(p);
+        return ""; // empty submission accepts the prefill
+      },
+      randomBytes: () => new Uint8Array(8),
+      openUrl: async (authorizeUrl) => {
+        const u = new URL(authorizeUrl);
+        const state = u.searchParams.get("state") ?? "";
+        const redirect = u.searchParams.get("redirect_uri") ?? "";
+        await fetch(`${redirect}?code=okcode&state=${state}`);
+        return true;
+      },
+    });
+    h.deps.fetch = (async (url: string, init?: RequestInit) => {
+      if (url.includes("oauth-authorization-server")) {
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://relay.jumpseat.sh/auth",
+            token_endpoint: "https://relay.jumpseat.sh/token",
+            device_authorization_endpoint: "https://relay.jumpseat.sh/device",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/token") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({ access_token: "at-new", refresh_token: "rt-new", expires_in: 3600 }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    await h.runCommand("rc:login");
+
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]!.startsWith("Control-plane server URL [https://relay.jumpseat.sh]:")).toBe(true);
+    expect(prompts[0]).toContain("Press Enter to enroll this host against https://relay.jumpseat.sh");
+    // The prompt is plumbing-free: no env-var literals.
+    expect(prompts[0]).not.toContain("PI_REMOTE_SERVER_URL");
+    expect(prompts[0]).not.toContain("piRemote.serverUrl");
+    // Persisted credential's serverUrl is byte-equal to the default.
+    const fs = await import("node:fs");
+    const raw = fs.readFileSync("/tmp/pi-remote-ev8-test/pi-remote/credentials.json", "utf8");
+    expect(JSON.parse(raw).serverUrl).toBe("https://relay.jumpseat.sh");
+    h.relay.stop();
+  });
+
+  test("T3/A2: wired precedence — /rc dials env > setting > credential, never the default", async () => {
+    const tiers = [
+      {
+        opts: { envServerUrl: "https://env.example", settingServerUrl: "https://setting.example", credentialServerUrl: "https://custom.example" },
+        expectUrl: "https://env.example",
+      },
+      {
+        opts: { envServerUrl: undefined, settingServerUrl: "https://setting.example", credentialServerUrl: "https://custom.example" },
+        expectUrl: "https://setting.example",
+      },
+      {
+        opts: { envServerUrl: undefined, credentialServerUrl: "https://custom.example" },
+        expectUrl: "https://custom.example",
+      },
+    ];
+    for (const t of tiers) {
+      const h = await makeHarness(t.opts);
+      await h.runCommand("rc");
+      await h.waitFor(() => h.posts.length > 0);
+      expect(h.posts[0]).toBe(`${t.expectUrl}/tunnels`);
+      expect(h.posts.join("|")).not.toContain("https://relay.jumpseat.sh");
+      h.relay.stop();
+    }
+  });
+
+  test("T3/A2: prompt prefill reflects the resolved tier across the four-tier matrix", async () => {
+    const cases = [
+      { opts: { envServerUrl: "https://env.example" }, expected: "https://env.example" },
+      { opts: { envServerUrl: undefined, settingServerUrl: "https://setting.example" }, expected: "https://setting.example" },
+      { opts: { envServerUrl: undefined, credentialServerUrl: "https://custom.example" }, expected: "https://custom.example" },
+      { opts: { noCredential: true, envServerUrl: undefined }, expected: "https://relay.jumpseat.sh" },
+    ];
+    for (const c of cases) {
+      const prompts: string[] = [];
+      const h = await makeHarness({
+        ...c.opts,
+        inputPrompt: async (p) => {
+          prompts.push(p);
+          return undefined; // Escape right after capture — driver never constructed
+        },
+      });
+      await h.runCommand("rc:login");
+      expect(prompts).toHaveLength(1);
+      expect(prompts[0]).toContain(`Control-plane server URL [${c.expected}]:`);
+      h.relay.stop();
+    }
+  });
+
+  test("T4/A3: rearm + rcCommand cred-only dial the credential's URL, never the default", async () => {
+    const h = await makeHarness({ envServerUrl: undefined, credentialServerUrl: "https://custom.example" });
+    await h.runCommand("rc"); // rcCommand cred-only
+    await h.waitFor(() => h.posts.length > 0);
+    expect(h.posts[0]).toBe("https://custom.example/tunnels");
+    await h.waitFor(() => h.relay.connections.length > 0);
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    h.relay.kill(); // force reconnect → rearm cred-only
+    await h.waitFor(() => h.posts.length >= 2);
+    expect(h.posts.every((p) => p.startsWith("https://custom.example/"))).toBe(true);
+    expect(h.posts.join("|")).not.toContain("https://relay.jumpseat.sh");
+    h.relay.stop();
+  });
+
+  test("T4/A3: rearm with no credential → enrollment_expired remedy, never a default dial", async () => {
+    const h = await makeHarness({ envServerUrl: undefined });
+    await h.runCommand("rc");
+    await h.waitFor(() => h.relay.connections.length > 0);
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    const fs = await import("node:fs");
+    fs.rmSync("/tmp/pi-remote-ev8-test/pi-remote/credentials.json", { force: true });
+    h.relay.kill(); // reconnect → rearm → no credential
+    await h.waitFor(() => lastSet(h.setStatus) === tunnelReasonCopy.enrollment_expired.userLine);
+    expect(h.posts.join("|")).not.toContain("https://relay.jumpseat.sh");
+    h.relay.stop();
+  });
+
+  test("T5/R2-1: off footer is byte-equal 'Off'/'Mati' with the default cached — no token, no default URL", async () => {
+    const h = await makeHarness({ noCredential: true, envServerUrl: undefined });
+    h.ctrl.reducer({ type: "set", state: "off" });
+    expect(lastSet(h.setStatus)).toBe("Off");
+    expect(lastSet(h.setStatus)).not.toContain("<serverUrl>");
+    expect(lastSet(h.setStatus)).not.toContain("https://relay.jumpseat.sh");
+    setLocale("id");
+    h.ctrl.reducer({ type: "set", state: "off" });
+    expect(lastSet(h.setStatus)).toBe("Mati");
+    expect(lastSet(h.setStatus)).not.toContain("<serverUrl>");
+    expect(lastSet(h.setStatus)).not.toContain("https://relay.jumpseat.sh");
+    setLocale("en");
+    h.relay.stop();
+  });
+
+  test("T6/A5: error footer renders the literal default URL, no raw token", async () => {
+    const h = await makeHarness({ noCredential: true, envServerUrl: undefined });
+    h.ctrl.reducer({ type: "error", reason: "control_plane_unreachable" });
+    const line = lastSet(h.setStatus)!;
+    expect(line).toContain("https://relay.jumpseat.sh");
+    expect(line).not.toContain("<serverUrl>");
+    h.relay.stop();
+  });
+
+  test("T7: headless fresh host — zero prompts, prints the resolved target, runs against the default", async () => {
+    let promptCalls = 0;
+    const discoveryUrls: string[] = [];
+    const { restore } = captureConsoleOut();
+    const h = await makeHarness({
+      noCredential: true,
+      envServerUrl: undefined,
+      inputPrompt: async () => {
+        promptCalls++;
+        return "";
+      },
+    });
+    h.deps.fetch = (async (url: string, init?: RequestInit) => {
+      discoveryUrls.push(url);
+      if (url.includes("oauth-authorization-server")) {
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://relay.jumpseat.sh/auth",
+            token_endpoint: "https://relay.jumpseat.sh/token",
+            device_authorization_endpoint: "https://relay.jumpseat.sh/device",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/device")) {
+        return new Response(
+          JSON.stringify({
+            device_code: "dc-1",
+            user_code: "ABCD-EFGH",
+            verification_uri: "https://relay.jumpseat.sh/verify",
+            verification_uri_complete: "https://relay.jumpseat.sh/verify?code=ABCD-EFGH",
+            expires_in: 300,
+            interval: 5,
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/token")) {
+        return new Response(
+          JSON.stringify({ access_token: "at-new", refresh_token: "rt-new", expires_in: 3600 }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await h.runCommand("rc:login", "--headless");
+    } finally {
+      restore();
+    }
+
+    expect(promptCalls).toBe(0); // the prompt never fires in headless mode
+    expect(h.printed.join("\n")).toContain("https://relay.jumpseat.sh"); // the resolved target is named
+    expect(discoveryUrls.some((u) => u.startsWith("https://relay.jumpseat.sh/"))).toBe(true);
+    const fs = await import("node:fs");
+    const raw = fs.readFileSync("/tmp/pi-remote-ev8-test/pi-remote/credentials.json", "utf8");
+    expect(JSON.parse(raw).serverUrl).toBe("https://relay.jumpseat.sh");
+    h.relay.stop();
+  });
+
+  test("T8: Escape (undefined) at the prompt cancels — driver never constructed, footer unchanged, no failure copy", async () => {
+    let fetchCalls = 0;
+    const h = await makeHarness({
+      noCredential: true,
+      envServerUrl: undefined,
+      inputPrompt: async () => undefined,
+    });
+    h.deps.fetch = (async () => {
+      fetchCalls++;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    await h.runCommand("rc:login");
+
+    expect(h.setStatus).toEqual([]); // footer untouched
+    expect(h.printed).toEqual([]); // no failure copy
+    expect(fetchCalls).toBe(0); // driver never constructed → no discovery, no dial
+    const fs = await import("node:fs");
+    expect(fs.existsSync("/tmp/pi-remote-ev8-test/pi-remote/credentials.json")).toBe(false);
+    h.relay.stop();
+  });
+
+  test("T11: footer freshness — credential written after construction renders its URL, not a construction-time value", async () => {
+    const h = await makeHarness({ noCredential: true, envServerUrl: undefined });
+    // Credential appears after construction (as a login would write it).
+    const fs = await import("node:fs");
+    fs.writeFileSync(
+      "/tmp/pi-remote-ev8-test/pi-remote/credentials.json",
+      JSON.stringify({ serverUrl: "https://custom.example", accessToken: "at-2", tokenExpiry: Date.now() + 60_000 })
+    );
+    // Force the dial to fail (unreachable) so the error footer renders.
+    h.deps.fetch = (async () => {
+      throw new Error("network");
+    }) as unknown as typeof fetch;
+    await h.runCommand("rc");
+    const line = lastSet(h.setStatus)!;
+    expect(line).toContain("https://custom.example");
+    expect(line).not.toContain("https://relay.jumpseat.sh");
+    h.relay.stop();
+  });
+
+  test("T12: hand-edited empty-serverUrl credential at rearm → corrupt, never dials the default", async () => {
+    const h = await makeHarness({ envServerUrl: undefined });
+    await h.runCommand("rc");
+    await h.waitFor(() => h.relay.connections.length > 0);
+    await h.waitFor(() => lastSet(h.setStatus) === LIVE_SENTENCE);
+    // Hand-edit the credential file to carry an empty serverUrl.
+    const fs = await import("node:fs");
+    fs.writeFileSync(
+      "/tmp/pi-remote-ev8-test/pi-remote/credentials.json",
+      JSON.stringify({ serverUrl: "", accessToken: "at-1", tokenExpiry: Date.now() + 60_000 })
+    );
+    h.relay.kill(); // reconnect → rearm → readCredential → corrupt → null
+    await h.waitFor(() => lastSet(h.setStatus) === tunnelReasonCopy.enrollment_expired.userLine);
+    expect(h.posts.join("|")).not.toContain("https://relay.jumpseat.sh");
     h.relay.stop();
   });
 });

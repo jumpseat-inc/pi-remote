@@ -99,7 +99,8 @@ describe("FLLWUP-92 concurrent refresh single-flight", () => {
 
     const deps: RemoteControllerDeps = {
       configDir: "/tmp/pi-remote-f92-test",
-      serverUrl: "https://cp.example.com",
+      envServerUrl: "https://cp.example.com",
+      settingServerUrl: undefined,
       sessionName: "s",
       cwd: "/",
       hostMetadata: { piVersion: "1", platform: "linux", arch: "x64" },
@@ -247,7 +248,8 @@ describe("FLLWUP-92 concurrent refresh single-flight", () => {
 
     const deps: RemoteControllerDeps = {
       configDir: "/tmp/pi-remote-f92-retry",
-      serverUrl: "https://cp.example.com",
+      envServerUrl: "https://cp.example.com",
+      settingServerUrl: undefined,
       sessionName: "s",
       cwd: "/",
       hostMetadata: { piVersion: "1", platform: "linux", arch: "x64" },
