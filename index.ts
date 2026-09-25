@@ -118,7 +118,10 @@ export interface RemoteControllerDeps {
   redirectTimeoutMs?: number;
   /** N consecutive error-severity dialing events before footer → error (J4, default 10). */
   ERROR_DIAL_THRESHOLD?: number;
-  command: (name: string, handler: (args: string | undefined) => void | Promise<void>) => void;
+  /** EV-16: opts.description is required — every registered command declares
+   *  its user-facing description (an undeclared one is a compile error at the
+   *  call site). Forwarded verbatim to pi.registerCommand. */
+  command: (name: string, handler: (args: string | undefined) => void | Promise<void>, opts: { description: string }) => void;
   on: (event: DepsOnEvent, handler: PiEventHandler) => void;
 }
 
@@ -711,9 +714,21 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
   }
 
   // ---- Wiring ----
-  deps.command("rc", rcCommand);
-  deps.command("rc:off", rcOffCommand);
-  deps.command("rc:login", rcLoginCommand);
+  // EV-16: the registered descriptions are the /rc:login discoverability fix —
+  // the rc:login row names --headless and the condition it is for. Exact
+  // strings settled by the EV-16 design pass (docs/superpowers/specs/
+  // 2026-09-25-EV-16-design.md §1); they are English surface under every
+  // locale (see src/copy.ts's COVERAGE BOUNDARY).
+  deps.command("rc", rcCommand, {
+    description: "Start the remote tunnel — if not enrolled, run /rc:login first.",
+  });
+  deps.command("rc:off", rcOffCommand, {
+    description: "Stop the remote tunnel.",
+  });
+  deps.command("rc:login", rcLoginCommand, {
+    description:
+      "Enroll this host — use --headless on a remote machine with no usable browser.",
+  });
 
   deps.on("agent_start", () => {
     if (!transportRef.handle) return;
@@ -935,9 +950,11 @@ export default function (pi: ExtensionAPI): void {
     inputPrompt: (prompt) => requireCtx().ui.input(prompt),
     fetch: globalThis.fetch,
     WebSocket,
-    command: (name, handler) =>
+    // EV-16: forward the per-command description (the real RegisteredCommand
+    // member already declares description?: string — not an R-TYPE re-diff).
+    command: (name, handler, opts) =>
       pi.registerCommand(name, {
-        description: "pi-remote",
+        description: opts.description,
         handler: async (args, cmdCtx) => {
           ctxHolder = cmdCtx;
           await handler(args === undefined ? undefined : args);

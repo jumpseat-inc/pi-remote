@@ -46,6 +46,11 @@ const REAL_LOADER_API_KEYS = [
 
 const TOUCHED: string[] = [];
 
+/** EV-16: descriptions captured by the strict Proxy's registerCommand trap —
+ *  the real-boundary assertion that the entry forwards per-command
+ *  descriptions through the real member (opts: { description?: string }). */
+const REGISTERED_DESCRIPTIONS: Record<string, string | undefined> = {};
+
 function strictHostProxy(): unknown {
   const allowed = new Set<string>(REAL_LOADER_API_KEYS);
   const target: Record<string, unknown> = {};
@@ -66,8 +71,11 @@ function strictHostProxy(): unknown {
         };
       }
       if (key === "registerCommand") {
-        return (_name: unknown, opts: { handler: unknown }) => {
-          void opts;
+        return (name: unknown, opts: { description?: string; handler: unknown }) => {
+          void name;
+          // EV-16 real-boundary capture: the entry forwards the per-command
+          // description through the real registerCommand member.
+          REGISTERED_DESCRIPTIONS[String(name)] = opts.description;
         };
       }
       return () => {};
@@ -81,6 +89,7 @@ function strictHostProxy(): unknown {
 describe("FLLWUP-11 load smoke", () => {
   test("entry runs clean against a strict real-surface-only host proxy", () => {
     TOUCHED.length = 0;
+    for (const k of Object.keys(REGISTERED_DESCRIPTIONS)) delete REGISTERED_DESCRIPTIONS[k];
     // Fresh module import with an isolated HOME so resolvePiAgentDir cannot
     // read a real ~/.pi/agent/settings.json from the dev machine.
     process.env.PI_CODING_AGENT_DIR = "/tmp/pi-remote-fllwup11-loadsmoke";
@@ -96,6 +105,15 @@ describe("FLLWUP-11 load smoke", () => {
     for (const key of TOUCHED) {
       expect(REAL_LOADER_API_KEYS as readonly string[]).toContain(key);
     }
+    // EV-16 real-boundary pins: rc:login's registered description carries
+    // --headless and the condition it is for; rc/rc:off never mention
+    // --headless. (Accepted on the card: asserted at the real boundary.)
+    const login = REGISTERED_DESCRIPTIONS["rc:login"];
+    expect(login).toBeDefined();
+    expect(login).toContain("--headless");
+    expect(login).toContain("remote machine with no usable browser");
+    expect(REGISTERED_DESCRIPTIONS["rc"]).not.toContain("--headless");
+    expect(REGISTERED_DESCRIPTIONS["rc:off"]).not.toContain("--headless");
   });
 
   test("every member of index.ts's ExtensionAPI is a real-surface member (compile-time check; enforced by `bunx tsc --noEmit`, not by bun test)", () => {
