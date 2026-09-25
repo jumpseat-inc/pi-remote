@@ -16,8 +16,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - EV-17 — "Let the user cancel an attended `/rc:login`"
 
 ## Ready
-- EV-15 — "Default the control-plane URL to `https://relay.jumpseat.sh`"
 - EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
+
+## Deliberating
+- EV-15 — "Default the control-plane URL to `https://relay.jumpseat.sh`"
 
 ## In Progress
 
