@@ -135,7 +135,7 @@ const FAILURE_ROWS: Record<LoginReason, CopyRow> = {
   browserOpenFailed: {
     userLineKey: "login.failure.browserOpenFailed",
     userLine:
-      "Could not open a browser — visit the URL printed above manually to continue. No credentials were saved.",
+      "Could not open a browser — on a remote machine run /rc:login --headless. No credentials were saved.",
   },
   redirectTimeout: {
     userLineKey: "login.failure.redirectTimeout",
@@ -532,11 +532,30 @@ export async function runAttendedLogin(
     authorizeUrl.searchParams.set("state", state);
     const authorizeUrlStr = authorizeUrl.toString();
 
-    print(deps, render(loginEnglishFor("login.attended.opening"), { serverUrl: deps.serverUrl }));
+    // EV-16 openUrl contract: a host-side opener is OPTIONAL. Production
+    // never supplies one (index.ts passes `deps.openUrl` through, and no
+    // opener is wired — opener wiring is a follow-up card), so an absent
+    // openUrl means "proceed": print fallback + waiting with NO opening
+    // line (the old unconditional "Opening your browser…" was false copy).
+    // When an opener IS present, attempt BEFORE the fallback print: on
+    // failure the finally below closes the loopback server and discards
+    // verifier/state, so the pasted URL would be a dead remedy (Copy
+    // Honesty Doctrine) — the failure path prints only the failure row and
+    // returns browserOpenFailed. No credential is written.
+    if (deps.openUrl) {
+      print(deps, render(loginEnglishFor("login.attended.opening"), { serverUrl: deps.serverUrl }));
+      let opened: boolean;
+      try {
+        opened = await deps.openUrl(authorizeUrlStr);
+      } catch {
+        opened = false;
+      }
+      if (!opened) {
+        print(deps, loginEnglishFor("login.failure.browserOpenFailed"));
+        return { kind: "failure", reason: "browserOpenFailed" };
+      }
+    }
     print(deps, render(loginEnglishFor("login.attended.fallback"), { authorizeUrl: authorizeUrlStr }));
-
-    // Best-effort browser open; never aborts.
-    await deps.openUrl?.(authorizeUrlStr).catch(() => false);
 
     print(deps, loginEnglishFor("login.attended.waiting"));
 

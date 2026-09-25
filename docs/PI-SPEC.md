@@ -284,12 +284,18 @@ static key, never an environment variable.
   discovery metadata must include `authorization_endpoint`,
   `token_endpoint`, and `device_authorization_endpoint` — all three are
   required contract fields. `revocation_endpoint` (RFC 7009) is optional.
-- **Attended enrollment (browser available) — Authorization Code + PKCE
-  (RFC 7636, native-app pattern per RFC 8252).** `/rc:login` opens the
-  default browser at `{authorization_endpoint}` with `client_id=pi-remote`,
+- **Attended enrollment — Authorization Code + PKCE (RFC 7636, native-app
+  pattern per RFC 8252).** `/rc:login` attempts a browser open at
+  `{authorization_endpoint}` with `client_id=pi-remote`,
   `response_type=code`, `code_challenge_method=S256`, a generated
   `code_challenge`, `redirect_uri=http://127.0.0.1:<ephemeral>/callback`,
-  `scope=pi-remote:host`, and `state`. The extension is a **public client** —
+  `scope=pi-remote:host`, and `state` — but only when the host supplies a
+  browser opener; without one (the production default), the authorize URL
+  is printed for manual use and no open is attempted. When the open fails,
+  the driver prints the `login.failure.browserOpenFailed` row naming
+  `/rc:login --headless` as the remedy — `--headless` is the remedy
+  whenever no browser can reach the loopback redirect on the host. The
+  extension is a **public client** —
   no client secret. The loopback redirect is bound to 127.0.0.1 only, and
   the listener lives for the duration of the `/rc:login` command only
   (§7.1 — the extension never listens otherwise).
@@ -408,7 +414,7 @@ requires namespacing on the wire.
 | Command | Behavior |
 |---|---|
 | `/rc` | If no enrollment credential exists, **refuse to dial** and output a line naming the next step (`run /rc:login`); footer state `not enrolled`. If enrolled but the access token is expired, perform **one silent refresh**; if there is no refresh token or the refresh fails, output the same `/rc:login` remedy and do not dial. Otherwise `POST /tunnels` (§7.2), dial the signed URL, and start translating live events. Idempotent: if already connected, notify and no-op. OAuth enrollment is never attempted from `/rc` — that is `/rc:login`'s job. The control-plane URL prompt fires **only out-of-band after `/rc:login`**, never from a bare `/rc`: a user without a configured URL is told to run `/rc:login` (the remedy they need anyway), and no serverUrl-only credential store is introduced — the durable home for the URL is the full credential file `/rc:login` writes on success (J2, amending §8's earlier "/rc prompts once…" line). |
-| `/rc:login` | Enroll the host with the control plane's OAuth2 authorization server: the **attended** flow (default) opens the default browser (Authorization Code + PKCE, §7.2); the `--headless` flag runs the RFC 8628 device flow and prints `user_code` + `verification_uri_complete`. Before either flow, the server URL is resolved through the shared resolver (§7.2: env → setting → stored credential → `https://relay.jumpseat.sh` default). In **attended** mode the URL prompt fires unconditionally as the interactive override: its bracket-default title carries the resolved URL (`Control-plane server URL [<resolved>]:` plus one consent sentence naming Enter = enroll against it, type = override), an empty submission enrolls against the resolved value, and Escape cancels without touching the footer or the credential. In **`--headless`** mode the prompt never fires (a non-interactive RFC 8628 flow must not block on an interactive prompt — EV-15 behavior change): the driver runs directly against the resolved target, and one printed line names it. Persists the credential in the dedicated user-only 0600 credential file (`<configDir>/pi-remote/credentials.json`, §7.2); on failure, prints what to do next. Refuses to run while a tunnel is live — close the tunnel first with `/rc:off`. The same refusal rule applies across all non-idle states (`dialing`, `resyncing`, `authorizing`, `error`); the login driver is entered only from `off` and `not enrolled`. |
+| `/rc:login` | Enroll the host with the control plane's OAuth2 authorization server: the **attended** flow (default) attempts a browser open when the host supplies an opener, prints the authorize URL for manual use otherwise, and names `/rc:login --headless` as the remedy when no browser can be opened (Authorization Code + PKCE, §7.2); the `--headless` flag runs the RFC 8628 device flow and prints `user_code` + `verification_uri_complete`. The registered `/rc:login` command description carries the `--headless` token and the condition it is for (a remote machine with no usable browser). Before either flow, the server URL is resolved through the shared resolver (§7.2: env → setting → stored credential → `https://relay.jumpseat.sh` default). In **attended** mode the URL prompt fires unconditionally as the interactive override: its bracket-default title carries the resolved URL (`Control-plane server URL [<resolved>]:` plus one consent sentence naming Enter = enroll against it, type = override), an empty submission enrolls against the resolved value, and Escape cancels without touching the footer or the credential. In **`--headless`** mode the prompt never fires (a non-interactive RFC 8628 flow must not block on an interactive prompt — EV-15 behavior change): the driver runs directly against the resolved target, and one printed line names it. Persists the credential in the dedicated user-only 0600 credential file (`<configDir>/pi-remote/credentials.json`, §7.2); on failure, prints what to do next. Refuses to run while a tunnel is live — close the tunnel first with `/rc:off`. The same refusal rule applies across all non-idle states (`dialing`, `resyncing`, `authorizing`, `error`); the login driver is entered only from `off` and `not enrolled`. |
 | `/rc:off` | Close the WS, notify the control plane (`DELETE /tunnels/:id`), discard token state. Idempotent. |
 | `session_shutdown` handler | Tear down the tunnel for **every** shutdown reason (`quit`, `reload`, `new`, `resume`, `fork`) — exiting without `/rc:off` must not leave a live tunnel. Idempotent with `/rc:off`. |
 

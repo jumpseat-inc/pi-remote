@@ -88,6 +88,10 @@ describe("indonesianCopy coverage (21 keys after EV-15)", () => {
       expect(value).not.toBe(key); // no key echoed as its own translation
     }
   });
+
+  test("EV-16: browserOpenFailed stays out of the id overlay (COVERAGE BOUNDARY — login.failure.* is English under every locale)", () => {
+    expect(indonesianCopy["login.failure.browserOpenFailed"]).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

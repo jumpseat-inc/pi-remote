@@ -111,6 +111,8 @@ interface Harness {
   setStatus: (string | undefined)[];
   printed: string[];
   commandHandlers: Record<string, (args?: string) => void | Promise<void>>;
+  /** EV-16: descriptions captured from registerCommand's opts. */
+  commandDescriptions: Record<string, string>;
   eventHandlers: Record<string, Array<(...a: unknown[]) => void>>;
   posts: string[];
   deletes: string[];
@@ -160,6 +162,7 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
   const setStatus: (string | undefined)[] = [];
   const printed: string[] = [];
   const commandHandlers: Record<string, (args?: string) => void | Promise<void>> = {};
+  const commandDescriptions: Record<string, string> = {};
   const eventHandlers: Record<string, Array<(...a: unknown[]) => void>> = {};
   const posts: string[] = [];
   const deletes: string[] = [];
@@ -246,8 +249,9 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
     confirmReplacement: opts.confirmReplacement ?? (async () => true),
     redirectTimeoutMs: opts.redirectTimeoutMs ?? 2000,
     ERROR_DIAL_THRESHOLD: 3,
-    command: (name, handler) => {
+    command: (name, handler, opts) => {
       commandHandlers[name] = (args?: string) => handler(args);
+      commandDescriptions[name] = opts.description;
     },
     on: (event, handler) => {
       (eventHandlers[event] ??= []).push(handler as (...a: unknown[]) => void);
@@ -262,6 +266,7 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
     setStatus,
     printed,
     commandHandlers,
+    commandDescriptions,
     eventHandlers,
     posts,
     deletes,
@@ -294,6 +299,26 @@ function lastSet(s: (string | undefined)[]): string | undefined {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+describe("EV-16 registered command descriptions", () => {
+  test("rc:login carries --headless + the no-usable-browser condition; rc/rc:off never mention --headless", async () => {
+    const h = await makeHarness();
+    const login = h.commandDescriptions["rc:login"];
+    expect(login).toBeDefined();
+    expect(login).toContain("--headless");
+    expect(login).toContain("remote machine with no usable browser");
+    expect(h.commandDescriptions["rc"]).not.toContain("--headless");
+    expect(h.commandDescriptions["rc:off"]).not.toContain("--headless");
+    // The exact settled strings (EV-16 design pass §1) — verbatim pins.
+    expect(h.commandDescriptions["rc"]).toBe(
+      "Start the remote tunnel — if not enrolled, run /rc:login first."
+    );
+    expect(h.commandDescriptions["rc:off"]).toBe("Stop the remote tunnel.");
+    expect(h.commandDescriptions["rc:login"]).toBe(
+      "Enroll this host — use --headless on a remote machine with no usable browser."
+    );
+  });
+});
 
 describe("EV-8 /rc happy path", () => {
   test("enrolled /rc ends live with frames flowing; second /rc is ALREADY_LIVE_COPY, no second dial, runId unchanged", async () => {
@@ -434,6 +459,7 @@ describe("EV-8 teardown/rearm race", () => {
     const setStatus: (string | undefined)[] = [];
     const printed: string[] = [];
     const commandHandlers: Record<string, () => void | Promise<void>> = {};
+    const commandDescriptions: Record<string, string> = {};
     const eventHandlers: Record<string, Array<(...a: unknown[]) => void>> = {};
     const posts: string[] = [];
     const deletes: string[] = [];
@@ -488,14 +514,19 @@ describe("EV-8 teardown/rearm race", () => {
       rng: () => 0,
       newId: () => `u-${++idCounter}`,
       ERROR_DIAL_THRESHOLD: 3,
-      command: (name, handler) => {
+      command: (name, handler, opts) => {
         commandHandlers[name] = () => handler(name);
+        commandDescriptions[name] = opts.description;
       },
       on: (event, handler) => {
         (eventHandlers[event] ??= []).push(handler as (...a: unknown[]) => void);
       },
     };
     const ctrl = createRemoteController(deps);
+    // EV-16: the second harness's command stand-in captures descriptions too.
+    expect(commandDescriptions["rc:login"]).toContain("--headless");
+    expect(commandDescriptions["rc"]).not.toContain("--headless");
+    expect(commandDescriptions["rc:off"]).not.toContain("--headless");
     const runCommand = async (n: string) => {
       await commandHandlers[n]?.();
     };
