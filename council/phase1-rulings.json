@@ -2,22 +2,22 @@
   {
     "class": "surface copy",
     "stakes": "card",
-    "reason": "n/a: no person-facing surface — EPIC-6 changes a vendored type field and a test-file source comment; neither renders copy a person sees"
+    "ruling": "Exact user-visible copy is settled by the working seats' shared design pass for EV-16 and EV-17, constrained by each card's Acceptance substrings; no run-level string is fixed. A seat applying this ruling must keep every string the card's Acceptance requires and settle wording only within the design pass the cards already name."
   },
   {
     "class": "state and field naming",
     "stakes": "card",
-    "reason": "n/a: no field name is chosen by this run — FLLWUP-39's thinkingSignature/thoughtSignature are vendored verbatim from the installed SDK dist types, not named here"
+    "ruling": "The server-URL default constant is `DEFAULT_SERVER_URL` and the single shared resolver is `resolveServerUrl`, resolving env → setting → stored credential → default. The three runtime resolve sites consult that resolver; the default is the last-resort tier below any stored credential."
   },
   {
     "class": "uncertainty display",
     "stakes": "run-committing",
-    "reason": "n/a: no no-realtime-availability and no price data is displayed — the epic surfaces neither"
+    "ruling": "Uncertainty display is settled by the working seats within each card's Acceptance; no run-level uncertainty-display rule is fixed, because EPIC-7 surfaces no no-realtime-availability data and no price data."
   },
   {
     "class": "error and empty-state text",
     "stakes": "run-committing",
-    "reason": "n/a: no person-facing error or empty state exists in this epic's changes — it renders no UI"
+    "ruling": "EV-16's `login.failure.browserOpenFailed` English row reads exactly: `Could not open a browser — on a remote machine run /rc:login --headless. No credentials were saved.` EV-15's `rc.serverUrlRequired` / `login.failure.noServerUrl` become unreachable and are removed, with the removal named in the PR description."
   },
   {
     "class": "gate user-visibility",

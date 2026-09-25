@@ -1,13 +1,26 @@
 {
-  "run": "EPIC-6",
-  "recordedAt": "2026-09-24T00:00:00Z",
-  "source": "human run directive at /features-deliver EPIC-6 intake",
-  "delivery_model": "A single council-runner covers both children in one council run: one owner implementation dispatch (one branch and one PR) implements FLLWUP-39 and FLLWUP-40 together first, then one Skeptic verification and one judge PASS cover both.",
-  "build_order": ["FLLWUP-39", "FLLWUP-40"],
-  "rationale": "EPIC-6's approved goal and Intent encode this single-unit delivery; the two changes are small, non-overlapping, and share the src/pi-sdk-events.ts / test/translate.test.ts seam.",
+  "run": "EPIC-7",
+  "recordedAt": "2026-09-25T19:37:23Z",
+  "source": "steward strategy ruling at /features-deliver EPIC-7 pre-run (job-5)",
+  "delivery_model": "Per-card, one council-runner per card, sequential — never two runners at once against the same board. EV-15 and EV-16 each run the full /council loop in their own container; EV-16's working seats conduct the EV-16/EV-17 shared design pass and record its outcome in both card files without changing EV-17's state; product-owner then ratifies EV-17 Backlog -> Ready; EV-17 runs as the third and final runner.",
+  "build_order": ["EV-15", "EV-16", "EV-17"],
+  "promotion_gate": {
+    "after": "EV-16",
+    "before": "EV-17",
+    "seat": "product-owner",
+    "from": "Backlog",
+    "to": "Ready",
+    "precondition": "EV-16's shared design pass names the EV-17 cancel affordance and the pass is recorded in both cards"
+  },
+  "rationale": "EV-15 -> EV-16 is a soft copy-surface seam (run EV-15 first so EV-16 does not author rows EV-15 then deletes). EV-16 -> EV-17 is a hard gate written into both cards' Acceptance; EV-17 cannot be Ready before the pass. Per-card rather than batched because EV-15 is a resolution/precedence behavior change and EV-16 is a surface/copy change that also gates EV-17's promotion.",
+  "ending_condition": "Run closes Done when EV-15, EV-16, and EV-17 are all merged Done with gates SUCCESS on the merged SHA, and EPIC-7 Acceptance holds: bunx tsc --noEmit exit 0, bun test green, AGENTS.md config table + docs/PI-SPEC.md 7.2/8 synced.",
+  "fallback_ending": "If product-owner declines the EV-17 promotion, or EV-17 exhausts its <=3 verify->fix cycles red, the run closes after EV-16 with EPIC-7 left un-Done and EV-17 named as an explicit residual (back to Backlog, not retired, not silently dropped) and the epic goal's cancellation clause announced unmet.",
   "constraints": [
-    "Exactly one owner implementation dispatch across both cards.",
-    "Exactly one Skeptic verification and one judge evaluation covering both.",
-    "No per-card runner duplication."
+    "One runner per card; never two runners in flight at once.",
+    "EV-16's runner may write the design-pass block into EV-17's card but must not change EV-17's state.",
+    "Promotion Backlog -> Ready is product-owner's judgment, not steward's; steward only sequences and gates it.",
+    "No card retired, no child re-sliced.",
+    "Phase-1 rulings are binding: surface copy delegated, EV-16 browserOpenFailed text fixed, DEFAULT_SERVER_URL/resolveServerUrl fixed, uncertainty display card-level, gate verdict information-only.",
+    "The --admin merge bypass and direct-record push to main are authorized for this run only."
   ]
 }
