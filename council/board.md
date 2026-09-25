@@ -21,12 +21,10 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Deliberating
 
-## Deliberating
-
 ## In Progress
-- EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
 
 ## In Review
+- EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
 
 ## Needs Human
 
