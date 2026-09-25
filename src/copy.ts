@@ -33,6 +33,10 @@
  *   (Supersedes the old citation of the `inputPrompt` literal at
  *   `index.ts:542` — stale since before EV-15; the literal lives in
  *   `rcLoginCommand`, cited structurally so the pointer cannot rot.)
+ * - the three registered command descriptions (EV-16) — the `rc`, `rc:off`,
+ *   and `rc:login` strings passed through `RemoteControllerDeps.command` in
+ *   `index.ts` — English under every locale, no `indonesianCopy` rows; any
+ *   future localized row for them is its own boundary-expansion card.
  *
  * Locale sourcing (ruling OJ3, applied at the entry point in `index.ts`):
  * `PI_REMOTE_LOCALE` env → `piRemote.locale` setting → fail-open `"en"`.

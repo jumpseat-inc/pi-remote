@@ -509,6 +509,81 @@ describe("EV-7 attended flow", () => {
   });
 });
 
+describe("EV-16 openUrl contract", () => {
+  const OPENING = "Opening your browser to enroll this host with";
+  const FALLBACK = "If the browser does not open, visit:";
+  const WAITING = "Waiting for browser…";
+  const FIXED_ROW =
+    "Could not open a browser — on a remote machine run /rc:login --headless. No credentials were saved.";
+
+  test("openUrl resolves false → exact fixed row, no fallback, no waiting, failure outcome, no credential", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    const deps = attendedDeps(c, {}, { openUrl: async () => false });
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runAttendedLogin(deps, null));
+    expect(result).toEqual({ kind: "failure", reason: "browserOpenFailed" });
+    // The opening line still prints (an opener IS present); the attempt fails.
+    expect(logs.some((l) => l.includes(OPENING))).toBe(true);
+    // The failure row is the settled Phase-1-fixed text, verbatim.
+    expect(logs.some((l) => l === FIXED_ROW)).toBe(true);
+    // No fallback URL and no waiting line — the finally closes the loopback
+    // server and discards verifier/state, so the pasted URL would be dead.
+    expect(logs.some((l) => l.includes(FALLBACK))).toBe(false);
+    expect(logs.some((l) => l.includes(WAITING))).toBe(false);
+    expect(readCredential({ configDir: deps.configDir })).toBeNull();
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("openUrl rejects → same failure branch (rejection collapses to false)", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    const deps = attendedDeps(c, {}, {
+      openUrl: async () => {
+        throw new Error("no browser");
+      },
+    });
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runAttendedLogin(deps, null));
+    expect(result).toEqual({ kind: "failure", reason: "browserOpenFailed" });
+    expect(logs.some((l) => l === FIXED_ROW)).toBe(true);
+    expect(logs.some((l) => l.includes(FALLBACK))).toBe(false);
+    expect(logs.some((l) => l.includes(WAITING))).toBe(false);
+    expect(readCredential({ configDir: deps.configDir })).toBeNull();
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("absent openUrl → fallback + waiting, NO opening line, no browserOpenFailed row (proceeds)", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    const deps = attendedDeps(c, {}, { redirectTimeoutMs: 50 });
+    delete (deps as Partial<LoginDeps>).openUrl;
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runAttendedLogin(deps, null));
+    // Without an opener the wait times out — NOT browserOpenFailed (absence
+    // must not route to failure, or every production attended login would
+    // print the --headless remedy).
+    expect(result).toEqual({ kind: "failure", reason: "redirectTimeout" });
+    expect(logs.some((l) => l.includes(OPENING))).toBe(false);
+    expect(logs.some((l) => l.includes(FALLBACK))).toBe(true);
+    expect(logs.some((l) => l.includes(WAITING))).toBe(true);
+    expect(logs.some((l) => l.includes("Could not open a browser"))).toBe(false);
+    expect(readCredential({ configDir: deps.configDir })).toBeNull();
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("success path with an opener: opening → attempt → fallback → waiting (reorder, byte-identical lines)", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("tenant-1"), expires_in: 300 });
+    const deps = attendedDeps(c);
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => runAttendedLogin(deps, null));
+    expect((result as LoginOutcome).kind).toBe("success");
+    expect(logs.length).toBe(4);
+    expect(logs[0]!.includes(OPENING)).toBe(true);
+    expect(logs[1]!.includes(FALLBACK)).toBe(true);
+    expect(logs[2]).toBe(WAITING);
+    expect(logs[3]!.includes("Signed in to")).toBe(true);
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+});
+
 describe("EV-7 headless flow", () => {
   test("happy path: relay block + poll → success, credential saved", async () => {
     const c = makeControl({}, { access_token: fakeJwt("t"), refresh_token: "r1", expires_in: 300 });
