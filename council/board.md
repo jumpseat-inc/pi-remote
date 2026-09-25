@@ -18,9 +18,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - EV-17 — "Let the user cancel an attended `/rc:login`"
 
 ## Ready
-- EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
 
 ## Deliberating
+
+## Deliberating
+- EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
 
 ## In Progress
 
