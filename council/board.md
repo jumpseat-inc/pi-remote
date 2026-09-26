@@ -21,6 +21,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Ready
 
 ## Deliberating
+
+## In Progress
 - EV-17 — "Let the user cancel an attended `/rc:login`"
 
 ## In Review
