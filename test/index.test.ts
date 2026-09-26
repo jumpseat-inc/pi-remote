@@ -13,7 +13,7 @@ import {
   type RemoteControllerDeps,
   type FooterView,
 } from "../index";
-import { loginEnglishFor } from "../src/login";
+import { loginEnglishFor, LOGIN_ATTENDED_CANCEL_MESSAGE, LOGIN_ATTENDED_CANCEL_TITLE } from "../src/login";
 import { setLocale } from "../src/copy";
 import { ALREADY_LIVE_COPY, tunnelReasonCopy } from "../src/tunnel";
 import type { TransportEnvelope, InboundEnvelope } from "../src/transport";
@@ -153,6 +153,10 @@ interface HarnessOptions {
   randomBytes?: (n: number) => Uint8Array;
   redirectTimeoutMs?: number;
   confirmReplacement?: () => Promise<boolean>;
+  /** EV-17 Q2 gate: the host confirm seam + run-mode probe, passed through
+   *  so the /rc:login waitForCancel threading is testable. */
+  uiConfirm?: (title: string, message: string, opts: { signal?: AbortSignal }) => Promise<boolean>;
+  hostMode?: () => string;
   /** FLLWUP-5 contract (b) fixture seam: direct-resolution path (production default is () => false). */
   resolvePendingPrompt?: (promptId: string, result: unknown, deviceId?: string) => boolean | Promise<boolean>;
 }
@@ -248,6 +252,8 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
     randomBytes: opts.randomBytes,
     confirmReplacement: opts.confirmReplacement ?? (async () => true),
     redirectTimeoutMs: opts.redirectTimeoutMs ?? 2000,
+    uiConfirm: opts.uiConfirm,
+    hostMode: opts.hostMode,
     ERROR_DIAL_THRESHOLD: 3,
     command: (name, handler, opts) => {
       commandHandlers[name] = (args?: string) => handler(args);
@@ -1008,6 +1014,94 @@ describe("EV-8 /rc:login (J5)", () => {
     }
 
     expect(logs).toContain(loginEnglishFor("login.headless.instructions"));
+    h.relay.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EV-17 Q2 gate — waitForCancel is threaded only on interactive ("tui") hosts
+// ---------------------------------------------------------------------------
+describe("EV-17 Q2 gate: /rc:login waitForCancel threading", () => {
+  /** The attended wait must park (no openUrl) with a short window; discovery
+   *  is stubbed so the driver reaches the wait. Driver copy prints via
+   *  console.log (src/login.ts print seam), hence the capture. */
+  async function parkedLogin(h: Awaited<ReturnType<typeof makeHarness>>): Promise<string[]> {
+    h.deps.fetch = (async (url: string) => {
+      if (url.includes("oauth-authorization-server")) {
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://cp.example.com/auth",
+            token_endpoint: "https://cp.example.com/token",
+            device_authorization_endpoint: "https://cp.example.com/device",
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    const logs: string[] = [];
+    const orig = console.log;
+    console.log = (...a: unknown[]) => {
+      logs.push(a.join(" "));
+    };
+    try {
+      await h.runCommand("rc:login");
+    } finally {
+      console.log = orig;
+    }
+    return logs;
+  }
+
+  const TIMEOUT_COPY = "The browser did not complete the consent in time.";
+  const CANCEL_LINE = "Sign-in cancelled — no credentials were saved.";
+
+  test("non-tui host mode: uiConfirm present but never called — no affordance, wait ends by timeout", async () => {
+    let confirmCalls = 0;
+    const h = await makeHarness({
+      noCredential: true,
+      inputPrompt: async () => "",
+      redirectTimeoutMs: 300,
+      uiConfirm: async () => {
+        confirmCalls += 1;
+        return true;
+      },
+      hostMode: () => "rpc",
+    });
+    const logs = await parkedLogin(h);
+    expect(logs.some((l) => l.includes(TIMEOUT_COPY))).toBe(true);
+    expect(logs.filter((l) => l === CANCEL_LINE)).toHaveLength(0);
+    expect(confirmCalls).toBe(0);
+    h.relay.stop();
+  });
+
+  test("tui host mode but uiConfirm absent: no affordance, wait ends by timeout", async () => {
+    const h = await makeHarness({
+      noCredential: true,
+      inputPrompt: async () => "",
+      redirectTimeoutMs: 300,
+      hostMode: () => "tui",
+    });
+    const logs = await parkedLogin(h);
+    expect(logs.some((l) => l.includes(TIMEOUT_COPY))).toBe(true);
+    expect(logs.filter((l) => l === CANCEL_LINE)).toHaveLength(0);
+    h.relay.stop();
+  });
+
+  test("tui host mode + uiConfirm: the affordance fires with the byte-exact dialog copy → cancelled", async () => {
+    const dialogs: { title: string; message: string }[] = [];
+    const h = await makeHarness({
+      noCredential: true,
+      inputPrompt: async () => "",
+      redirectTimeoutMs: 300,
+      uiConfirm: async (title, message) => {
+        dialogs.push({ title, message });
+        return true;
+      },
+      hostMode: () => "tui",
+    });
+    const logs = await parkedLogin(h);
+    expect(dialogs).toEqual([{ title: LOGIN_ATTENDED_CANCEL_TITLE, message: LOGIN_ATTENDED_CANCEL_MESSAGE }]);
+    expect(logs.filter((l) => l === CANCEL_LINE)).toHaveLength(1);
     h.relay.stop();
   });
 });
