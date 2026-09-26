@@ -1554,9 +1554,23 @@ describe("EV-17: attended cancel affordance", () => {
       await tick(10);
       return false;
     };
-    const deps = attendedDeps(c, {}, { redirectTimeoutMs: 5000, waitForCancel: gate });
+    // The callback must land DURING the wait (after the re-arm loop has
+    // started cycling): openUrl captures the redirect URL and returns at
+    // once, then the loopback fetch fires 30ms later — mid-wait.
+    const deps = attendedDeps(c, {}, {
+      redirectTimeoutMs: 5000,
+      waitForCancel: gate,
+      openUrl: async (url: string) => {
+        const u = new URL(url);
+        const redirect = u.searchParams.get("redirect_uri") ?? "";
+        setTimeout(() => {
+          void fetch(`${redirect}?code=C1&state=${u.searchParams.get("state")}`).catch(() => {});
+        }, 30);
+        return true;
+      },
+    });
     const { result } = await captureLog(() => runAttendedLogin(deps, null));
-    expect(result).toEqual({ kind: "success" });
+    expect((result as LoginOutcome).kind).toBe("success");
     // The callback win aborted the signal (dialog dismissed) ...
     expect(seen?.aborted).toBe(true);
     // ... and the re-arm loop stopped: the dep call count is frozen.
