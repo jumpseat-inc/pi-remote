@@ -7,6 +7,8 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Backlog
 - FLLWUP-43 — "Wire a real platform browser opener into the production entry so login.failure.browserOpenFailed is production-reachable"
 - FLLWUP-44 — "Run the palette-truncation real-host smoke on the settled /rc:login description (designer prediction P1)"
+- FLLWUP-45 — "EV-17 designer CDP smokes (P-A/P-D/E/F/P-G/P-H)"
+- FLLWUP-46 — "§7.2 \"login.cancelled outcome\" gloss"
 - FLLWUP-41 — "Key the /rc:login consent sentence as login.urlPrompt with a verified Indonesian row (EV-15 boundary-expansion follow-up)"
 - FLLWUP-42 — "Fix src/copy.ts's section comment that still says \"exactly the 22 settled keys\" after EV-15's 21-key landing"
 - FLLWUP-26 — "Scope §1.2/§5.7's 'security decision' vocabulary across per-delivery grant enforcement"
