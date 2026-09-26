@@ -95,6 +95,11 @@ export interface LoginDeps {
   /** Test seam: overrides the win32 icacls invocation inside the credential
    * store, so the acl-failed notice path is reachable on non-win32. */
   applyAcl?: ApplyAcl;
+  /** EV-17: the attended-wait cancel affordance (ruling Q2 — wired only on
+   * interactive hosts). Resolves true = user cancelled; false = keep waiting;
+   * rejection re-arms (rejection ≠ abort ≠ cancel). Aborted via the driver's
+   * AbortSignal when any terminal path wins first. */
+  waitForCancel?: (signal: AbortSignal) => Promise<boolean>;
 }
 
 export interface LoginCommand {
@@ -109,6 +114,13 @@ export interface LoginCommand {
 
 const SUCCESS_COPY =
   "Signed in to `<serverUrl>` — enrollment credentials saved for this host. Run /rc to start a tunnel.";
+
+// EV-17 (Stable Keys precedent): the attended-wait cancel affordance's
+// confirm dialog, byte-exact per the settled design pass. Exported verbatim
+// constants — deliberately NOT src/copy.ts rows (login-flow lines are
+// English-only by design; see NON_FAILURE_ROWS' coverage note).
+export const LOGIN_ATTENDED_CANCEL_TITLE = "Waiting for browser…";
+export const LOGIN_ATTENDED_CANCEL_MESSAGE = "Cancel sign-in?";
 
 export const LOGIN_SUCCESS_COPY: string = SUCCESS_COPY;
 export const ALREADY_LOGGING_IN_COPY: string =
@@ -454,7 +466,7 @@ type CallbackResult =
 export async function runAttendedLogin(
   deps: LoginDeps,
   existing: EnrollmentCredential | null = null,
-  ctl: { cancelled: boolean } = { cancelled: false }
+  ctl: { cancelled: boolean; wake?: () => void } = { cancelled: false }
 ): Promise<LoginOutcome> {
   deps.onState?.("authorizing");
   const discovered = await discoverForLogin(deps, false);
@@ -468,6 +480,20 @@ export async function runAttendedLogin(
   let settle: (r: CallbackResult) => void = () => {};
   const cbPromise = new Promise<CallbackResult>((res) => (settle = res));
   let settled = false;
+  // EV-17: all abort plumbing below is new. One AbortController dismisses the
+  // cancel dialog from every terminal path; one guarded finisher makes
+  // first-wins total across all four (callback win, timer fire,
+  // confirm-cancel, external cancel() wake).
+  const ctrl = new AbortController();
+  const signal = ctrl.signal;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const finish = (result: CallbackResult): void => {
+    if (settled) return;
+    settled = true;
+    if (timer !== undefined) clearTimeout(timer);
+    ctrl.abort();
+    settle(result);
+  };
   const state = base64url(rng(32));
 
   // FLLWUP-105: the loopback listener is built on node:http, NOT `Bun.serve`.
@@ -488,10 +514,7 @@ export async function runAttendedLogin(
       else if (stateParam !== state) result = { type: "mismatch" };
       else result = { type: "code", code };
     }
-    if (!settled) {
-      settled = true;
-      settle(result);
-    }
+    finish(result);
     res.statusCode = result.type === "code" ? 200 : 400;
     res.setHeader("content-type", "text/plain");
     res.end("enrollment");
@@ -560,12 +583,34 @@ export async function runAttendedLogin(
     print(deps, loginEnglishFor("login.attended.waiting"));
 
     const timeoutMs = deps.redirectTimeoutMs ?? 300_000;
-    const timer = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        settle({ type: "timeout" });
-      }
-    }, timeoutMs);
+    timer = setTimeout(() => finish({ type: "timeout" }), timeoutMs);
+    // EV-17: external cancel() must wake the wait, not just flip the flag —
+    // the wake is the guarded finisher (first-wins; no-op once settled).
+    ctl.wake = () => finish({ type: "cancelled" });
+    // EV-17: driver-side re-arm loop over the cancel affordance. Re-arm on
+    // `false` (and on rejection — rejection ≠ abort ≠ cancel) until the
+    // signal aborts; abort is detected via signal.aborted/settled AFTER each
+    // await, never off the resolved value (O-2: abort is an ordinary `false`
+    // in both TUI and RPC hosts). Confirm-true settles cancelled WITHOUT
+    // touching ctl.cancelled (the callback branch stays honest — O-5).
+    const waitForCancel = deps.waitForCancel;
+    if (waitForCancel) {
+      void (async () => {
+        while (!signal.aborted && !settled) {
+          let decided: boolean;
+          try {
+            decided = await waitForCancel(signal);
+          } catch {
+            continue; // rejection re-arms
+          }
+          if (signal.aborted || settled) return;
+          if (decided) {
+            finish({ type: "cancelled" });
+            return;
+          }
+        }
+      })();
+    }
     const cb = await cbPromise;
     clearTimeout(timer);
 
@@ -868,7 +913,7 @@ export async function runHeadlessLogin(
 // ---------------------------------------------------------------------------
 
 export function createLoginCommand(deps: LoginDeps): LoginCommand {
-  const ctl = { cancelled: false };
+  const ctl: { cancelled: boolean; wake?: () => void } = { cancelled: false };
   let inflight: Promise<LoginOutcome> | null = null;
 
   const run = (mode: LoginMode, existing?: EnrollmentCredential | null): Promise<LoginOutcome> => {
@@ -911,6 +956,11 @@ export function createLoginCommand(deps: LoginDeps): LoginCommand {
 
   const cancel = (): void => {
     ctl.cancelled = true;
+    // EV-17: wake the attended wait so cancel() actually ends it (the flag
+    // alone is only checked after the wait resolves). No-op once settled;
+    // headless keeps polling the flag. Documented test/external seam — the
+    // user-facing surface is the confirm dialog alone.
+    ctl.wake?.();
   };
 
   return { run, cancel, isRunning: () => inflight !== null };

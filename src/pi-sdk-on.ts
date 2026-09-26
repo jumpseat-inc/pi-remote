@@ -30,6 +30,11 @@ export interface PiExtensionContext {
     setStatus(key: string, text: string | undefined): void;
     /** Real signature: input(title: string, placeholder?: string): Promise<string | undefined> */
     input(title: string, placeholder?: string): Promise<string | undefined>;
+    /** Real signature (installed types.d.ts:73; ExtensionUIDialogOptions :37-42):
+     * confirm(title: string, message: string, opts?: { signal?: AbortSignal; timeout?: number }): Promise<boolean>
+     * (EV-17 ruling Q1, route (a): declare, do not omit — both optional members
+     * declared per the EPIC-6/FLLWUP-39 declare rule.) */
+    confirm(title: string, message: string, opts?: { signal?: AbortSignal; timeout?: number }): Promise<boolean>;
   };
   /** Current run mode: "tui" | "rpc" | "json" | "print" (ExtensionMode). */
   mode: string;
