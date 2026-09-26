@@ -1464,3 +1464,174 @@ describe("EV-15: noServerUrl / rc.serverUrlRequired removal", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// EV-17 — attended cancel affordance (docs/superpowers/specs/2026-09-25-EV-17-design.md)
+// ---------------------------------------------------------------------------
+describe("EV-17: attended cancel affordance", () => {
+  const CANCEL_LINE = "Sign-in cancelled — no credentials were saved.";
+  const tick = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+  /** Deps that park the attended wait: no callback inbound, small timeout. */
+  function parkedDeps(
+    c: Control,
+    extras: Partial<LoginDeps> = {}
+  ): LoginDeps & { configDir: string } {
+    return attendedDeps(c, { skipCallback: true }, { redirectTimeoutMs: 2000, ...extras });
+  }
+
+  test("A1 (raw driver): cancel gate resolving true → cancelled, no endpoint traffic, no credential", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    const deps = parkedDeps(c, { waitForCancel: async () => true });
+    loginEndpointRequestLog.length = 0;
+    const start = Date.now();
+    const { result, logs } = await captureLog(() => runAttendedLogin(deps, null));
+    const elapsed = Date.now() - start;
+    const o = result as LoginOutcome;
+    expect(o).toEqual({ kind: "cancelled" });
+    // A2/A3: an interrupt, not a reason-flip at timer fire — elapsed strictly
+    // below the injected redirectTimeoutMs.
+    expect(elapsed).toBeLessThan(2000);
+    // The driver NEVER prints the cancel line — the print lives in the facade
+    // (asserted print-once through the facade in the next test).
+    expect(logs.filter((l) => l === CANCEL_LINE)).toHaveLength(0);
+    // Zero token-endpoint or device-endpoint requests after the signal.
+    expect(
+      loginEndpointRequestLog.filter((e) => {
+        const url = (e as { url: string }).url;
+        return url === c.tokenEndpoint || url === c.deviceEndpoint;
+      })
+    ).toHaveLength(0);
+    expect(readCredential({ configDir: deps.configDir })).toBeNull();
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("A1 (facade): the cancel line is printed exactly once by the facade", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    const deps = parkedDeps(c, { waitForCancel: async () => true });
+    loginEndpointRequestLog.length = 0;
+    const { result, logs } = await captureLog(() => createLoginCommand(deps).run("attended"));
+    expect(result).toEqual({ kind: "cancelled" });
+    expect(logs.filter((l) => l === CANCEL_LINE)).toHaveLength(1);
+    expect(readCredential({ configDir: deps.configDir })).toBeNull();
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("A5: the dead callback-cancelled branch is reachable and does NOT set ctl.cancelled", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    const ctl = { cancelled: false };
+    const deps = parkedDeps(c, { waitForCancel: async () => true });
+    const { result } = await captureLog(() => runAttendedLogin(deps, null, ctl));
+    expect(result).toEqual({ kind: "cancelled" });
+    // Confirm-cancel settles { type: "cancelled" } via the callback branch —
+    // an implementation that sets the flag on this path fails here (O-5).
+    expect(ctl.cancelled).toBe(false);
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("rejection re-arms: reject once, then resolve true → cancelled, dep invoked twice", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    let calls = 0;
+    const gate = async (): Promise<boolean> => {
+      calls += 1;
+      if (calls === 1) throw new Error("transient");
+      return true;
+    };
+    const deps = parkedDeps(c, { waitForCancel: gate });
+    const { result } = await captureLog(() => runAttendedLogin(deps, null));
+    expect(result).toEqual({ kind: "cancelled" });
+    expect(calls).toBe(2);
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("finisher totality — server-callback win: one settle, signal aborted, no re-arm after the win", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    let calls = 0;
+    let seen: AbortSignal | undefined;
+    const gate = async (signal: AbortSignal): Promise<boolean> => {
+      seen = signal;
+      calls += 1;
+      await tick(10);
+      return false;
+    };
+    const deps = attendedDeps(c, {}, { redirectTimeoutMs: 5000, waitForCancel: gate });
+    const { result } = await captureLog(() => runAttendedLogin(deps, null));
+    expect(result).toEqual({ kind: "success" });
+    // The callback win aborted the signal (dialog dismissed) ...
+    expect(seen?.aborted).toBe(true);
+    // ... and the re-arm loop stopped: the dep call count is frozen.
+    const frozen = calls;
+    await tick(30);
+    expect(calls).toBe(frozen);
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("finisher totality — timer fire: one settle, signal aborted, no re-arm after the win", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    let calls = 0;
+    let seen: AbortSignal | undefined;
+    const gate = async (signal: AbortSignal): Promise<boolean> => {
+      seen = signal;
+      calls += 1;
+      await tick(10);
+      return false;
+    };
+    const deps = parkedDeps(c, { redirectTimeoutMs: 100, waitForCancel: gate });
+    const { result } = await captureLog(() => runAttendedLogin(deps, null));
+    expect(result).toEqual({ kind: "failure", reason: "redirectTimeout" });
+    expect(seen?.aborted).toBe(true);
+    const frozen = calls;
+    await tick(30);
+    expect(calls).toBe(frozen);
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("finisher totality — confirm-true: exactly one settle, one dep invocation, signal aborted", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    let calls = 0;
+    let seen: AbortSignal | undefined;
+    const gate = async (signal: AbortSignal): Promise<boolean> => {
+      seen = signal;
+      calls += 1;
+      return true;
+    };
+    const deps = parkedDeps(c, { waitForCancel: gate });
+    const { result } = await captureLog(() => runAttendedLogin(deps, null));
+    expect(result).toEqual({ kind: "cancelled" });
+    expect(calls).toBe(1);
+    expect(seen?.aborted).toBe(true);
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+
+  test("no spin on abort: gate resolving false forever, cancel() wakes → count frozen, cancelled", async () => {
+    const c = makeControl({}, { access_token: fakeJwt("t"), expires_in: 300 });
+    let calls = 0;
+    let seen: AbortSignal | undefined;
+    const gate = async (signal: AbortSignal): Promise<boolean> => {
+      seen = signal;
+      calls += 1;
+      await tick(10);
+      return false;
+    };
+    const deps = parkedDeps(c, { waitForCancel: gate });
+    loginEndpointRequestLog.length = 0;
+    const start = Date.now();
+    const cmd = createLoginCommand(deps);
+    setTimeout(() => cmd.cancel(), 50);
+    const { result } = await captureLog(() => cmd.run("attended"));
+    const elapsed = Date.now() - start;
+    expect(result).toEqual({ kind: "cancelled" });
+    expect(elapsed).toBeLessThan(2000);
+    expect(seen?.aborted).toBe(true);
+    const frozen = calls;
+    await tick(30);
+    expect(calls).toBe(frozen);
+    expect(
+      loginEndpointRequestLog.filter((e) => {
+        const url = (e as { url: string }).url;
+        return url === c.tokenEndpoint || url === c.deviceEndpoint;
+      })
+    ).toHaveLength(0);
+    rmSync(deps.configDir, { recursive: true, force: true });
+  });
+});
