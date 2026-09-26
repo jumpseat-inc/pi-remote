@@ -25,11 +25,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- EV-17 — "Let the user cancel an attended `/rc:login`"
 
 ## Needs Human
 
 ## Done
+- EV-17 — "Let the user cancel an attended `/rc:login`"
 - EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
 - EV-15 — "Default the control-plane URL to `https://relay.jumpseat.sh`"
 - EPIC-6 — "SDK vendoring residuals — FLLWUP-39/40 delivered in one council run"
