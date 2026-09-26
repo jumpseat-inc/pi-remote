@@ -298,7 +298,13 @@ static key, never an environment variable.
   extension is a **public client** —
   no client secret. The loopback redirect is bound to 127.0.0.1 only, and
   the listener lives for the duration of the `/rc:login` command only
-  (§7.1 — the extension never listens otherwise).
+  (§7.1 — the extension never listens otherwise). On interactive hosts
+  (run mode `tui`) the attended wait additionally offers a cancel
+  affordance — a `ui.confirm` dialog ("Waiting for browser…" /
+  "Cancel sign-in?") that ends the flow at once with the
+  `login.cancelled` outcome and no credential written — while
+  non-interactive hosts offer no such affordance and the wait ends by
+  callback, mismatch, or timeout (EV-17).
 - **Unattended enrollment (headless host) — Device Authorization Grant
   (RFC 8628).** `/rc:login --headless` POSTs `{device_authorization_endpoint}`
   to obtain a device code, prints `user_code` and `verification_uri_complete`
