@@ -38,7 +38,7 @@ import {
 import { renderCopy, setLocale } from "./src/copy";
 import { readCredential, saveCredentialAsync, type EnrollmentCredential } from "./src/credential";
 import { resolveServerUrl } from "./src/server-url";
-import { createLoginCommand, loginEnglishFor } from "./src/login";
+import { createLoginCommand, loginEnglishFor, LOGIN_ATTENDED_CANCEL_MESSAGE, LOGIN_ATTENDED_CANCEL_TITLE } from "./src/login";
 import type { LoginMode } from "./src/login";
 import { mergeTransport, transportErrorKey, STATUS_KEYS, type FooterState } from "./src/merge";
 import { sessionEntriesToJsonl, type SessionEntry } from "./src/replay-adapter";
@@ -116,6 +116,14 @@ export interface RemoteControllerDeps {
   openUrl?: (url: string) => Promise<boolean>;
   confirmReplacement?: () => Promise<boolean>;
   redirectTimeoutMs?: number;
+  /** EV-17 (ruling Q1/Q2): lazy capture of the host's ui.confirm dialog —
+   *  implemented in the entry closure where requireCtx is lexically in scope.
+   *  Absent = the host offers no confirm dialog. */
+  uiConfirm?: (title: string, message: string, opts: { signal?: AbortSignal }) => Promise<boolean>;
+  /** EV-17 (ruling Q2): the real host run mode (PiExtensionContext.mode,
+   *  "tui" | "rpc" | "json" | "print"). The cancel affordance is threaded
+   *  only where confirm can genuinely wait on a user (mode === "tui"). */
+  hostMode?: () => string;
   /** N consecutive error-severity dialing events before footer → error (J4, default 10). */
   ERROR_DIAL_THRESHOLD?: number;
   /** EV-16: opts.description is required — every registered command declares
@@ -697,6 +705,15 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
           return answer !== undefined;
         }),
       redirectTimeoutMs: deps.redirectTimeoutMs,
+      // EV-17: the attended-wait cancel affordance — wired ONLY on interactive
+      // hosts (mode "tui"); elsewhere the dep stays undefined and the wait
+      // ends by callback, mismatch, or timeout exactly as before (ruling Q2:
+      // the gate changes presence, not behavior). Verified at command-run
+      // time, when ctxHolder is already set.
+      waitForCancel:
+        deps.uiConfirm && deps.hostMode?.() === "tui"
+          ? (signal) => deps.uiConfirm!(LOGIN_ATTENDED_CANCEL_TITLE, LOGIN_ATTENDED_CANCEL_MESSAGE, { signal })
+          : undefined,
       discoveryCache,
       onState: (s) => {
         if (s === "authorizing") applyFooter("authorizing");
@@ -948,6 +965,10 @@ export default function (pi: ExtensionAPI): void {
     resolvePendingPrompt: () => false,
     readActiveBranch: () => Promise.resolve(requireCtx().sessionManager.getBranch()),
     inputPrompt: (prompt) => requireCtx().ui.input(prompt),
+    // EV-17: lazy captures of the real ctx surface (same pattern as
+    // inputPrompt) — the confirm dialog and the run-mode probe.
+    uiConfirm: (title, message, opts) => requireCtx().ui.confirm(title, message, opts),
+    hostMode: () => requireCtx().mode,
     fetch: globalThis.fetch,
     WebSocket,
     // EV-16: forward the per-command description (the real RegisteredCommand
