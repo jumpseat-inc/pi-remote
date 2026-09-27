@@ -1,7 +1,7 @@
 ---
 id: BUG-2
 title: "Stop /rc:login user lines from landing in the TUI prompt box via console.log"
-state: In Review
+state: Done
 owner: null
 epic: null
 goal: Attended and headless `/rc:login` user lines, including exactly `If the browser does not open, visit: `<authorizeUrl>``, `Waiting for browser…`, and `Signed in to `<serverUrl>` — enrollment credentials saved for this host. Run /rc to start a tunnel.` with ` (tenant ` + the tenant id + `)` appended when a tenant id is present, are delivered through `ctx.ui.notify` and are not written by `console.log` or `process.stdout.write`, and the production command print wiring in `index.ts` likewise calls `ctx.ui.notify` instead of `console.log`, proven by an automated test; after a successful attended login the last `ctx.ui.setStatus("pi-remote", …)` argument is exactly `Off`.
@@ -42,4 +42,7 @@ Isolated worktree `../pi-remote-bug-2`, branch `owner/BUG-2-login-notify`, PR **
 Input: the `goal` + Skeptic evidence + pinned head only. **Verdict: PASS**. Judge re-ran `bun test test/bug2-login-notify.test.ts` at `68cd9ce` — 3 pass / 0 fail / 16 expect() calls — plus full suite 331 pass / 7 skip / 0 fail and `bunx tsc --noEmit` clean.
 
 ### Step 11 — human merge gate
-Presented to the human. No self-approval. Waiting for the human to merge. Card stays `In Review` until the merge lands with CI green on the merged SHA.
+Human said "Merge it". Merged `gh pr merge 52 --merge --match-head-commit 68cd9ce063abfd0c1ff9252db78acbe26420a8d8` (no `--admin`). PR MERGED at 2026-09-27T13:57:17Z, merge commit `112ed2245e7b67c8224f1bf2046d3b42a7058fe2`. CI on that SHA: workflow `gates` run 36324181683, `gates` success, `gates-windows` success.
+
+### Step 12 — sync and reconcile
+`git fetch origin`. Local `main` was ahead 4 / behind 4 (council record commits vs the merge). Fast-forward impossible. Union-merged `origin/main` (merge `ff0998e`); ort auto-resolved, no conflict markers in `council/`. `112ed224` is an ancestor of HEAD. Card set `Done` from that observed merged SHA with green CI. Direct record push not executed: `council/phase1-authorizations.json` grants `direct-record-push-to-main` for run `EPIC-7` only, not this run.

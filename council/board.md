@@ -25,11 +25,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- BUG-2 — "Stop /rc:login user lines from landing in the TUI prompt box via console.log"
 
 ## Needs Human
 
 ## Done
+- BUG-2 — "Stop /rc:login user lines from landing in the TUI prompt box via console.log"
 - EPIC-7 — "Default relay URL, attended-login cancellation, and --headless discoverability"
 - EV-17 — "Let the user cancel an attended `/rc:login`"
 - EV-16 — "Make `--headless` discoverable from the `/rc:login` command surface"
