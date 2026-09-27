@@ -23,9 +23,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
-- BUG-2 — "Stop /rc:login user lines from landing in the TUI prompt box via console.log"
 
 ## In Review
+- BUG-2 — "Stop /rc:login user lines from landing in the TUI prompt box via console.log"
 
 ## Needs Human
 

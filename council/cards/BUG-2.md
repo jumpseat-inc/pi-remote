@@ -1,7 +1,7 @@
 ---
 id: BUG-2
 title: "Stop /rc:login user lines from landing in the TUI prompt box via console.log"
-state: In Progress
+state: In Review
 owner: null
 epic: null
 goal: Attended and headless `/rc:login` user lines, including exactly `If the browser does not open, visit: `<authorizeUrl>``, `Waiting for browser…`, and `Signed in to `<serverUrl>` — enrollment credentials saved for this host. Run /rc to start a tunnel.` with ` (tenant ` + the tenant id + `)` appended when a tenant id is present, are delivered through `ctx.ui.notify` and are not written by `console.log` or `process.stdout.write`, and the production command print wiring in `index.ts` likewise calls `ctx.ui.notify` instead of `console.log`, proven by an automated test; after a successful attended login the last `ctx.ui.setStatus("pi-remote", …)` argument is exactly `Off`.
@@ -31,3 +31,6 @@ Card read; `state: Ready`. `council_route` op `route` → fallback (`no recorded
 
 ### Step 7 — mechanical handoff
 No deliberation ran, so no spec file; the card's own `Intent` / `goal` / `Acceptance` is the handoff. Card set `In Progress`.
+
+### Step 8 — owner implements (job-1, settled 15.3m)
+Isolated worktree `../pi-remote-bug-2`, branch `owner/BUG-2-login-notify`, PR **#52** open at head `68cd9ce063abfd0c1ff9252db78acbe26420a8d8` (observed via `gh pr view 52`: state OPEN, not draft, base `main`). Card set `In Review` from that open PR, not from the owner's gate report.
