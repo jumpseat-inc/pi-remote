@@ -118,6 +118,7 @@ function attendedDeps(configDir: string, onUserLine: (line: string) => void, acc
 interface EntryHarness {
   notifyLines: string[];
   statusLines: string[];
+  fireEvent: (event: string) => Promise<void>;
   run: (name: string, args?: string) => Promise<void>;
   cleanup: () => void;
 }
@@ -144,8 +145,12 @@ function loadEntry(): EntryHarness {
     sessionManager: { getSessionId: () => "sess-1" },
     isIdle: () => true,
   };
+  const eventHandlers: Record<string, (ev: unknown, ctx: unknown) => unknown> = {};
   const fakePi = {
-    on: () => () => {},
+    on: (event: string, handler: (ev: unknown, ctx: unknown) => unknown) => {
+      eventHandlers[event] = handler;
+      return () => {};
+    },
     registerCommand: (name: unknown, opts: { handler: (args: string | undefined, ctx: unknown) => Promise<void> | void }) => {
       handlers[String(name)] = opts.handler;
     },
@@ -157,6 +162,11 @@ function loadEntry(): EntryHarness {
   return {
     notifyLines,
     statusLines,
+    fireEvent: async (event) => {
+      const handler = eventHandlers[event];
+      if (!handler) throw new Error(`event handler not registered: ${event}`);
+      await handler(undefined, fakeCtx);
+    },
     run: async (name, args) => {
       const handler = handlers[name];
       if (!handler) throw new Error(`command not registered: ${name}`);
@@ -166,6 +176,20 @@ function loadEntry(): EntryHarness {
       rmSync(configDir, { recursive: true, force: true });
     },
   };
+}
+
+/**
+ * Deadline-bounded poll for the fire-and-forget shutdown path:
+ * index.ts's session_shutdown handler is `void controller.onShutdown()`, so
+ * awaiting the handler does not await the teardown/print chain. Wait until
+ * the notify sink has received a row, then assert exactly.
+ */
+async function waitForNotifyRow(notifyLines: string[], timeoutMs = 2000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (notifyLines.length === 0) {
+    if (Date.now() > deadline) throw new Error("timed out waiting for the shutdown row on the notify sink");
+    await new Promise((r) => setTimeout(r, 10));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -233,6 +257,29 @@ describe("BUG-2: production index.ts print wiring routes through ctx.ui.notify",
       expect(h.notifyLines).toContain("No enrollment credential found — run /rc:login");
       expect(h.notifyLines).toContain("Remote tunnel closed");
 
+      expectSentinelsSilent();
+    } finally {
+      h.cleanup();
+    }
+  });
+
+  test("session_shutdown delivers exactly `Remote tunnel closed` via ctx.ui.notify; console.log and process.stdout.write stay silent", async () => {
+    installSentinels();
+    const h = loadEntry();
+    try {
+      // Drive the PRODUCTION shutdown path at the real entry boundary: the
+      // session_shutdown subscription registered on the host (index.ts), not
+      // a controller method and not the /rc:off command driver.
+      await h.fireEvent("session_shutdown");
+
+      await waitForNotifyRow(h.notifyLines);
+
+      // Row-level and path-specific: shutdown.closed's English row is byte-
+      // identical to rc.offLifecycle's, so this must hold on the shutdown
+      // path alone — the whole sink transcript is exactly this one row.
+      expect(h.notifyLines).toEqual(["Remote tunnel closed"]);
+
+      // BUG-2's other half: the row never reaches the raw terminal.
       expectSentinelsSilent();
     } finally {
       h.cleanup();
