@@ -5,6 +5,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
+- FLLWUP-48 — Generalize the bug2 notify test harness for per-event forwarded contexts
 - FLLWUP-43 — "Wire a real platform browser opener into the production entry so login.failure.browserOpenFailed is production-reachable"
 - FLLWUP-44 — "Run the palette-truncation real-host smoke on the settled /rc:login description (designer prediction P1)"
 - FLLWUP-45 — "EV-17 designer CDP smokes (P-A/P-D/E/F/P-G/P-H)"
