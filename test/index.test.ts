@@ -865,8 +865,9 @@ describe("EV-8 /rc:login (J5)", () => {
     h.relay.stop();
   });
 
-  // BUG-1: the driver prints via console.log (src/login.ts print seam),
-  // not deps.print, so these tests capture console output around the run.
+  // BUG-2: the driver's user lines ride deps.print (production: ctx.ui.notify).
+  // These sentinels prove no line leaks to the raw terminal (console.log /
+  // process.stdout.write) — the TUI prompt-box paint bug this pins shut.
   function captureConsole(): { logs: string[]; restore: () => void } {
     const logs: string[] = [];
     const origLog = console.log;
@@ -924,7 +925,9 @@ describe("EV-8 /rc:login (J5)", () => {
       restore();
     }
 
-    expect(logs).toContain(loginEnglishFor("login.headless.instructions"));
+    expect(h.printed).toContain(loginEnglishFor("login.headless.instructions"));
+    expect(h.printed).toContain("Enrolling this host against https://cp.example.com (headless device flow).");
+    expect(logs).toEqual([]); // BUG-2: headless lines never touch the terminal
     expect(openUrls).toHaveLength(0); // no browser in headless mode
     expect(lastSet(h.setStatus)).toBe(OFF_SENTENCE);
     h.relay.stop();
@@ -974,6 +977,8 @@ describe("EV-8 /rc:login (J5)", () => {
     }
 
     expect(openUrls.length).toBeGreaterThanOrEqual(1); // attended opens the browser
+    expect(h.printed).toContain("Waiting for browser…");
+    expect(logs).toEqual([]); // BUG-2: attended lines never touch the terminal
     expect(logs).not.toContain(loginEnglishFor("login.headless.instructions"));
     expect(lastSet(h.setStatus)).toBe(OFF_SENTENCE);
     h.relay.stop();
@@ -1013,7 +1018,104 @@ describe("EV-8 /rc:login (J5)", () => {
       restore();
     }
 
-    expect(logs).toContain(loginEnglishFor("login.headless.instructions"));
+    expect(h.printed).toContain(loginEnglishFor("login.headless.instructions"));
+    expect(logs).toEqual([]); // BUG-2: headless lines never touch the terminal
+    h.relay.stop();
+  });
+
+  // BUG-2: the card-pinned attended lines land in the notify sink (h.printed
+  // = the deps.print stand-in), the terminal sentinels stay silent, and the
+  // setStatus sequence still carries authorizing and ends exactly at Off.
+  test("BUG-2: attended success — fallback, waiting, and success (with tenant) in the notify sink; console silent; footer ends Off", async () => {
+    const { logs, restore } = captureConsole();
+    const h = await makeHarness({
+      inputPrompt: async () => "",
+      randomBytes: () => new Uint8Array(8),
+      openUrl: async (url) => {
+        const u = new URL(url);
+        const state = u.searchParams.get("state") ?? "";
+        const redirect = u.searchParams.get("redirect_uri") ?? "";
+        await fetch(`${redirect}?code=okcode&state=${state}`);
+        return true;
+      },
+    });
+    h.deps.fetch = (async (url: string, init?: RequestInit) => {
+      if (url.includes("oauth-authorization-server")) {
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://cp.example.com/auth",
+            token_endpoint: "https://cp.example.com/token",
+            device_authorization_endpoint: "https://cp.example.com/device",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/token") && init?.method === "POST") {
+        // JWT access token whose `sub` is the tenant claim (J1).
+        const payload = btoa(JSON.stringify({ sub: "tenant-42" })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        return new Response(
+          JSON.stringify({ access_token: `h.${payload}.s`, refresh_token: "rt-new", expires_in: 3600 }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await h.runCommand("rc:login");
+    } finally {
+      restore();
+    }
+
+    expect(h.printed.some((l) => /^If the browser does not open, visit: `https:\/\/cp\.example\.com\/auth\?.*`$/.test(l))).toBe(true);
+    expect(h.printed).toContain("Waiting for browser…");
+    expect(h.printed).toContain(
+      "Signed in to `https://cp.example.com` — enrollment credentials saved for this host. Run /rc to start a tunnel. (tenant tenant-42)"
+    );
+    expect(logs).toEqual([]);
+    expect(h.setStatus).toContain(loginEnglishFor("status.authorizing"));
+    expect(lastSet(h.setStatus)).toBe(OFF_SENTENCE);
+    h.relay.stop();
+  });
+
+  test("BUG-2: attended success without a tenant claim — success line has no tenant parenthetical", async () => {
+    const h = await makeHarness({
+      inputPrompt: async () => "",
+      randomBytes: () => new Uint8Array(8),
+      openUrl: async (url) => {
+        const u = new URL(url);
+        const state = u.searchParams.get("state") ?? "";
+        const redirect = u.searchParams.get("redirect_uri") ?? "";
+        await fetch(`${redirect}?code=okcode&state=${state}`);
+        return true;
+      },
+    });
+    h.deps.fetch = (async (url: string, init?: RequestInit) => {
+      if (url.includes("oauth-authorization-server")) {
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://cp.example.com/auth",
+            token_endpoint: "https://cp.example.com/token",
+            device_authorization_endpoint: "https://cp.example.com/device",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/token") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({ access_token: "at-new", refresh_token: "rt-new", expires_in: 3600 }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    await h.runCommand("rc:login");
+
+    expect(h.printed).toContain(
+      "Signed in to `https://cp.example.com` — enrollment credentials saved for this host. Run /rc to start a tunnel."
+    );
+    expect(h.printed.some((l) => l.includes("(tenant "))).toBe(false);
     h.relay.stop();
   });
 });
@@ -1023,8 +1125,9 @@ describe("EV-8 /rc:login (J5)", () => {
 // ---------------------------------------------------------------------------
 describe("EV-17 Q2 gate: /rc:login waitForCancel threading", () => {
   /** The attended wait must park (no openUrl) with a short window; discovery
-   *  is stubbed so the driver reaches the wait. Driver copy prints via
-   *  console.log (src/login.ts print seam), hence the capture. */
+   *  is stubbed so the driver reaches the wait. Driver copy rides deps.print
+   *  (BUG-2: production routes it to ctx.ui.notify), so the delta of
+   *  h.printed around the run is the observed emission. */
   async function parkedLogin(h: Awaited<ReturnType<typeof makeHarness>>): Promise<string[]> {
     h.deps.fetch = (async (url: string) => {
       if (url.includes("oauth-authorization-server")) {
@@ -1039,17 +1142,9 @@ describe("EV-17 Q2 gate: /rc:login waitForCancel threading", () => {
       }
       return new Response("{}", { status: 200 });
     }) as typeof fetch;
-    const logs: string[] = [];
-    const orig = console.log;
-    console.log = (...a: unknown[]) => {
-      logs.push(a.join(" "));
-    };
-    try {
-      await h.runCommand("rc:login");
-    } finally {
-      console.log = orig;
-    }
-    return logs;
+    const before = h.printed.length;
+    await h.runCommand("rc:login");
+    return h.printed.slice(before);
   }
 
   const TIMEOUT_COPY = "The browser did not complete the consent in time.";
