@@ -685,6 +685,9 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       serverUrl,
       configDir: deps.configDir,
       fetch: deps.fetch,
+      // BUG-2: the driver's user lines ride the same notify-routed print dep
+      // as the command surface — never console.log.
+      onUserLine: deps.print,
       now,
       randomBytes: deps.randomBytes,
       sha256: deps.sha256,
@@ -959,7 +962,10 @@ export default function (pi: ExtensionAPI): void {
     hostMetadata: hostMetadataFromOs({ platform: osPlatform, arch: osArch }),
     sessionId: () => requireCtx().sessionManager.getSessionId(),
     setStatus: (s) => requireCtx().ui.setStatus("pi-remote", s),
-    print: (line) => console.log(line),
+    // BUG-2: pi's TUI owns stdout in interactive mode — a console.log paints
+    // raw terminal output inside the prompt box and desyncs the redraw. The
+    // non-blocking user surface is ctx.ui.notify (types.d.ts:77).
+    print: (line) => requireCtx().ui.notify(line),
     sendUserMessage: (c, o) => pi.sendUserMessage(c, o),
     isStreaming: () => !requireCtx().isIdle(),
     resolvePendingPrompt: () => false,
