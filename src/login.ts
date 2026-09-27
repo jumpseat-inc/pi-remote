@@ -100,6 +100,12 @@ export interface LoginDeps {
    * rejection re-arms (rejection ≠ abort ≠ cancel). Aborted via the driver's
    * AbortSignal when any terminal path wins first. */
   waitForCancel?: (signal: AbortSignal) => Promise<boolean>;
+  /** BUG-2: the host user-line sink. Every user-facing line this driver emits
+   * (attended, headless, failure) is delivered here when present — production
+   * injects the controller's ctx.ui.notify-routed print dep (pi's TUI owns
+   * stdout, so a raw console.log paints inside the prompt box). Absent = the
+   * historical console.log fallback (headless/standalone reuse, tests). */
+  onUserLine?: (line: string) => void;
 }
 
 export interface LoginCommand {
@@ -971,6 +977,10 @@ export function createLoginCommand(deps: LoginDeps): LoginCommand {
 // ---------------------------------------------------------------------------
 
 function print(deps: LoginDeps, line: string): void {
+  if (deps.onUserLine) {
+    deps.onUserLine(line);
+    return;
+  }
   // eslint-disable-next-line no-console
   console.log(line);
 }

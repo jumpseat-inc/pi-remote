@@ -184,12 +184,15 @@ describe("BUG-2: login user lines reach the notify sink, never the terminal", ()
       )) as LoginOutcome;
       expect(outcome).toEqual({ kind: "success", tenantId: "tenant-42" });
 
-      // The three card-pinned rows, rendered. The fallback URL is the wire
-      // authorize URL (loopback port is dynamic → structural exactness).
-      expect(lines.length).toBe(3);
-      expect(lines[0]).toMatch(/^If the browser does not open, visit: `https:\/\/cp\.example\/auth\?.*`$/);
-      expect(lines[1]).toBe("Waiting for browser…");
-      expect(lines[2]).toBe(
+      // All four user rows, rendered, in driver order: opening (openUrl is
+      // supplied), the card-pinned fallback, waiting, success. The fallback
+      // URL is the wire authorize URL (loopback port is dynamic → structural
+      // exactness there; the other three are byte-exact).
+      expect(lines.length).toBe(4);
+      expect(lines[0]).toBe("Opening your browser to enroll this host with `https://cp.example`…");
+      expect(lines[1]).toMatch(/^If the browser does not open, visit: `https:\/\/cp\.example\/auth\?.*`$/);
+      expect(lines[2]).toBe("Waiting for browser…");
+      expect(lines[3]).toBe(
         "Signed in to `https://cp.example` — enrollment credentials saved for this host. Run /rc to start a tunnel. (tenant tenant-42)"
       );
 

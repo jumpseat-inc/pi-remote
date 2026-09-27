@@ -35,6 +35,11 @@ export interface PiExtensionContext {
      * (EV-17 ruling Q1, route (a): declare, do not omit — both optional members
      * declared per the EPIC-6/FLLWUP-39 declare rule.) */
     confirm(title: string, message: string, opts?: { signal?: AbortSignal; timeout?: number }): Promise<boolean>;
+    /** Real signature (installed types.d.ts:77): notify(message: string,
+     * type?: "info" | "warning" | "error"): void — the non-blocking user
+     * notification surface (BUG-2: appends to the chat transcript in
+     * interactive mode, never the editor/prompt box). */
+    notify(message: string, type?: "info" | "warning" | "error"): void;
   };
   /** Current run mode: "tui" | "rpc" | "json" | "print" (ExtensionMode). */
   mode: string;
