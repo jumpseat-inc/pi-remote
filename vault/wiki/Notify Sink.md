@@ -4,7 +4,7 @@ type: concept
 summary: In pi 0.87.1 interactive mode, user lines go through ctx.ui.notify (chat transcript); footer sentences stay on setStatus only — console.log writes into the prompt box and desyncs redraw.
 aliases: [notify vs footer, user-line surface, TUI print sink]
 tags: [concept/ui, login, tui, doctrine]
-sources: ["[[BUG-2 Run]]"]
+sources: ["[[BUG-2 Run]]", "[[FLLWUP-47 Run]]"]
 created: 2026-09-27
 updated: 2026-09-27
 ---
@@ -18,12 +18,12 @@ That is what a successful attended `/rc:login` looked like before the [[BUG-2 Ru
 
 **What a stub does not prove.** A test that records a stand-in `notify` shows the call. It does not show that pi paints that call outside the prompt box. The [[BUG-2 Run]] Skeptic read the installed `pi-tui` 0.87.1 interactive-mode binding before calling the surface closed ([[Real-Surface Verification]]). The vendored signature on [[pi-sdk-on.ts]] matches `types.d.ts:77` byte for byte.
 
-**Still open.** `shutdown.closed` (`Remote tunnel closed`) is delivered only because `onShutdown` calls `deps.print`. No test drives that row into the notify sink. That gap is FLLWUP-47, not a reason to reopen the split ([[Fixture-Green Honesty]]).
+**Row-level delivery pinned (FLLWUP-47, PR #53).** `shutdown.closed` (`Remote tunnel closed`) is delivered because `onShutdown` calls `deps.print`. The [[BUG-2 Run]] accepted that on constructor wiring alone; the [[FLLWUP-47 Run]] closed the gap. It fires the real `pi.on("session_shutdown")` handler and asserts the whole sink transcript `toEqual(["Remote tunnel closed"])`, with defect injection proving the test goes red when the row is dropped. A `toContain` could not pin it: `rc.offLifecycle` and `shutdown.closed` render identical bytes ([[Twin-Row Delivery Hazard]]).
 
 The perception failure — the user cannot tell authorizing has ended, because the old sentence is still on screen — is the [[Gulf of Evaluation]] applied to a cursor bug rather than to missing copy.
 
 ## Related
-[[BUG-2 Run]], [[login.ts]], [[index.ts]], [[pi-sdk-on.ts]], [[copy.ts]], [[Seven Footer States]], [[Gulf of Evaluation]], [[Copy Honesty Doctrine]], [[Real-Surface Verification]], [[Fixture-Green Honesty]]
+[[BUG-2 Run]], [[FLLWUP-47 Run]], [[Twin-Row Delivery Hazard]], [[login.ts]], [[index.ts]], [[pi-sdk-on.ts]], [[copy.ts]], [[Seven Footer States]], [[Gulf of Evaluation]], [[Copy Honesty Doctrine]], [[Real-Surface Verification]], [[Fixture-Green Honesty]]
 
 ## Sources
-[[BUG-2 Run]]
+[[BUG-2 Run]], [[FLLWUP-47 Run]]

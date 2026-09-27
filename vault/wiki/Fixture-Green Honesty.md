@@ -4,7 +4,7 @@ type: concept
 summary: Acceptance text may only claim what has been proven — runtime behavior requires runtime evidence, and knowingly partial coverage is announced at the surface itself.
 aliases: [fixture honesty, partial coverage announcement]
 tags: [concept/process, doctrine, testing]
-sources: ["[[FLLWUP-5 Ruling]]", "[[FLLWUP-4 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]"]
+sources: ["[[FLLWUP-5 Ruling]]", "[[FLLWUP-4 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]", "[[FLLWUP-47 Run]]"]
 created: 2026-09-02
 updated: 2026-09-27
 ---
@@ -16,12 +16,12 @@ Two generalizations (FLLWUP-4 ruling): **partial coverage is announced at the su
 
 **Probe-proven ≠ fixture-pinned (device-flow polish run).** A behavior the Skeptic proves by an ad-hoc probe but no committed fixture covers is honest but not durable; each such gap files a card so the behavior becomes fixture-pinned — FLLWUP-28 (cancellation during the five-second slowdown) and FLLWUP-29 (the attended PKCE path's no-detail boundary) are the worked examples. **Both were delivered by the [[EPIC-3 Run (FLLWUP-27..30)]]:** each gap is now a committed, red-capable fixture carrying a seven-field red-at-base record, so the corollary's loop is closed, not merely queued.
 
-**Wiring-by-construction is not a driven row (BUG-2).** The [[BUG-2 Run]] pinned attended, headless, `rc.unenrolled`, `rc.offLifecycle`, and `rc:login.refusal` at the notify sink. `shutdown.closed` (`Remote tunnel closed`) was accepted because `onShutdown` calls `deps.print` and `print` is notify. That is honest about the constructor and silent about a later edit that keeps the wiring and drops the row. The gap is filed, not suppressed: **FLLWUP-47** is `Ready` and not yet delivered. Same loop as the probe-proven corollary above; this one is still open ([[Notify Sink]]).
+**Wiring-by-construction is not a driven row (BUG-2).** The [[BUG-2 Run]] pinned attended, headless, `rc.unenrolled`, `rc.offLifecycle`, and `rc:login.refusal` at the notify sink. `shutdown.closed` (`Remote tunnel closed`) was accepted because `onShutdown` calls `deps.print` and `print` is notify. That is honest about the constructor and silent about a later edit that keeps the wiring and drops the row. The gap was filed, not suppressed, as **FLLWUP-47** — and the [[FLLWUP-47 Run]] (PR #53) closed the loop: a test fires the real `session_shutdown` handler and asserts the whole notify transcript, with defect injection proving it red when the row is dropped ([[Notify Sink]]). The assertion shape mattered: `rc.offLifecycle` and `shutdown.closed` render identical bytes, so a `toContain` would have stayed green on the sibling path ([[Twin-Row Delivery Hazard]]).
 
 **Comment honesty (EPIC-6).** The [[EPIC-6 Run (FLLWUP-39..40)]] extended the announcement surface from code boundaries to **source comments**: FLLWUP-40 corrected a test's own comment that claimed a coupling the assertions did not enforce, leaving the assertions untouched ([[Record Accuracy]]'s third variant). This is the fixture-green principle applied to the comment that describes a fixture — the comment, like the acceptance text, may claim only what the test proves.
 
 ## Related
-[[Spec Correction Governance]], [[Notify Sink]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Run Workspace Isolation]], [[Real-Surface Verification]], [[Emission-Semantics Fidelity]], [[Record Accuracy]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], FLLWUP-11
+[[Spec Correction Governance]], [[Notify Sink]], [[Twin-Row Delivery Hazard]], [[FLLWUP-47 Run]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Run Workspace Isolation]], [[Real-Surface Verification]], [[Emission-Semantics Fidelity]], [[Record Accuracy]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], FLLWUP-11
 
 ## Sources
-[[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]]
+[[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]], [[FLLWUP-47 Run]]
