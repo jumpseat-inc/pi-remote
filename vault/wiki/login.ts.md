@@ -4,11 +4,13 @@ type: entity
 summary: The /rc:login OAuth2 drivers — PKCE loopback for attended, RFC 8628 device flow for headless — with the replacement-prompt gate living at the driver.
 aliases: [the login drivers]
 tags: [entity/module, login]
-sources: ["[[EV-7 Ruling]]", "[[FLLWUP-5 Ruling]]", "[[EV-8 Ruling]]", "[[RFC Conformance Posture]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]"]
+sources: ["[[EV-7 Ruling]]", "[[FLLWUP-5 Ruling]]", "[[EV-8 Ruling]]", "[[RFC Conformance Posture]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[BUG-2 Run]]"]
 created: 2026-09-02
-updated: 2026-09-23
+updated: 2026-09-27
 ---
-Pure drivers implementing EV-1's pinned contract: attended = Authorization Code + PKCE (public client, loopback `http://127.0.0.1:<ephemeral>/callback`); unattended = `/rc:login --headless` on the RFC 8628 device flow (prints `user_code` + `verification_uri_complete`, honors `interval`/`slow_down`/`authorization_pending`/`expired_token`/`access_denied`). RFC 8414 discovery with three required endpoints; refresh via `grant_type=refresh_token`.
+Pure drivers implementing EV-1's pinned contract: attended = Authorization Code + PKCE (public client, loopback `http://127.0.0.1:<ephemeral>/callback`); unattended = `/rc:login --headless` on the RFC 8628 device flow (emits `user_code` + `verification_uri_complete` through the injected user-line sink, honors `interval`/`slow_down`/`authorization_pending`/`expired_token`/`access_denied`). RFC 8414 discovery with three required endpoints; refresh via `grant_type=refresh_token`.
+
+**Superseded claim, flagged:** the sentence above used to say the device flow "prints" `user_code` + `verification_uri_complete`. That verb meant the `print` helper's hardcoded `console.log`. The [[BUG-2 Run]] (PR #52) did not change the rows. It changed the sink: `print` calls an injected `onUserLine` when present, and `console.log` only when the sink is absent. Production [[index.ts]] always injects `ctx.ui.notify` ([[Notify Sink]]). A reader who still takes "prints" to mean stdout is reading the pre-BUG-2 helper.
 
 **Device-flow poll contract (FLLWUP-22, PR #26 — RFC Conformance Posture).** The headless driver's poll loop parses the response body **before** the status gate and dispatches the four RFC 8628 codes on 2xx-or-400 alike: `authorization_pending` and `slow_down` continue polling, `access_denied` and `expired_token` terminate with their own outcomes; all other non-2xx → `tokenExchangeFailed`. The 2xx-with-error-field shape remains a pinned tolerated legacy form.
 
@@ -19,7 +21,7 @@ Pure drivers implementing EV-1's pinned contract: attended = Authorization Code 
 Ruling-shaped behavior: the replacement prompt (re-run while enrolled) renders and waits **at the driver, before any HTTP request** (Skeptic-assertable via request log), never in `--headless`; the success line conditionally appends ` (tenant <tenantId>)` only when the token carries a tenant-scoped `sub`; `LoginOutcome` carries the typed `acl_enforcement_failed` reason rendered per FLLWUP-7's ruled copy (host cause + nothing-saved + "Run /rc:login" — no "file an issue"). Copy resolves through `loginEnglishFor` — no bypass, no second vocabulary (EV-7 general rule).
 
 ## Related
-[[Copy Honesty Doctrine]], [[credential.ts]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Seven Footer States]], [[tunnel.ts]], [[RFC Conformance Posture]], [[RFC References]]
+[[Copy Honesty Doctrine]], [[Notify Sink]], [[credential.ts]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Seven Footer States]], [[tunnel.ts]], [[index.ts]], [[RFC Conformance Posture]], [[RFC References]]
 
 ## Sources
-[[EV-7 Ruling]], [[FLLWUP-5 Ruling]], [[EV-8 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]]
+[[EV-7 Ruling]], [[FLLWUP-5 Ruling]], [[EV-8 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[BUG-2 Run]]

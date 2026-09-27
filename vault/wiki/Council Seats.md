@@ -4,9 +4,9 @@ type: entity
 summary: The ruling, verification, and working seats of the council process, with the authority map that re-homed human powers for autonomous runs.
 aliases: [council, seats, ruling seats]
 tags: [entity/process]
-sources: ["[[EV-1 Ruling]]", "[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]"]
+sources: ["[[EV-1 Ruling]]", "[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]"]
 created: 2026-09-02
-updated: 2026-09-24
+updated: 2026-09-27
 ---
 Seats exercised across the epic: **product-owner** (judgment — open-judgment rulings, mid-flow decisions, promotion ratification), **steward** (strategy — build order, retirements, ending the run; also the escalation boundary for security-model spec changes), **skeptic** (verification — runs the real gates and adversarial probes; its closed-red findings twice corrected the record), **judge** (step-10 verdict, bound by the [[Judge Object Rule]]), **owner / principal / designer** (working seats; designer holds no ruling authority on surface-touching cards), **consolidator** (sorts settled vs open-judgment vs open-objections), **council-runner** (the per-card container).
 
@@ -20,10 +20,12 @@ Two governance lessons the corpus demonstrates: recorded *preferences* are advis
 
 **Held follow-ups at scale, and runner resumption (EPIC-4 run).** The [[EPIC-4 Run (FLLWUP-11..12)]] ran the held-follow-up path seven times end-to-end: each card's step-13 candidates were recorded `Mode: File` and held confirmation-pending, the orchestrator routed each draft to `product-owner`, and each confirming ruling was applied by a resumed `council-runner` that wrote only the confirmed cards ([[Record Accuracy]]). `steward` closed EPIC-4 `Done` and promoted one follow-up (`AGENTS.md`'s stale claim) `Backlog → Ready` because its precondition had landed. The run also recovered a runner killed mid-wait by its own stall window — cancel the orphaned child, re-dispatch once with a wider window and an explicit resumption note ([[Runner Stall Recovery]]).
 
+**Mechanical and surface-touching seats no designer (BUG-2).** A card that changes what a person sees is surface-touching even when the copy is byte-unchanged. That bit does not by itself open a deliberation. The [[BUG-2 Run]] was mechanical — the goal already named `ctx.ui.notify`, the forbidden writers, and the terminal `Off` — so steps 2–6 did not run and `designer` did not sit. The placement question was already answered by the card; a design concern that surfaces later is a follow-up, not a reason to reopen. The human, not a seat, merged ("Merge it") and later authorized the record push ("push to remote") after a [[Record-Push Discipline]] HALT.
+
 **Single-runner batch delivery (EPIC-6 run).** The [[EPIC-6 Run (FLLWUP-39..40)]] held **two cards in one container** ([[Batched Card Delivery]]): one `owner` branch/PR implementing both, one skeptic verifying both, one judge evaluating both — enforced by the epic's own goal and recorded as **R-ONE-RUN-1**. The single runner was the sole writer of both card files and the board, so the per-card container rule held trivially. Promotion ratification was exercised again at intake: `product-owner` ratified FLLWUP-39 and FLLWUP-40 `Backlog → Ready` **as an indivisible pair** before the single runner was dispatched, because the epic goal required both delivered together.
 
 ## Related
-[[Judge Object Rule]], [[Verify Cycle Cap]], [[Spec Correction Governance]], [[Cause-Distinguished Expiry]], [[Execution-Mode Recording]], [[Run Workspace Isolation]], [[Record-Push Discipline]], [[Runner Stall Recovery]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-1 Decision Record]]
+[[Judge Object Rule]], [[Notify Sink]], [[Verify Cycle Cap]], [[Spec Correction Governance]], [[Cause-Distinguished Expiry]], [[Execution-Mode Recording]], [[Run Workspace Isolation]], [[Record-Push Discipline]], [[Runner Stall Recovery]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-1 Decision Record]]
 
 ## Sources
-[[EV-1 Ruling]], [[EV-1 Step-10 Judge-Object Ruling]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]]
+[[EV-1 Ruling]], [[EV-1 Step-10 Judge-Object Ruling]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]]

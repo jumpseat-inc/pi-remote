@@ -13,7 +13,7 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 
 ## Entities
 
-- [[pi-remote]] — the pi-side extension exposing a live session over AG-UI; the product every ruling governs.
+- [[pi-remote]] — the pi-side extension exposing a live session over AG-UI; the product every ruling governs. Suite 331 after BUG-2; FLLWUP-47 still open.
 - [[Server-Side Spec]] — docs/SERVER-SIDE-SPEC.md: the self-contained relay/control-plane implementation spec (§1-§5); its four defects (FLLWUP-18/21/22/23) resolved; FLLWUP-26 the one remaining open item.
 - [[Seven Footer States]] — off, not enrolled, authorizing, dialing, resyncing, live, error — the authoritative lifecycle-ordered set.
 - [[Reason Taxonomy]] — the transport's closed five-value reason set; honest metadata, never terminal.
@@ -23,11 +23,11 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[tunnel.ts]] — control-plane REST client; key-based copy table with severity tags; 401-terminal createTunnel.
 - [[history.ts]] — active-branch replay; init-only MESSAGES_SNAPSHOT; deterministic frame ids; pi.resync.done.
 - [[inject.ts]] — sendUserMessage conversion, (promptId, occurrence) registry, zero transformation of own injections.
-- [[login.ts]] — /rc:login OAuth2 drivers (PKCE attended, device flow headless); driver-side prompt gate; §3.5 slowdown + cause-distinguished expiry + `error_description` detail (FLLWUP-24/25).
+- [[login.ts]] — /rc:login OAuth2 drivers (PKCE attended, device flow headless); user lines via the notify sink, not stdout (BUG-2); §3.5 slowdown + cause-distinguished expiry + `error_description` detail (FLLWUP-24/25).
 - [[credential.ts]] — 0600 tmp+fsync+rename store; Windows NTFS ACL enforcement; fail-closed WriteResult.
-- [[index.ts]] — command surface, live-path wiring, footer merge FSM, teardown for all five shutdown reasons.
+- [[index.ts]] — command surface, live-path wiring, footer merge FSM, teardown for all five shutdown reasons; production print is ctx.ui.notify (BUG-2).
 - [[copy.ts]] — dependency-free resolver; 22-key en→id table; announced partial-coverage boundary.
-- [[pi-sdk-on.ts]] — vendored typed on() union (36 SDK literals + ui.confirm synthetic escape); negative probe.
+- [[pi-sdk-on.ts]] — vendored typed on() union (36 SDK literals + ui.confirm synthetic escape); negative probe; vendored ui.notify matches types.d.ts:77 (BUG-2).
 - [[pi-host.ts]] — FLLWUP-11's local host-capability module: agent-dir resolution, fail-open settings read, node:os metadata; the five re-homed stand-in members.
 - [[pi-sdk-events.ts]] — FLLWUP-12's vendored real SDK payload shapes, the payload-intrinsic agentMessageId derivation, and the real→local fold adapter.
 
@@ -53,7 +53,8 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Verify Cycle Cap]] — three verify-fix cycles per card; closed-red at the cap exits to the orchestrator; bounded extensions by ruling.
 - [[Footer Merge Policy]] — kind-first mergeTransport; live clears error on verified open; N=10 consecutive error-severity dialing.
 - [[Retry Policy]] — two seams: transport dials forever; credential terminality stops with the rich reason preserved.
-- [[Gulf of Evaluation]] — the designer's lens: can the user perceive the system's state without archaeology?
+- [[Gulf of Evaluation]] — the designer's lens: can the user perceive the system's state without archaeology? BUG-2's stacked footer was a cursor desync, not missing copy.
+- [[Notify Sink]] — user lines go through ctx.ui.notify (chat transcript); footer sentences stay on setStatus only; console.log lands in the pi 0.87.1 prompt box.
 - [[AG-UI]] — the open event-based protocol pi-remote speaks; taxonomy, transports, CUSTOM escape hatch, external references.
 - [[RFC References]] — the five IETF RFCs the system builds on (2119, 6749, 7636, 8628, 8414) and what each governs here.
 - [[Self-Containment Audit]] — zero references to sibling specs or codebases; exactly one external link; run on the real artifact.
@@ -87,3 +88,4 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[EPIC-3 Run (FLLWUP-27..30)]] — the four-card run delivering that batch's residuals: AGENTS.md hygiene rules, committed red-at-base fixtures, steward closure with the FLLWUP-31 residual.
 - [[EPIC-4 Run (FLLWUP-11..12)]] — the two-card run reconciling the ExtensionAPI stand-in and handler payload shapes with the installed pi SDK; real production-loader verification; seven follow-ups now under EPIC-5.
 - [[EPIC-6 Run (FLLWUP-39..40)]] — the two-card single-runner run (one owner/one Skeptic/one judge, PR #47) declaring the vendored thinking/tool-call signature fields and correcting the pairing-test comment; no vault/raw — deviation stated.
+- [[BUG-2 Run]] — single-card run that moved /rc:login user lines off stdout onto ctx.ui.notify (PR #52, merge 112ed22); no vault/raw — deviation stated. FLLWUP-47 still open.

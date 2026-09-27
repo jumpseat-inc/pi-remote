@@ -4,9 +4,9 @@ type: concept
 summary: A fixture-green suite against a local stand-in does not prove a component works against the installed host — verify at the real boundary, prove the gate non-vacuous by defect injection, and keep "correct-or-document" a strict boundary.
 aliases: [real-surface verification, stand-in boundary, real-boundary verification]
 tags: [concept/process, doctrine, testing, sdk]
-sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-4 Decision Record]]", "[[EPIC-6 Run (FLLWUP-39..40)]]"]
+sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-4 Decision Record]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]"]
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-09-27
 ---
 FLLWUP-9's deliberation (S-O5) found that pi-remote was entirely fixture-tested against a local `ExtensionAPI` stand-in, and that the stand-in had drifted from the installed pi SDK: `pi.configDir()` would be a **TypeError at load** in a real host. The severity flag was "if the load-time TypeError is real, the extension may not load in production at all." EPIC-4 proved it real and closed it.
 
@@ -19,10 +19,12 @@ FLLWUP-9's deliberation (S-O5) found that pi-remote was entirely fixture-tested 
 
 **Where it lives.** The audit found 13 non-`on` base members: 2 kept typed-to-real (`registerCommand`, `sendUserMessage`), 5 re-homed to the real `ExtensionContext`, 5 to local capabilities ([[pi-host.ts]]), 1 dropped (`version`). The SDK is **not** a dependency; the vendored mirrors are the boundary. See [[Emission-Semantics Fidelity]] for the sibling lesson at the payload layer.
 
+**Rendered surface, not just the type (BUG-2).** A stand-in `notify` that records the string does not prove the line left the prompt box. The [[BUG-2 Run]] Skeptic read installed `pi-tui` 0.87.1: `notify` binds to `showExtensionNotify`, info routes to `showStatus`, and `showStatus` appends to `chatContainer`, never `this.editor`. The vendored signature on [[pi-sdk-on.ts]] was diffed against `types.d.ts:77` (byte-identical), and a required-`type` injection produced `TS2554` before the file was restored. That is the same non-vacuous-gate move as the load smoke, applied to the TUI paint path ([[Notify Sink]]).
+
 **Declare-or-annotate-with-reason (EPIC-6).** The vendored-surface remedy sharpens into two obligations, exercised by the [[EPIC-6 Run (FLLWUP-39..40)]]: **declare** every real optional field the consumed surface carries, with line-referenced provenance (FLLWUP-39 added `PiThinkingContent.thinkingSignature` and `PiToolCall.thoughtSignature` against `pi-ai dist/types.d.ts`), **and annotate, with the reason stated**, every real field knowingly omitted — FLLWUP-39 left `redacted?` and `namespace?` out of the vendored mirror but named why in the provenance comment. The point is that an omission must never be indistinguishable from an audit gap: a silent omission is the vendoring form of [[Record Accuracy]]'s defect.
 
 ## Related
-[[Fixture-Green Honesty]], [[Emission-Semantics Fidelity]], [[pi-sdk-on.ts]], [[pi-host.ts]], [[pi-sdk-events.ts]], [[Normativity Test]], [[pi-remote]], [[EPIC-4 Decision Record]], [[Batched Card Delivery]], [[EPIC-6 Decision Record]]
+[[Fixture-Green Honesty]], [[Notify Sink]], [[Emission-Semantics Fidelity]], [[pi-sdk-on.ts]], [[pi-host.ts]], [[pi-sdk-events.ts]], [[Normativity Test]], [[pi-remote]], [[EPIC-4 Decision Record]], [[Batched Card Delivery]], [[EPIC-6 Decision Record]]
 
 ## Sources
-[[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-4 Decision Record]], [[EPIC-6 Run (FLLWUP-39..40)]]
+[[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-4 Decision Record]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]]

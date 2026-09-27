@@ -4,9 +4,9 @@ type: concept
 summary: The step-12 direct-to-main record commit is a privileged write the authority map does not re-home; it needs a run-scoped Phase-1 authorization recorded before the first push, and an unauthorized push is a HALT.
 aliases: [record push, step-12 push, admin bypass, record-push authorization]
 tags: [concept/process, merge, security]
-sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]"]
+sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]"]
 created: 2026-09-23
-updated: 2026-09-24
+updated: 2026-09-27
 ---
 The autonomous run's durable state is the board and the card files. Step 12 commits the reconciliation and pushes it **directly to `main`** — the "push records as they happen" recipe that keeps a run recoverable ([[Run Workspace Isolation]]). The authority map re-homes exactly one merge-time power (the human merge gate → the [[Deterministic Merge Check]]) and says nothing about this push. Under a `main` ruleset that forbids direct updates, that push is a **second privileged write**.
 
@@ -16,8 +16,10 @@ The autonomous run's durable state is the board and the card files. Step 12 comm
 
 **Observed.** The [[EPIC-3 Run (FLLWUP-27..30)]] recorded **R-PUSH-1** (direct record push) and **R-ADMIN-1** (`--admin` contingency) at Phase 1 before the first push; `main` was unprotected, so `--admin` went unused and every merge was ordinary squash with `--match-head-commit`. When a github.com outage interrupted one card after its merge, the runner left the record commits committed locally and the orchestrator rebased them onto `origin/main` on recovery — no force, no reset, no history rewrite. The [[EPIC-4 Run (FLLWUP-11..12)]] re-recorded **R-PUSH-1**/**R-ADMIN-1** the same way (run-scoped, before its first push at `fa1a262`); `main` was again unprotected, `--admin` went unused, and six record commits landed directly under R-PUSH-1. Repo-specific constraint observed: the checkout rewrites `git@github.com:` URLs to `https://`, which has no credentials, so record pushes used the explicit `ssh://git@github.com/…` form. The [[EPIC-6 Run (FLLWUP-39..40)]] re-recorded **R-PUSH-1**/**R-ADMIN-1** the same way before its first push (`0a2d05d`); `main` was unprotected and `--admin` went unused again. Environment change observed: the explicit `ssh://` form intermittently failed/hung, so EPIC-6's record commits landed with plain `origin` plus a per-invocation `gh auth git-credential` helper.
 
+**Exception, flagged — not a rewrite of the rule (BUG-2).** The [[BUG-2 Run]] was a single-card facilitator run, not a features-deliver run. `council/phase1-authorizations.json` still names run `EPIC-7` only, and that grant does not extend. The facilitator halted the step-12 push and said so. The human then said "push to remote", and a normal fast-forward landed (`112ed22..2e13a89`). That instruction came before the push, so it is not a silent bypass and not a retroactive grant after the fact. It is also **not** a Phase-1 record. The rule above still requires that record before the first push of an autonomous features-deliver run. This chat override is an exception the human made for this run; it does not authorize the next one.
+
 ## Related
-[[Deterministic Merge Check]], [[Run Workspace Isolation]], [[Council Seats]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]]
+[[Deterministic Merge Check]], [[Run Workspace Isolation]], [[Council Seats]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[BUG-2 Run]]
 
 ## Sources
-[[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]]
+[[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]]
