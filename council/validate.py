@@ -22,6 +22,20 @@ Checks every card in council/cards/ against:
     taste). No policy.json, nothing to pre-register (seed/scaffold trees).
     A torn registrations line or an unreadable policy.json is a named FAIL,
     never a traceback or a silent skip.
+  - the class-enumeration record (council/phase1-rulings.json, EV-89):
+    structural-and-grammar only, never completeness, never membership,
+    never anti-shrug. No record file, nothing to check (a consumer repo
+    that never runs /features-deliver stays green). The record is a
+    `classes` array of entries, each carrying `class` (a unique non-empty
+    string), `stakes` (one of the three tier literals, non-decreasing in
+    tier order), and exactly one of `ruling` (a non-empty string) or
+    `reason` (a string beginning with the structured `n/a: ` prefix).
+    An entry with neither key is simply unresolved, and unresolved stays
+    green — the refusal that holds dispatch lives in the features-deliver
+    procedure, not in this fence. Every defect is a named FAIL, never a
+    traceback. The fence knows the three tier literals and nothing else:
+    zero canonical class-name strings (the class list's single source is
+    the features-deliver procedure).
 
 Exits non-zero and prints a FAIL: line per finding. Prints
 `All council artifacts valid` only when clean.
@@ -39,6 +53,12 @@ CARDS = ROOT / "council" / "cards"
 BOARD = ROOT / "council" / "board.md"
 GATE_POLICY = ROOT / "council" / "gate" / "policy.json"
 GATE_REGISTRATIONS = ROOT / "council" / "gate" / "registrations.jsonl"
+PHASE1_RULINGS = ROOT / "council" / "phase1-rulings.json"
+
+# The three stakes tier literals, in the acceptance-8 order (EV-89). These
+# are the only class-adjacent data this fence knows — never the class
+# names themselves (EPIC-14 J2 rule: no run data in packaged tooling).
+TIER_ORDER = ["card", "run-committing", "portfolio"]
 
 ID_RE = re.compile(r"^(EV|FLLWUP|BUG|EPIC)-[1-9]\d*$")
 STATE_COLUMNS = [
@@ -207,6 +227,73 @@ def check_gate_registrations() -> None:
         )
 
 
+def check_phase1_rulings() -> None:
+    """Structural-and-grammar check on the class-enumeration record
+    (council/phase1-rulings.json, EV-89).
+
+    The file is optional: no record file, nothing to check — the exact
+    gate-policy absent-file-skip precedent. The fence never checks
+    completeness (an entry with neither `ruling` nor `reason` is simply
+    unresolved, and unresolved stays green), never membership (no
+    canonical class-name string appears here), and never content quality
+    (the anti-shrug judgment lives in the features-deliver procedure and
+    its prose pin). Every defect is a named FAIL line; nothing raises.
+    """
+    if not PHASE1_RULINGS.exists():
+        return  # no record → nothing to check
+    try:
+        record = json.loads(PHASE1_RULINGS.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        fail(f"council/phase1-rulings.json is not readable JSON: {exc}")
+        return
+    entries = record.get("classes") if isinstance(record, dict) else None
+    if not isinstance(entries, list):
+        fail(
+            "council/phase1-rulings.json carries no `classes` array — the "
+            "record is an ordered array of entries under a `classes` key"
+        )
+        return
+    seen: set = set()
+    prev_tier = -1
+    for index, e in enumerate(entries):
+        where = f"council/phase1-rulings.json classes[{index}]"
+        if not isinstance(e, dict):
+            fail(f"{where} {e!r} is not an object — each entry carries class, stakes, and one of ruling/reason")
+            continue
+        cls = e.get("class")
+        if not isinstance(cls, str) or not cls.strip():
+            fail(f"{where} has no `class` — name the class exactly as the features-deliver enumeration names it")
+            continue
+        if cls in seen:
+            fail(f"{where} duplicates class {cls!r} — each named class appears once")
+        seen.add(cls)
+        ruling = e.get("ruling")
+        reason = e.get("reason")
+        if ruling is not None and reason is not None:
+            fail(f"{where} ({cls!r}) carries both `ruling` and `reason` — exactly one of the two")
+        if ruling is not None and (not isinstance(ruling, str) or ruling.strip() == ""):
+            fail(f"{where} ({cls!r}) `ruling` is empty — a recorded ruling is a non-empty string")
+        if reason is not None and (not isinstance(reason, str) or not reason.startswith("n/a: ")):
+            fail(
+                f"{where} ({cls!r}) `reason` must begin with `n/a: ` — "
+                "the structured not-applicable prefix"
+            )
+        stakes = e.get("stakes")
+        if stakes not in TIER_ORDER:
+            fail(
+                f"{where} ({cls!r}) `stakes` {stakes!r} is not one of "
+                f"{TIER_ORDER} — the three tier literals, in order"
+            )
+            continue
+        tier = TIER_ORDER.index(stakes)
+        if tier < prev_tier:
+            fail(
+                f"{where} ({cls!r}) `stakes` {stakes!r} is not non-decreasing — "
+                "the ordered array runs card, run-committing, portfolio"
+            )
+        prev_tier = tier
+
+
 def main() -> int:
     board_text = ""
     if not BOARD.exists():
@@ -285,6 +372,7 @@ def main() -> int:
                 fail(f"board entry {bid} has no matching card file")
 
     check_gate_registrations()
+    check_phase1_rulings()
 
     if failures:
         for f in failures:

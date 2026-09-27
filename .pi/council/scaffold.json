@@ -4,7 +4,7 @@
     "packageVersion": "0.35.1"
   },
   "council/validate.py": {
-    "sha256": "177c9428599c3887b2565b4b5d378e63022d4b655bd2d8c5d15ecd639d5acda0",
-    "packageVersion": "0.35.1"
+    "sha256": "43124d76669910303d058f3617af7c92726fa003cc75a56e9bfd7aeec3930f1a",
+    "packageVersion": "0.37.1"
   }
 }
