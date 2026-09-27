@@ -34,3 +34,12 @@ No deliberation ran, so no spec file; the card's own `Intent` / `goal` / `Accept
 
 ### Step 8 — owner implements (job-1, settled 15.3m)
 Isolated worktree `../pi-remote-bug-2`, branch `owner/BUG-2-login-notify`, PR **#52** open at head `68cd9ce063abfd0c1ff9252db78acbe26420a8d8` (observed via `gh pr view 52`: state OPEN, not draft, base `main`). Card set `In Review` from that open PR, not from the owner's gate report.
+
+### Step 9 — skeptic verifies (job-2, settled 19.3m)
+`council_route` op `recheck` at `68cd9ce063abfd0c1ff9252db78acbe26420a8d8` → fallback, `rechecked: false`; no re-route. Surface-touching bit was in the dispatch. Skeptic verdict: **VERIFIED, no block**. Own gates: `bun install --frozen-lockfile` exit 0; `bunx tsc --noEmit` exit 0; `bun test` 331 pass / 7 skip / 0 fail. Rendered surface grounded in installed pi 0.87.1: `notify` → `showStatus` → chat transcript, not the editor; production `print` calls `ctx.ui.notify`. Red-at-base reproduced on an equal triple (base `74abc8ea6aeb320f221def97ca41c670220c1601`, transplant `test/bug2-login-notify.test.ts`, command `bun test test/bug2-login-notify.test.ts`): 0 pass / 3 fail at base, 3 pass / 0 fail at head; all three reds derived mechanism-absent. Non-blocking note: `shutdown.closed` has no dedicated row-level notify assertion (wiring proof only).
+
+### Step 10 — judge (job-3, settled 0.4m)
+Input: the `goal` + Skeptic evidence + pinned head only. **Verdict: PASS**. Judge re-ran `bun test test/bug2-login-notify.test.ts` at `68cd9ce` — 3 pass / 0 fail / 16 expect() calls — plus full suite 331 pass / 7 skip / 0 fail and `bunx tsc --noEmit` clean.
+
+### Step 11 — human merge gate
+Presented to the human. No self-approval. Waiting for the human to merge. Card stays `In Review` until the merge lands with CI green on the merged SHA.
