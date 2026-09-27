@@ -7,6 +7,8 @@ node_modules/
 .pi/git/
 .pi/council/.pids.json
 .pi/council/gate-ledger.jsonl
+.pi/council/tooling-drift.state.json
+.pi/council/scaffold-backups/
 .pi/remote/
 # Smoke test run artifacts (dot-dir so bun test never discovers them)
 smoke/.artifacts/*
