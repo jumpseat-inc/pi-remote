@@ -1,8 +1,8 @@
 ---
 id: FLLWUP-47
 title: Pin shutdown.closed delivery through ctx.ui.notify with a row-level test
-state: Ready
-owner: null
+state: Done
+owner: owner/FLLWUP-47-shutdown-notify-row (PR #53, merged 8ade4fb)
 epic: null
 goal: An automated test drives the production shutdown path that prints shutdown.closed and asserts the exact English row `Remote tunnel closed` is passed to ctx.ui.notify and is not written by console.log or process.stdout.write.
 ---
