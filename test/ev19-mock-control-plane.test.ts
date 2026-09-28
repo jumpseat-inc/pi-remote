@@ -55,9 +55,12 @@ describe("EV-19 mock control plane", () => {
     try {
       const res = await fetch(`http://127.0.0.1:${s.port}/.well-known/oauth-authorization-server`);
       expect(res.status).toBe(200);
+      // RFC 8414 wire field names — snake_case. discoverAuthServer
+      // (src/tunnel.ts) reads authorization_endpoint/token_endpoint; a
+      // camelCase doc maps to empty strings and fails discovery.
       const doc = (await res.json()) as Record<string, string>;
-      expect(doc.authorizationEndpoint).toBe(`http://127.0.0.1:${s.port}/authorize`);
-      expect(doc.tokenEndpoint).toBe(`http://127.0.0.1:${s.port}/token`);
+      expect(doc.authorization_endpoint).toBe(`http://127.0.0.1:${s.port}/authorize`);
+      expect(doc.token_endpoint).toBe(`http://127.0.0.1:${s.port}/token`);
     } finally {
       stopMock(s);
     }

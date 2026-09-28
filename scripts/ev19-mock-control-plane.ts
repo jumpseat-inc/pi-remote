@@ -32,12 +32,14 @@ const server = Bun.serve({
   hostname: "127.0.0.1",
   fetch(req) {
     const url = new URL(req.url);
-    const origin = `http://127.0.0.1:${server.port}`;
+    const origin = url.origin; // same host — the mock serves discovery on its own origin
     log(req.method, url.pathname);
     if (req.method === "GET" && url.pathname === "/.well-known/oauth-authorization-server") {
       return Response.json({
-        authorizationEndpoint: `${origin}/authorize`,
-        tokenEndpoint: `${origin}/token`,
+        // RFC 8414 wire field names (snake_case) — src/tunnel.ts maps
+        // authorization_endpoint/token_endpoint into camelCase.
+        authorization_endpoint: `${origin}/authorize`,
+        token_endpoint: `${origin}/token`,
       });
     }
     if (req.method === "GET" && url.pathname === "/authorize") {
