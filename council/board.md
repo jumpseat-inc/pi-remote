@@ -6,7 +6,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 
 ## Backlog
 - EPIC-8 — "Control-plane URL as the /rc:login input placeholder"
-- EV-19 — "Verify the /rc:login URL placeholder renders at the installed-host boundary"
 - FLLWUP-48 — Generalize the bug2 notify test harness for per-event forwarded contexts
 - FLLWUP-43 — "Wire a real platform browser opener into the production entry so login.failure.browserOpenFailed is production-reachable"
 - FLLWUP-44 — "Run the palette-truncation real-host smoke on the settled /rc:login description (designer prediction P1)"
@@ -22,6 +21,7 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-14 — "Document remote raise-UI best-effort behavior for select, editor, and custom prompt kinds"
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 ## Ready
+- EV-19 — "Verify the /rc:login URL placeholder renders at the installed-host boundary"
 
 ## Deliberating
 
