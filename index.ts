@@ -104,7 +104,12 @@ export interface RemoteControllerDeps {
   isStreaming: () => boolean;
   resolvePendingPrompt: (promptId: string, result: unknown, deviceId?: string) => boolean | Promise<boolean>;
   readActiveBranch: () => SessionEntry[] | Promise<SessionEntry[]>;
-  inputPrompt: (prompt: string) => Promise<string | undefined>;
+  /** EV-18: the attended /rc:login URL prompt passes the resolved control-plane
+   *  URL as the host input dialog's documented placeholder. Real SDK signature
+   *  (installed types.d.ts:75): input(title: string, placeholder?: string,
+   *  opts?: ExtensionUIDialogOptions) — this dep stays two-param (it is
+   *  pi-remote's seam; pi-remote never supplies opts). */
+  inputPrompt: (prompt: string, placeholder?: string) => Promise<string | undefined>;
   fetch: typeof fetch;
   WebSocket: typeof WebSocket;
   now?: () => number;
@@ -671,6 +676,7 @@ export function createRemoteController(deps: RemoteControllerDeps): RemoteContro
       // announced copy boundary — see src/copy.ts's COVERAGE BOUNDARY.
       const answer = await deps.inputPrompt(
         `Control-plane server URL [${resolved}]:\nPress Enter to enroll this host against ${resolved}, or type a different URL to override:`,
+        resolved, // EV-18: the resolved URL also rides as the host placeholder
       );
       if (answer === undefined) {
         // Escape = cancel: driver never constructed, footer unchanged, no
@@ -970,7 +976,7 @@ export default function (pi: ExtensionAPI): void {
     isStreaming: () => !requireCtx().isIdle(),
     resolvePendingPrompt: () => false,
     readActiveBranch: () => Promise.resolve(requireCtx().sessionManager.getBranch()),
-    inputPrompt: (prompt) => requireCtx().ui.input(prompt),
+    inputPrompt: (prompt, placeholder) => requireCtx().ui.input(prompt, placeholder),
     // EV-17: lazy captures of the real ctx surface (same pattern as
     // inputPrompt) — the confirm dialog and the run-mode probe.
     uiConfirm: (title, message, opts) => requireCtx().ui.confirm(title, message, opts),
