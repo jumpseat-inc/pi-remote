@@ -25,8 +25,11 @@ Two observation vehicles, both at that same tier:
 
 1. **Render-observation runs (tmux).** The committed pane captures come from a
    tmux session whose typed launch line is visible in the captures
-   (`PI_CODING_AGENT_DIR=/tmp/ev19-agent-4jf4` — that dir has since been
-   deleted; the capture bytes are the record of it). The after-Enter frame
+   (`PI_CODING_AGENT_DIR=/tmp/ev19-agent-4jf4` — that dir survives at
+   `/tmp/ev19-agent-4jf4` holding only cancelled-run skeleton files
+   (`auth.json`, `trust.json`, `settings.json`, `models-store.json`) and no
+   `pi-remote/` credential, corroborating that these runs carried no
+   enrollment). The after-Enter frame
    shows the run was cancelled at the "Cancel sign-in?" prompt — these runs
    carried no enrollment, and no credential claim rides on them.
 2. **Enrollment run (pty-driven).** Driver `/tmp/ev19-pty-run.py` (SHA-256
@@ -205,7 +208,7 @@ zero matches for key patterns).
 | pty driver `ev19-pty-run.py` | `4091a7bc003b1478b692c79562dbda16b2b1fe58d16cbba9cef49204e42111dd` | ephemeral `/tmp` |
 | `mem-windows.txt` (URL-assembly source) | `6c489bf08d63e4caac0023d3bb35a821c8e50e592cdb1099f90bd4cade970f3c` | ephemeral `/tmp` |
 | mock request log `mock-log.jsonl` | quoted in §4 | ephemeral `/tmp` |
-| persisted credential | `serverUrl` quoted in §4 (tokens never recorded) | ephemeral, deleted agent dir |
+| persisted credential | `serverUrl` quoted in §4 (tokens never recorded) | `/tmp/ev19-agent4-Vbll/pi-remote/credentials.json` (mode 0600) |
 
 Line-range pointers for both inline captures: title lines 27–28, input-line
 span line 30, key-hint line 32, bottom border line 34.
