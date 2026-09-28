@@ -9,24 +9,43 @@ renders no placeholder in the input box (fact 2, this observation), and the
 host component discards the argument (fact 3, host source). The anticipated
 non-render is the card's honest success.
 
-## 1. Run configuration — single resolution input
+## 1. Run configuration — one resolution tier, two observation vehicles
 
-- One run, one tier: `PI_REMOTE_SERVER_URL=http://127.0.0.1:18119` set in the
-  host environment; the resolved URL equals the env value verbatim (env is the
-  first resolution tier — `index.ts` resolve chain). The same single `resolved`
-  value appears in the title substrings (§3), the authorize URL (§4), and the
-  persisted credential `serverUrl` (§4).
-- Host: installed production pi, banner `pi v0.87.1` (visible in both captures).
-- Fresh agent dir `/tmp/ev19-agent-4jf4` (no prior credential).
-- Extension loaded from this worktree: `--extension <worktree>/index.ts`.
-- Driver: tmux session with a pty script (`/tmp/ev19-pty-run.py`, SHA-256
-  `4091a7bc…`) that launches pi, waits for the prompt to reach rest, captures
-  the pane, then sends a synthetic Enter keystroke. **The (c) mechanism is the
-  real host's empty-Enter — never an injected `inputPrompt → ""` fixture**
-  (spec §1; designer round-2 retraction).
-- Tier independence of the render negative: the host component discards its
-  `_placeholder` parameter regardless of the title's content (fact 3 below),
-  so the non-render observed at the mock tier holds at every tier.
+One tier throughout: `PI_REMOTE_SERVER_URL=http://127.0.0.1:18119` set in the
+host environment of every run; the resolved URL equals the env value verbatim
+(env is the first resolution tier — `index.ts` resolve chain). The same single
+`resolved` value appears in the title substrings (§3), the authorize URL (§4),
+and the persisted credential `serverUrl` (§4).
+
+Host: installed production pi, banner `pi v0.87.1`. Extension loaded from this
+worktree: `--extension <worktree>/index.ts`. No prior credential in any agent
+dir used.
+
+Two observation vehicles, both at that same tier:
+
+1. **Render-observation runs (tmux).** The committed pane captures come from a
+   tmux session whose typed launch line is visible in the captures
+   (`PI_CODING_AGENT_DIR=/tmp/ev19-agent-4jf4` — that dir has since been
+   deleted; the capture bytes are the record of it). The after-Enter frame
+   shows the run was cancelled at the "Cancel sign-in?" prompt — these runs
+   carried no enrollment, and no credential claim rides on them.
+2. **Enrollment run (pty-driven).** Driver `/tmp/ev19-pty-run.py` (SHA-256
+   `4091a7bc…`) spawns the installed pi as a pty child with agent dir
+   `/tmp/ev19-agent4-Vbll`, waits for the prompt to reach rest, then sends a
+   synthetic Enter keystroke. **The (c) mechanism is the real host's
+   empty-Enter — never an injected `inputPrompt → ""` fixture** (spec §1;
+   designer round-2 retraction). Its raw transcript (`/tmp/ev19-pty-transcript.bin`,
+   SHA-256 `5407e55f…`) carries the same at-rest render (§2) and the
+   enrollment completion.
+
+The at-rest render is therefore evidenced in **both** vehicles' bytes, and
+(a)/(b)/(c) join on the enrollment run's own transcript — the anti-splice
+property the single-resolution-input design protects (never mixing resolution
+inputs across claims) holds: one tier, one `resolved` value.
+
+Tier independence of the render negative: the host component discards its
+`_placeholder` parameter regardless of the title's content (fact 3 below),
+so the non-render observed at the mock tier holds at every tier.
 
 ## 2. Acceptance (a) — render observation and signed negative
 
@@ -47,6 +66,14 @@ non-blank line, which is the bottom `DynamicBorder`): line 30 of both captures.
 - No reverse-video-wrapped glyphs beyond the one cursor space (O7.3: this
   host's own placeholder mechanism renders reverse-video, not dim — the search
   covers style SGR, not dim-only). ✓
+
+The same probes re-run on the enrollment run's own transcript bytes
+(`ev19-pty-transcript.bin`, the run that persisted §4's credential): the
+at-rest span is `> ` followed by `\x1b[7m \x1b[27m` (the cursor space, in
+exactly the form the host source at `input.js:343-413` produces), and
+`\x1b[2m` / `\x1b[90m` / `\x1b[38;5;` have **0 occurrences in the entire
+transcript**; the title and consent sentence each appear exactly once. The
+negative is thus observed identically in both vehicles.
 
 **Result: no placeholder rendered in the input box.** The box at rest contains
 only the prompt marker and the cursor. This is the anticipated negative and
@@ -84,6 +111,7 @@ ANSI mutates the URL. The literal is the **keyless inline literal** at
   {"ts":"2026-09-28T07:55:34.605Z","method":"POST","path":"/token"}
   ```
 
+- Agent dir of the enrollment run: `/tmp/ev19-agent4-Vbll`.
 - Persisted credential — only the `serverUrl` field is quoted (tokens never
   enter any committed artifact):
 
@@ -95,7 +123,7 @@ ANSI mutates the URL. The literal is the **keyless inline literal** at
   break byte-equality spuriously):
 
   ```
-  jq -j .serverUrl /tmp/ev19-agent-4jf4/pi-remote/credentials.json \
+  jq -j .serverUrl /tmp/ev19-agent4-Vbll/pi-remote/credentials.json \
     | cmp - <(printf %s 'http://127.0.0.1:18119')
   → CMP_EXIT=0
   ```
@@ -108,13 +136,19 @@ ANSI mutates the URL. The literal is the **keyless inline literal** at
   atomic 0600 write into the real configDir. Transcript tail shows the
   attended waiting notify ("Waiting for browser…") and the
   "enrollment credentials saved" line.
-- Authorize-URL provenance note: the printed fallback URL
-  (`login.attended.fallback`, `src/login.ts:587`) was transient in the notify
-  area — the committed pane captures show the "Waiting for browser…" state
-  that displaced it. The full URL (PKCE + state) is preserved in the ephemeral
-  artifacts `/tmp/ev19-full-url.txt` (SHA-256 `01d11c33…`) and
-  `/tmp/ev19-authorize-url.txt` (SHA-256 `68205d6e…`), extracted live during
-  the run and `curl -sL`-followed to complete the round-trip.
+- Authorize-URL provenance (method deviation — see §9): the host's notify
+  surface is latest-wins per frame and **deterministically never paints the
+  fallback URL line** (`login.attended.fallback`, `src/login.ts:587`) — the
+  committed captures show only the "Waiting for browser…" state. The full
+  authorize URL (PKCE + state) was therefore **assembled from memory windows
+  dumped around the driver's authorize-URL string**
+  (`/tmp/ev19-mem-windows.txt`, SHA-256 `6c489bf0…`; assembled URL preserved
+  in `/tmp/ev19-full-url.txt`, SHA-256 `01d11c33…`, query part in
+  `/tmp/ev19-authorize-url.txt`, SHA-256 `68205d6e…`) and `curl -sL`-followed
+  externally to complete the round-trip. The (c) conclusion does not rest on
+  the URL's provenance: the driver constructed and used the URL, the mock log
+  shows the round-trip, and the persisted credential byte-equals the resolved
+  URL.
 
 ## 5. Join facts 1 and 3 (why the negative is not a forwarding failure)
 
@@ -124,8 +158,10 @@ ANSI mutates the URL. The literal is the **keyless inline literal** at
   `RemoteControllerDeps.inputPrompt`. Pinned by EV-18's merged wiring tests
   over the injected `ExtensionAPI` stand-in (`test/index.test.ts`).
 - **Fact 3 — host source:** the installed
-  `@earendil-works/pi-coding-agent@0.87.1`
-  `extensions/interactive/components/extension-input.js:25` declares
+  `@earendil-works/pi-coding-agent@0.87.1` dist
+  (`dist/modes/interactive/components/extension-input.js:25` on disk; the
+  product-owner ruling's prose cites an `extensions/…` prefix — the content
+  verifies identically on every on-disk 0.87.1 copy) declares
   `constructor(title, _placeholder, onSubmit, onCancel, opts)` and never
   references `_placeholder` anywhere in the file; `interactive-mode.js:2095`
   forwards `title, placeholder` into the component. Per the product-owner
@@ -167,6 +203,7 @@ zero matches for key patterns).
 | `full-url.txt` (authorize URL) | `01d11c33270f0c1e769430943902d3354fbf9ee2f7b511b5c6a040779de13d7b` | ephemeral `/tmp` |
 | `authorize-url.txt` (query part) | `68205d6e218068da7386df102a9e4a23483bacd500b3ce519a90ac435bad63ca` | ephemeral `/tmp` |
 | pty driver `ev19-pty-run.py` | `4091a7bc003b1478b692c79562dbda16b2b1fe58d16cbba9cef49204e42111dd` | ephemeral `/tmp` |
+| `mem-windows.txt` (URL-assembly source) | `6c489bf08d63e4caac0023d3bb35a821c8e50e592cdb1099f90bd4cade970f3c` | ephemeral `/tmp` |
 | mock request log `mock-log.jsonl` | quoted in §4 | ephemeral `/tmp` |
 | persisted credential | `serverUrl` quoted in §4 (tokens never recorded) | ephemeral, deleted agent dir |
 
@@ -175,9 +212,23 @@ span line 30, key-hint line 32, bottom border line 34.
 
 ## 9. Acceptance (d) — deviations
 
-None against (a)–(c). The authorize-URL transience in §4 is an
-evidence-provenance note, not an acceptance deviation: (c) is discharged by
-the persisted-credential byte-equality and the mock request log.
+Two method deviations, recorded; neither touches the (a)–(c) conclusions:
+
+1. **Authorize-URL provenance.** The settled procedure named parsing the
+   printed fallback URL from the capture; the notify surface (latest-wins per
+   frame) deterministically never paints that line, so the URL was assembled
+   from memory windows around the driver's authorize-URL string and driven
+   externally (§4). The enrollment round-trip itself — real driver, mock
+   control plane, persisted credential — is unaffected, and (c) does not rest
+   on the URL's provenance.
+2. **Render observation and enrollment across two vehicles.** The settled
+   design aimed at one session carrying (a)/(b)/(c) together. In practice the
+   tmux render-observation runs were cancelled before enrollment (their
+   after-Enter frames show the cancel dialog), and the enrollment completed on
+   the pty-driven run. Both vehicles ran at the same single resolution tier,
+   the at-rest render is byte-evidenced in both, and (a)/(b)/(c) join on the
+   enrollment run's own transcript — the anti-splice property (one `resolved`
+   value across title, authorize URL, and credential) is preserved.
 
 ## 10. Reproducibility
 
