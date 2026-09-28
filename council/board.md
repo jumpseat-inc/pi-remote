@@ -22,9 +22,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 - FLLWUP-14 — "Document remote raise-UI best-effort behavior for select, editor, and custom prompt kinds"
 - FLLWUP-15 — "Settle the pending prompt entry on ui_prompt_end so host-local answers stop emitting stale tracked resolutions"
 ## Ready
-- EV-18 — "Render the resolved control-plane URL as the attended /rc:login input placeholder"
 
 ## Deliberating
+- EV-18 — "Render the resolved control-plane URL as the attended /rc:login input placeholder"
 
 ## In Progress
 
