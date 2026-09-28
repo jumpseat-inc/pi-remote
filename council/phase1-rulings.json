@@ -1,29 +1,33 @@
 {
+  "run": "EPIC-8",
+  "recordedAt": "2026-09-28T04:34:49Z",
+  "source": "human Phase-1 rulings preflight (/features-deliver EPIC-8)",
+  "scope": "this run only — class-level, binding on every seat for this run",
   "classes": [
     {
       "class": "surface copy",
       "stakes": "card",
-      "ruling": "Exact user-visible copy is settled by the working seats' shared design pass for EV-16 and EV-17, constrained by each card's Acceptance substrings; no run-level string is fixed. A seat applying this ruling must keep every string the card's Acceptance requires and settle wording only within the design pass the cards already name."
+      "ruling": "All user-visible copy in EPIC-8 is settled by EV-18's Acceptance: the attended /rc:login URL prompt title stays byte-unchanged, still carrying `[${resolved}]` and the existing `login.urlPrompt` consent sentence, and no copy key is added, changed, or removed (FLLWUP-41 untouched). EV-19 mints no copy because it is a real-host verification card. Seats fix no new wording; a design dispute over the rendered surface routes to product-owner."
     },
     {
       "class": "state and field naming",
       "stakes": "card",
-      "ruling": "The server-URL default constant is `DEFAULT_SERVER_URL` and the single shared resolver is `resolveServerUrl`, resolving env → setting → stored credential → default. The three runtime resolve sites consult that resolver; the default is the last-resort tier below any stored credential."
+      "ruling": "The widened dependency `RemoteControllerDeps.inputPrompt` names its second parameter `placeholder`, matching the installed SDK's `input(title, placeholder?, opts?: ExtensionUIDialogOptions)`: it becomes `(prompt: string, placeholder?: string) => Promise<string | undefined>`. No other state, field, or status is renamed."
     },
     {
       "class": "uncertainty display",
       "stakes": "run-committing",
-      "ruling": "Uncertainty display is settled by the working seats within each card's Acceptance; no run-level uncertainty-display rule is fixed, because EPIC-7 surfaces no no-realtime-availability data and no price data."
+      "reason": "n/a: EPIC-8 surfaces no data with no realtime availability and no price data; its only surface is the attended /rc:login URL prompt, whose title and placeholder pass-through are settled by EV-18's Acceptance."
     },
     {
       "class": "error and empty-state text",
       "stakes": "run-committing",
-      "ruling": "EV-16's `login.failure.browserOpenFailed` English row reads exactly: `Could not open a browser — on a remote machine run /rc:login --headless. No credentials were saved.` EV-15's `rc.serverUrlRequired` / `login.failure.noServerUrl` become unreachable and are removed, with the removal named in the PR description."
+      "ruling": "No new error or empty-state copy is introduced. Empty submission enrolls against exactly the resolved URL, typed input overrides it, and Escape (`undefined`) cancels with no driver constructed; the existing /rc:login failure rows are unchanged."
     },
     {
       "class": "gate user-visibility",
       "stakes": "portfolio",
-      "ruling": "The routing gate's verdict is kept as information only: the recorded execution mode is read mechanically by the deterministic merge check and reported in the Phase 3 run ledger. It is never surfaced as a blocking human prompt during this run."
+      "ruling": "The routing gate's verdict is kept as information only: the recorded execution mode is read mechanically by the deterministic merge check and named in the Phase 3 run ledger. It is never surfaced as a blocking human prompt during this run."
     }
   ]
 }
