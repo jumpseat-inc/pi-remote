@@ -5,7 +5,6 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 (U+2014). `python3 council/validate.py` enforces this.
 
 ## Backlog
-- EPIC-8 — "Control-plane URL as the /rc:login input placeholder"
 - FLLWUP-48 — Generalize the bug2 notify test harness for per-event forwarded contexts
 - FLLWUP-43 — "Wire a real platform browser opener into the production entry so login.failure.browserOpenFailed is production-reachable"
 - FLLWUP-44 — "Run the palette-truncation real-host smoke on the settled /rc:login description (designer prediction P1)"
@@ -31,8 +30,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Needs Human
 
 ## Done
+- EPIC-8 — "Control-plane URL as the /rc:login input placeholder"
 - EV-19 — "Verify the /rc:login URL placeholder renders at the installed-host boundary" (merged `b848464`, PR #55)
-- EV-18 — "Render the resolved control-plane URL as the attended /rc:login input placeholder"
+- EV-18 — "Render the resolved control-plane URL as the attended /rc:login input placeholder" (merged `0fdf1d9`, PR #54)
 - FLLWUP-47 — Pin shutdown.closed delivery through ctx.ui.notify with a row-level test
 - BUG-2 — "Stop /rc:login user lines from landing in the TUI prompt box via console.log"
 - EPIC-7 — "Default relay URL, attended-login cancellation, and --headless discoverability"
