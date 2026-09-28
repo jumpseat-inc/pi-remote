@@ -25,9 +25,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Deliberating
 
 ## In Progress
-- EV-19 — "Verify the /rc:login URL placeholder renders at the installed-host boundary"
 
 ## In Review
+- EV-19 — "Verify the /rc:login URL placeholder renders at the installed-host boundary"
 
 ## Needs Human
 
