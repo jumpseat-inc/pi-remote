@@ -28,8 +28,18 @@ export interface PiExtensionContext {
   ui: {
     /** Real signature: setStatus(key: string, text: string | undefined): void */
     setStatus(key: string, text: string | undefined): void;
-    /** Real signature: input(title: string, placeholder?: string): Promise<string | undefined> */
-    input(title: string, placeholder?: string): Promise<string | undefined>;
+    /** Real signature (installed types.d.ts:75; ExtensionUIDialogOptions
+     *  :37-42):
+     *  input(title: string, placeholder?: string, opts?: { signal?: AbortSignal; timeout?: number }): Promise<string | undefined>
+     *  (EV-18: the prior "input(title, placeholder?)" claim was factually
+     *  false about the installed host — reconciled per the EPIC-6/FLLWUP-39
+     *  declare rule, route (a): declare, do not omit. The opts shape is
+     *  inlined structurally exactly as the sibling confirm member does.) */
+    input(
+      title: string,
+      placeholder?: string,
+      opts?: { signal?: AbortSignal; timeout?: number },
+    ): Promise<string | undefined>;
     /** Real signature (installed types.d.ts:73; ExtensionUIDialogOptions :37-42):
      * confirm(title: string, message: string, opts?: { signal?: AbortSignal; timeout?: number }): Promise<boolean>
      * (EV-17 ruling Q1, route (a): declare, do not omit — both optional members
