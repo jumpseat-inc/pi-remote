@@ -24,9 +24,9 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## Ready
 
 ## Deliberating
-- EV-18 — "Render the resolved control-plane URL as the attended /rc:login input placeholder"
 
 ## In Progress
+- EV-18 — "Render the resolved control-plane URL as the attended /rc:login input placeholder"
 
 ## In Review
 
