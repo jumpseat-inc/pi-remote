@@ -148,7 +148,9 @@ interface HarnessOptions {
   /** Controls await-ability of POST /tunnels (for the teardown/rearm race). */
   deferTunnel?: { current: Promise<Response> | null };
   newId?: () => string;
-  inputPrompt?: (p: string) => Promise<string | undefined>;
+  /** EV-18: the host input placeholder rides this second argument (the
+   *  attended /rc:login URL prompt passes the resolved URL here). */
+  inputPrompt?: (p: string, placeholder?: string) => Promise<string | undefined>;
   openUrl?: (url: string) => Promise<boolean>;
   randomBytes?: (n: number) => Uint8Array;
   redirectTimeoutMs?: number;
@@ -250,7 +252,10 @@ async function makeHarness(opts: HarnessOptions = {}): Promise<Harness> {
     newId: opts.newId ?? (() => `uuid-${++idCounter}`),
     openUrl: opts.openUrl,
     randomBytes: opts.randomBytes,
-    confirmReplacement: opts.confirmReplacement ?? (async () => true),
+    // EV-18: an explicitly-provided confirmReplacement (even `undefined`, to
+    // exercise index.ts's inline inputPrompt-based confirm) wins over the
+    // auto-approve default.
+    confirmReplacement: "confirmReplacement" in opts ? opts.confirmReplacement : async () => true,
     redirectTimeoutMs: opts.redirectTimeoutMs ?? 2000,
     uiConfirm: opts.uiConfirm,
     hostMode: opts.hostMode,
@@ -1864,17 +1869,23 @@ describe("EV-15: default relay URL + prompt semantics", () => {
       { opts: { noCredential: true, envServerUrl: undefined }, expected: "https://relay.jumpseat.sh" },
     ];
     for (const c of cases) {
-      const prompts: string[] = [];
+      const prompts: Array<[string, string | undefined]> = [];
       const h = await makeHarness({
         ...c.opts,
-        inputPrompt: async (p) => {
-          prompts.push(p);
+        inputPrompt: async (p, placeholder) => {
+          prompts.push([p, placeholder]);
           return undefined; // Escape right after capture — driver never constructed
         },
       });
       await h.runCommand("rc:login");
       expect(prompts).toHaveLength(1);
-      expect(prompts[0]).toContain(`Control-plane server URL [${c.expected}]:`);
+      // EV-18: the resolved tier value rides as the host input placeholder.
+      expect(prompts[0]![1]).toBe(c.expected);
+      // FLLWUP-41 guard, hardened: whole-literal byte equality — the URL
+      // never leaves the rendered surface and the copy never drifts.
+      expect(prompts[0]![0]).toBe(
+        `Control-plane server URL [${c.expected}]:\nPress Enter to enroll this host against ${c.expected}, or type a different URL to override:`,
+      );
       h.relay.stop();
     }
   });
@@ -2046,6 +2057,161 @@ describe("EV-15: default relay URL + prompt semantics", () => {
     h.relay.kill(); // reconnect → rearm → readCredential → corrupt → null
     await h.waitFor(() => lastSet(h.setStatus) === tunnelReasonCopy.enrollment_expired.userLine);
     expect(h.posts.join("|")).not.toContain("https://relay.jumpseat.sh");
+    h.relay.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EV-18 — the attended /rc:login URL prompt passes the resolved URL as the
+// host input dialog's documented placeholder argument; the entry wiring
+// forwards both arguments to ctx.ui.input.
+// ---------------------------------------------------------------------------
+describe("EV-18: attended URL prompt placeholder pass-through", () => {
+  const savedEnv: Array<[string, string | undefined]> = [];
+
+  function withEnv(name: string, value: string | undefined): void {
+    savedEnv.push([name, process.env[name]]);
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  }
+
+  function restoreEnv(): void {
+    for (const [k, v] of savedEnv.reverse()) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    savedEnv.length = 0;
+  }
+
+  test("entry wiring: the real export default forwards (title, placeholder) to ctx.ui.input", async () => {
+    const registered: Record<string, (args: string | undefined, ctx: unknown) => Promise<void>> = {};
+    const inputCalls: Array<[string, string | undefined]> = [];
+    const notified: string[] = [];
+    const fakeCtx = {
+      ui: {
+        setStatus: () => {},
+        input: async (title: string, placeholder?: string) => {
+          inputCalls.push([title, placeholder]);
+          return undefined; // Escape — driver never constructed, no HTTP
+        },
+        confirm: async () => false,
+        notify: (message: string) => {
+          notified.push(message);
+        },
+      },
+      mode: "tui",
+      cwd: "/tmp",
+      sessionManager: { getSessionId: () => "sess-entry", getBranch: () => [] },
+    };
+    const fakePi = {
+      on: () => () => {},
+      registerCommand: (
+        name: string,
+        opts: { handler: (args: string | undefined, ctx: unknown) => Promise<void> },
+      ) => {
+        registered[name] = opts.handler;
+      },
+      sendUserMessage: () => {},
+    };
+
+    const fs = await import("node:fs");
+    fs.rmSync("/tmp/pi-remote-ev18-entry/pi-remote/credentials.json", { force: true });
+    withEnv("PI_CODING_AGENT_DIR", "/tmp/pi-remote-ev18-entry");
+    withEnv("PI_REMOTE_SERVER_URL", "https://env.example");
+    withEnv("PI_REMOTE_LOCALE", undefined);
+    try {
+      const entry = (await import("../index.ts")).default;
+      entry(fakePi as never);
+      await registered["rc:login"]!("", fakeCtx);
+    } finally {
+      restoreEnv();
+    }
+
+    // The only in-repo seam that pins the actual forward: the placeholder
+    // reaches ctx.ui.input as the second argument (designer P3: this pins the
+    // forward, not arity — it must keep passing when the vendored declaration
+    // widens to three-param).
+    expect(inputCalls).toHaveLength(1);
+    expect(inputCalls[0]![1]).toBe("https://env.example");
+    expect(inputCalls[0]![0]).toContain("Control-plane server URL [https://env.example]:");
+    // Escape at the prompt: no failure copy, driver never constructed.
+    expect(notified).toEqual([]);
+  });
+
+  test("typed override enrolls against the trimmed typed value (pin: no prior test drives this branch)", async () => {
+    const discoveryUrls: string[] = [];
+    const h = await makeHarness({
+      noCredential: true,
+      envServerUrl: undefined,
+      inputPrompt: async () => "  https://typed.example  ",
+      randomBytes: () => new Uint8Array(8),
+      openUrl: async (authorizeUrl) => {
+        const u = new URL(authorizeUrl);
+        const state = u.searchParams.get("state") ?? "";
+        const redirect = u.searchParams.get("redirect_uri") ?? "";
+        await fetch(`${redirect}?code=okcode&state=${state}`);
+        return true;
+      },
+    });
+    h.deps.fetch = (async (url: string, init?: RequestInit) => {
+      if (url.includes("oauth-authorization-server")) {
+        discoveryUrls.push(url);
+        return new Response(
+          JSON.stringify({
+            authorization_endpoint: "https://typed.example/auth",
+            token_endpoint: "https://typed.example/token",
+            device_authorization_endpoint: "https://typed.example/device",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.includes("/token") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({ access_token: "at-typed", refresh_token: "rt-typed", expires_in: 3600 }),
+          { status: 200 }
+        );
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    await h.runCommand("rc:login");
+
+    // Enrollment happens against the trimmed typed value — whitespace never
+    // reaches the credential file or the discovery URL.
+    const fs = await import("node:fs");
+    const raw = fs.readFileSync("/tmp/pi-remote-ev8-test/pi-remote/credentials.json", "utf8");
+    expect(JSON.parse(raw).serverUrl).toBe("https://typed.example");
+    expect(discoveryUrls[0]!.startsWith("https://typed.example/")).toBe(true);
+    h.relay.stop();
+  });
+
+  test("replacement-confirm prompt stays URL-less: placeholder is undefined for the confirm call", async () => {
+    const calls: Array<[string, string | undefined]> = [];
+    let callIndex = 0;
+    const h = await makeHarness({
+      envServerUrl: "https://env.example",
+      // Explicit undefined: exercise index.ts's inline inputPrompt-based
+      // confirm instead of the harness auto-approve default.
+      confirmReplacement: undefined,
+      inputPrompt: async (p, placeholder) => {
+        calls.push([p, placeholder]);
+        callIndex++;
+        return callIndex === 1 ? "" : undefined; // accept prefill, then Escape at the confirm
+      },
+    });
+    await h.runCommand("rc:login");
+
+    expect(calls).toHaveLength(2);
+    // First call: the URL prompt, with the resolved tier placeholder.
+    expect(calls[0]![1]).toBe("https://env.example");
+    // Second call: the replacement confirm — exactly one argument, no
+    // placeholder, per the settled design (spec change 4).
+    expect(calls[1]![0]).toBe("Press Enter to replace the existing credential, or Escape to keep it.");
+    expect(calls[1]![1]).toBeUndefined();
+    // Escape at the confirm → cancelled: credential untouched.
+    const fs = await import("node:fs");
+    const raw = fs.readFileSync("/tmp/pi-remote-ev8-test/pi-remote/credentials.json", "utf8");
+    expect(JSON.parse(raw).accessToken).toBe("at-1");
     h.relay.stop();
   });
 });
