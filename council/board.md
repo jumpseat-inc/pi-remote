@@ -27,11 +27,11 @@ matching its frontmatter `state`, as `- <ID> — <Title>` with an em dash
 ## In Progress
 
 ## In Review
-- EV-19 — "Verify the /rc:login URL placeholder renders at the installed-host boundary"
 
 ## Needs Human
 
 ## Done
+- EV-19 — "Verify the /rc:login URL placeholder renders at the installed-host boundary" (merged `b848464`, PR #55)
 - EV-18 — "Render the resolved control-plane URL as the attended /rc:login input placeholder"
 - FLLWUP-47 — Pin shutdown.closed delivery through ctx.ui.notify with a row-level test
 - BUG-2 — "Stop /rc:login user lines from landing in the TUI prompt box via console.log"
