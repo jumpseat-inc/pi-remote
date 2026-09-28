@@ -4,9 +4,9 @@ type: concept
 summary: A fixture-green suite against a local stand-in does not prove a component works against the installed host — verify at the real boundary, prove the gate non-vacuous by defect injection, and keep "correct-or-document" a strict boundary.
 aliases: [real-surface verification, stand-in boundary, real-boundary verification]
 tags: [concept/process, doctrine, testing, sdk]
-sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-4 Decision Record]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]"]
+sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-4 Decision Record]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-24
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 FLLWUP-9's deliberation (S-O5) found that pi-remote was entirely fixture-tested against a local `ExtensionAPI` stand-in, and that the stand-in had drifted from the installed pi SDK: `pi.configDir()` would be a **TypeError at load** in a real host. The severity flag was "if the load-time TypeError is real, the extension may not load in production at all." EPIC-4 proved it real and closed it.
 
@@ -23,8 +23,10 @@ FLLWUP-9's deliberation (S-O5) found that pi-remote was entirely fixture-tested 
 
 **Declare-or-annotate-with-reason (EPIC-6).** The vendored-surface remedy sharpens into two obligations, exercised by the [[EPIC-6 Run (FLLWUP-39..40)]]: **declare** every real optional field the consumed surface carries, with line-referenced provenance (FLLWUP-39 added `PiThinkingContent.thinkingSignature` and `PiToolCall.thoughtSignature` against `pi-ai dist/types.d.ts`), **and annotate, with the reason stated**, every real field knowingly omitted — FLLWUP-39 left `redacted?` and `namespace?` out of the vendored mirror but named why in the provenance comment. The point is that an omission must never be indistinguishable from an audit gap: a silent omission is the vendoring form of [[Record Accuracy]]'s defect.
 
+**Rendered output and the real enrollment round-trip (EPIC-8).** The [[EPIC-8 Run (EV-18, EV-19)]] extended the boundary from load/paint to the **rendered interactive TUI**: it drove the installed pi 0.87.1 in a tmux pane, invoked the attended `/rc:login`, and proved a signed negative over the input-line span — the placeholder argument reaches a host that does not render it. It also completed a **real attended enrollment round-trip** (empty-Enter) against a local mock control plane, with the persisted credential's `serverUrl` byte-equal to the resolved URL, discharging the non-construction residue (env propagation into the real process, loopback bind, discovery → authorize → token over live HTTP, atomic 0600 write). The method is [[Real-Host TUI Observation]]; its secret-hygiene companion is [[Capture Redaction]]. The three-fact join (forward + render + host-discard) makes the negative legible where a fixture could only prove forwarding ([[Fixture-Green Honesty]]).
+
 ## Related
-[[Fixture-Green Honesty]], [[Notify Sink]], [[Emission-Semantics Fidelity]], [[pi-sdk-on.ts]], [[pi-host.ts]], [[pi-sdk-events.ts]], [[Normativity Test]], [[pi-remote]], [[EPIC-4 Decision Record]], [[Batched Card Delivery]], [[EPIC-6 Decision Record]]
+[[Fixture-Green Honesty]], [[Notify Sink]], [[Emission-Semantics Fidelity]], [[pi-sdk-on.ts]], [[pi-host.ts]], [[pi-sdk-events.ts]], [[Normativity Test]], [[pi-remote]], [[Real-Host TUI Observation]], [[Capture Redaction]], [[EPIC-4 Decision Record]], [[Batched Card Delivery]], [[EPIC-6 Decision Record]], [[EPIC-8 Decision Record]]
 
 ## Sources
-[[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-4 Decision Record]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]]
+[[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-4 Decision Record]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]], [[EPIC-8 Run (EV-18, EV-19)]]

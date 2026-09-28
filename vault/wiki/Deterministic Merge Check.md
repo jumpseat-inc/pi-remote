@@ -4,9 +4,9 @@ type: concept
 summary: The mechanical gate that replaced the human merge, keyed by the card's recorded execution mode (Direct = criteria 1/2/5; Verify and Deliberate = all five), pinned to the head SHA with --match-head-commit.
 aliases: [merge check, five criteria]
 tags: [concept/process, merge]
-sources: ["[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Execution-Mode Recording]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]"]
+sources: ["[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Execution-Mode Recording]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-02
-updated: 2026-09-24
+updated: 2026-09-28
 ---
 The autonomous run's merge gate, executed with no discretion — no seat may substitute judgment for any criterion, and none may be skipped for small changes:
 
@@ -24,8 +24,10 @@ The autonomous run's merge gate, executed with no discretion — no seat may sub
 
 **One check, two cards (EPIC-6).** The [[EPIC-6 Run (FLLWUP-39..40)]] applied the check **once** to a single PR (#47) that merged two cards: the mode read keyed to one ROOT, the `gates` SUCCESS read on one head SHA (`4f8423b`) and re-confirmed on one merged SHA (`cb0ba13`) satisfied criteria 1–5 for both FLLWUP-39 and FLLWUP-40 ([[Batched Card Delivery]]).
 
+**Deliberate, resolved from the generator subtree (EPIC-8).** The [[EPIC-8 Run (EV-18, EV-19)]] exercised the full **Deliberate** criteria on both cards. The mode was read mechanically with `council_route op:"authority"`, but the ROOT dispatch carried **no explicit `mode`**; the resolver returned `Deliberate` because the ROOT subtree contained generator seats (`principal`/`designer`/`consolidator`) — the self-correcting resolution [[Execution-Mode Recording]] describes. The run id is the **session-minted id**, not the epic key: an authority read against `EPIC-8` returned `no ROOT manifest … the merge check cannot read a recorded execution mode` — a HALT, never a fallback. Both merges were SHA-pinned with `--match-head-commit`; `main` had **no ruleset**, so `--admin` was authorized yet unused. Criterion 2 read the `gates` workflow `SUCCESS` on each head SHA and re-confirmed it on each merged SHA (`0fdf1d9`, `b848464`).
+
 ## Related
-[[Judge Object Rule]], [[Verify Cycle Cap]], [[Council Seats]], [[Execution-Mode Recording]], [[Record-Push Discipline]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-1 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]]
+[[Judge Object Rule]], [[Verify Cycle Cap]], [[Council Seats]], [[Execution-Mode Recording]], [[Record-Push Discipline]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-1 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-8 Decision Record]]
 
 ## Sources
-[[Judge Object Rule]], [[FLLWUP-5 Ruling]], [[Execution-Mode Recording]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]]
+[[Judge Object Rule]], [[FLLWUP-5 Ruling]], [[Execution-Mode Recording]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[EPIC-8 Run (EV-18, EV-19)]]

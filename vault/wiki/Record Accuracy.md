@@ -4,9 +4,9 @@ type: concept
 summary: A run record's counts and claims must match the audit they cite — the record's own honesty axis, distinct from whether the code and tests are honest; an inaccurate record misleads the next run.
 aliases: [record accuracy, run-record fidelity, record honesty]
 tags: [concept/process, doctrine, records]
-sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-4 Decision Record]]", "[[EPIC-6 Run (FLLWUP-39..40)]]"]
+sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-4 Decision Record]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-09-28
 ---
 [[Fixture-Green Honesty]] governs what *code* may claim. EPIC-4 surfaced its sibling: what the *run record* may claim. FLLWUP-11's own record stated the stand-in had "twelve" non-`on` members and that "none exist on the real `ExtensionAPI`" — while the audit in the same record found **13** non-`on` base members, of which the **2 kept** members (`registerCommand`, `sendUserMessage`) genuinely do exist on the real SDK. The card's Intent also said "twelve". Every number was an artifact of the original filing, not the verified audit.
 
@@ -21,8 +21,10 @@ updated: 2026-09-24
 
 **Third variant — the source comment (EPIC-6).** The [[EPIC-6 Run (FLLWUP-39..40)]] added **FLLWUP-40**: the FLLWUP-12 static pairing test's own source comment in `test/translate.test.ts` claimed a coupling the assertions below it do not enforce (mutating the value-level decode comparison leaves the suite green). The remedy was **comment-only — assertions byte-identical** — re-stating that the test pins derivation-text presence and role vocabulary in the 400-char signature windows, and *not* the decode comparison, consistent with `docs/ROLE-DECODER-DUPLICATION.md`. So the same axis now has three observed surfaces: a card's count (FLLWUP-33), a test header (FLLWUP-32), and a code comment (FLLWUP-40). The lesson generalizes: a claim in *any* durable artifact must state only what is proven.
 
+**Fourth variant — a named key with no referent (EPIC-8).** The [[EPIC-8 Run (EV-18, EV-19)]] surfaced a ruling-side instance: the Phase-1 "surface copy" ruling and the product-owner ruling both cited a `login.urlPrompt` key as the consent sentence's home, but `grep -rn 'login.urlPrompt' src/` returns **zero hits** — the sentence is a keyless inline literal at `index.ts:676-678`. The durable record inherited a key name from a filing rather than an audit — the same defect class as FLLWUP-33's "twelve" count, now on the *ruling* side. A durable claim — a count, a comment, or a **key name** — must name only what the tree contains ([[Stable Keys]]).
+
 ## Related
-[[Fixture-Green Honesty]], [[Record-Push Discipline]], [[Real-Surface Verification]], [[Council Seats]], [[Batched Card Delivery]], [[translate.ts]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]]
+[[Fixture-Green Honesty]], [[Record-Push Discipline]], [[Real-Surface Verification]], [[Council Seats]], [[Batched Card Delivery]], [[Stable Keys]], [[translate.ts]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-8 Decision Record]]
 
 ## Sources
-[[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-4 Decision Record]], [[EPIC-6 Run (FLLWUP-39..40)]]
+[[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-4 Decision Record]], [[EPIC-6 Run (FLLWUP-39..40)]], [[EPIC-8 Run (EV-18, EV-19)]]

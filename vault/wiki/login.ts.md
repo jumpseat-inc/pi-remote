@@ -4,9 +4,9 @@ type: entity
 summary: The /rc:login OAuth2 drivers — PKCE loopback for attended, RFC 8628 device flow for headless — with the replacement-prompt gate living at the driver.
 aliases: [the login drivers]
 tags: [entity/module, login]
-sources: ["[[EV-7 Ruling]]", "[[FLLWUP-5 Ruling]]", "[[EV-8 Ruling]]", "[[RFC Conformance Posture]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[BUG-2 Run]]", "[[FLLWUP-47 Run]]"]
+sources: ["[[EV-7 Ruling]]", "[[FLLWUP-5 Ruling]]", "[[EV-8 Ruling]]", "[[RFC Conformance Posture]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[BUG-2 Run]]", "[[FLLWUP-47 Run]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-02
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 Pure drivers implementing EV-1's pinned contract: attended = Authorization Code + PKCE (public client, loopback `http://127.0.0.1:<ephemeral>/callback`); unattended = `/rc:login --headless` on the RFC 8628 device flow (emits `user_code` + `verification_uri_complete` through the injected user-line sink, honors `interval`/`slow_down`/`authorization_pending`/`expired_token`/`access_denied`). RFC 8414 discovery with three required endpoints; refresh via `grant_type=refresh_token`.
 
@@ -22,8 +22,10 @@ Pure drivers implementing EV-1's pinned contract: attended = Authorization Code 
 
 Ruling-shaped behavior: the replacement prompt (re-run while enrolled) renders and waits **at the driver, before any HTTP request** (Skeptic-assertable via request log), never in `--headless`; the success line conditionally appends ` (tenant <tenantId>)` only when the token carries a tenant-scoped `sub`; `LoginOutcome` carries the typed `acl_enforcement_failed` reason rendered per FLLWUP-7's ruled copy (host cause + nothing-saved + "Run /rc:login" — no "file an issue"). Copy resolves through `loginEnglishFor` — no bypass, no second vocabulary (EV-7 general rule).
 
+**Attended placeholder pass-through (EV-18, PR #54).** The attended URL prompt passes the resolved control-plane URL as `ui.input`'s second (`placeholder`) argument; the prompt title stays byte-unchanged, and the consent sentence is a **keyless inline literal** (`index.ts:676-678`), not a `login.urlPrompt` key — that name is referent-less (`grep -rn 'login.urlPrompt' src/` → zero hits; it survives only in council records and FLLWUP-41, Backlog). The installed host discards the argument, so the title remains the rendered consent surface ([[EPIC-8 Run (EV-18, EV-19)]], [[Stable Keys]], [[Record Accuracy]], [[Real-Host TUI Observation]]).
+
 ## Related
 [[Copy Honesty Doctrine]], [[Notify Sink]], [[Twin-Row Delivery Hazard]], [[FLLWUP-47 Run]], [[credential.ts]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Seven Footer States]], [[tunnel.ts]], [[index.ts]], [[RFC Conformance Posture]], [[RFC References]]
 
 ## Sources
-[[EV-7 Ruling]], [[FLLWUP-5 Ruling]], [[EV-8 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[BUG-2 Run]], [[FLLWUP-47 Run]]
+[[EV-7 Ruling]], [[FLLWUP-5 Ruling]], [[EV-8 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[BUG-2 Run]], [[FLLWUP-47 Run]], [[EPIC-8 Run (EV-18, EV-19)]]

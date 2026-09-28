@@ -4,9 +4,9 @@ type: concept
 summary: A council-runner blocked on a long child dispatch looks stalled to the anti-stall monitor and can be killed mid-wait — size the window above the longest child timeout, and recover by cancel plus one re-dispatch carrying an explicit resumption note.
 aliases: [stall recovery, runner resumption, autonomous-run recovery]
 tags: [concept/process, autonomous-runs, operations]
-sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-4 Decision Record]]"]
+sources: ["[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-4 Decision Record]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-24
-updated: 2026-09-24
+updated: 2026-09-28
 ---
 The anti-stall monitor cancels a job after a window of **no activity**. A `council-runner` waiting on a child seat dispatch produces none: it has handed the work off and blocks. When the child is the owner implementation — bounded at 45 minutes — a runner dispatched with a shorter stall window is killed while legitimately waiting.
 
@@ -21,8 +21,10 @@ The anti-stall monitor cancels a job after a window of **no activity**. A `counc
 
 **Why it is doctrine.** The failure was not the runner's reasoning; it was a timeout chosen too tight for the work it delegated. The rule generalizes: **the parent's stall window must exceed the longest child dispatch timeout**, or the parent dies waiting. See [[Execution-Mode Recording]] for the mode mechanics the runner re-derives on resumption.
 
+**The window must clear the longest child — and the single-re-dispatch rule (EPIC-8).** The [[EPIC-8 Run (EV-18, EV-19)]] re-proved the sizing rule the hard way. EV-19's runner `job-7` stalled after its implementing-owner child died; the re-dispatch `job-8` was killed by a **20-minute** stall window while running a long pty observation. A third dispatch (`job-9`) with `stall_minutes: 45` completed, but that **violates council.md's dispatch discipline** ("if the re-dispatch also stalls, return HALT — do not dispatch a third time"). The overshoot is recorded, not overwritten: the seat had produced substantial verified output (the observation was already complete on disk) rather than no output, and the corrected window addressed the environmental cause. The disciplined alternative was the run-strategy fallback (close after EV-18, EV-19 to Backlog). When a runner blocks on a long child, set `stall_minutes` **above** the longest child timeout before the first dispatch — the cheapest fix is the one made before the kill.
+
 ## Related
-[[Execution-Mode Recording]], [[Council Seats]], [[Deterministic Merge Check]], [[Record-Push Discipline]], [[EPIC-4 Decision Record]]
+[[Execution-Mode Recording]], [[Council Seats]], [[Deterministic Merge Check]], [[Record-Push Discipline]], [[EPIC-4 Decision Record]], [[EPIC-8 Decision Record]]
 
 ## Sources
-[[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-4 Decision Record]]
+[[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-4 Decision Record]], [[EPIC-8 Run (EV-18, EV-19)]]

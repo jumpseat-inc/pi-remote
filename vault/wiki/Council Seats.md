@@ -4,9 +4,9 @@ type: entity
 summary: The ruling, verification, and working seats of the council process, with the authority map that re-homed human powers for autonomous runs.
 aliases: [council, seats, ruling seats]
 tags: [entity/process]
-sources: ["[[EV-1 Ruling]]", "[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]"]
+sources: ["[[EV-1 Ruling]]", "[[Judge Object Rule]]", "[[FLLWUP-5 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-02
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 Seats exercised across the epic: **product-owner** (judgment — open-judgment rulings, mid-flow decisions, promotion ratification), **steward** (strategy — build order, retirements, ending the run; also the escalation boundary for security-model spec changes), **skeptic** (verification — runs the real gates and adversarial probes; its closed-red findings twice corrected the record), **judge** (step-10 verdict, bound by the [[Judge Object Rule]]), **owner / principal / designer** (working seats; designer holds no ruling authority on surface-touching cards), **consolidator** (sorts settled vs open-judgment vs open-objections), **council-runner** (the per-card container).
 
@@ -24,8 +24,10 @@ Two governance lessons the corpus demonstrates: recorded *preferences* are advis
 
 **Single-runner batch delivery (EPIC-6 run).** The [[EPIC-6 Run (FLLWUP-39..40)]] held **two cards in one container** ([[Batched Card Delivery]]): one `owner` branch/PR implementing both, one skeptic verifying both, one judge evaluating both — enforced by the epic's own goal and recorded as **R-ONE-RUN-1**. The single runner was the sole writer of both card files and the board, so the per-card container rule held trivially. Promotion ratification was exercised again at intake: `product-owner` ratified FLLWUP-39 and FLLWUP-40 `Backlog → Ready` **as an indivisible pair** before the single runner was dispatched, because the epic goal required both delivered together.
 
+**Promotion and dispositions at epic scale (EPIC-8).** The [[EPIC-8 Run (EV-18, EV-19)]] exercised the judgment row in three forms: `steward` ruled the build order and the promotion gate (EV-18 → gate → EV-19); `product-owner` ratified EV-19 `Backlog → Ready` once the strategy's preconditions held; and `product-owner` resolved EV-18's two step-13 candidates — one **merged into EV-19**, one **dropped** — *before* any write. The Phase-1 record was stale (EPIC-7-scoped), so the orchestrator recorded fresh run-scoped rulings first ([[Record-Push Discipline]]). One process overshoot is recorded: a third EV-19 runner dispatch after two failures ([[Runner Stall Recovery]]).
+
 ## Related
-[[Judge Object Rule]], [[Notify Sink]], [[Verify Cycle Cap]], [[Spec Correction Governance]], [[Cause-Distinguished Expiry]], [[Execution-Mode Recording]], [[Run Workspace Isolation]], [[Record-Push Discipline]], [[Runner Stall Recovery]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-1 Decision Record]]
+[[Judge Object Rule]], [[Notify Sink]], [[Verify Cycle Cap]], [[Spec Correction Governance]], [[Cause-Distinguished Expiry]], [[Execution-Mode Recording]], [[Run Workspace Isolation]], [[Record-Push Discipline]], [[Runner Stall Recovery]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-8 Decision Record]], [[EPIC-1 Decision Record]]
 
 ## Sources
-[[EV-1 Ruling]], [[EV-1 Step-10 Judge-Object Ruling]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]]
+[[EV-1 Ruling]], [[EV-1 Step-10 Judge-Object Ruling]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]], [[EPIC-8 Run (EV-18, EV-19)]]

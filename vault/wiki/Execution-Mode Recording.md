@@ -4,9 +4,9 @@ type: concept
 summary: The card's execution mode is read from the run substrate, not a seat's report — and because the runner re-derives its own path, recording Direct is the robust default that never HALTs.
 aliases: [execution mode, recorded mode, ROOT mode, mode Direct]
 tags: [concept/process, merge]
-sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]"]
+sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-23
-updated: 2026-09-24
+updated: 2026-09-28
 ---
 A card runs in one of three modes, and the [[Deterministic Merge Check]] is keyed to it:
 
@@ -40,8 +40,10 @@ An absent recorded mode also HALTs — inferring one is exactly the discretion t
 
 **One ROOT mode for a two-card batch (EPIC-6).** The [[EPIC-6 Run (FLLWUP-39..40)]] recorded **`Verify`** on a single runner covering **two** cards; `council_route op:"authority"` keyed to that one ROOT (job-14) returned the mode both cards' merge checks used, and one squash SHA (`cb0ba13`) was both cards' merge — a per-card mode read would have been redundant ([[Batched Card Delivery]]). Run ids are keyed to the host session, so the EPIC-5 and EPIC-6 runs shared one run id and one manifest forest.
 
+**The run id is the session id; the ROOT mode is optional when a generator sits (EPIC-8).** The [[EPIC-8 Run (EV-18, EV-19)]] confirmed two machinery details. First, `council_route op:"authority"` keys on the **session-minted run id** (`2026-09-28T04-28-18-991Z-163737-vxh7u5`), not the epic key — reading against `EPIC-8` returned `no ROOT manifest … the merge check cannot read a recorded execution mode`, a HALT. Second, the ROOT dispatch need not carry an explicit `mode`: both cards' ROOTs omitted it, and resolution returned **Deliberate** because the subtree contained generator seats (`principal`/`designer`/`consolidator`) — the upgrade row of the table above, at run scale. There is no "absent mode" HALT when a generator subtree resolves the mode; the absent-mode HALT applies only when no generator ran and no ROOT mode was recorded.
+
 ## Related
-[[Deterministic Merge Check]], [[Council Seats]], [[Record-Push Discipline]], [[Runner Stall Recovery]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]]
+[[Deterministic Merge Check]], [[Council Seats]], [[Record-Push Discipline]], [[Runner Stall Recovery]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-8 Decision Record]]
 
 ## Sources
-[[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]]
+[[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[EPIC-8 Run (EV-18, EV-19)]]

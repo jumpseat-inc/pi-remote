@@ -4,9 +4,9 @@ type: concept
 summary: Acceptance text may only claim what has been proven — runtime behavior requires runtime evidence, and knowingly partial coverage is announced at the surface itself.
 aliases: [fixture honesty, partial coverage announcement]
 tags: [concept/process, doctrine, testing]
-sources: ["[[FLLWUP-5 Ruling]]", "[[FLLWUP-4 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]", "[[FLLWUP-47 Run]]"]
+sources: ["[[FLLWUP-5 Ruling]]", "[[FLLWUP-4 Ruling]]", "[[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]]", "[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]", "[[FLLWUP-47 Run]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-02
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 Born in FLLWUP-5: the Skeptic proved the entire raise path was dead in production (no `ui.confirm` event in the SDK, no `deps.on("ui_prompt_start")`, `registerPrompt` never called), so the acceptance was rewritten **fixture-green** — contract (b) emits correctly and is testable today; the runtime path is gated on FLLWUP-8. J-ACCEPT's principle: shipping an acceptance that implies runtime behavior the scope cannot deliver is "a half-truth."
 
@@ -20,8 +20,10 @@ Two generalizations (FLLWUP-4 ruling): **partial coverage is announced at the su
 
 **Comment honesty (EPIC-6).** The [[EPIC-6 Run (FLLWUP-39..40)]] extended the announcement surface from code boundaries to **source comments**: FLLWUP-40 corrected a test's own comment that claimed a coupling the assertions did not enforce, leaving the assertions untouched ([[Record Accuracy]]'s third variant). This is the fixture-green principle applied to the comment that describes a fixture — the comment, like the acceptance text, may claim only what the test proves.
 
+**Negative-space evidence at the rendered surface (EPIC-8).** The [[EPIC-8 Run (EV-18, EV-19)]] is the rendered-output form of the stand-in corollary. EV-18's fixtures prove only that the resolved URL is *forwarded* as the placeholder; they cannot prove what the host *draws*. The boundary observation proved the installed pi 0.87.1 renders **no** placeholder, and that negative is announced as the card's named residual rather than dressed as a delivered greyed render — a fixture-green claim of the latter would have been exactly the half-truth this page exists to forbid ([[Real-Surface Verification]], [[Real-Host TUI Observation]]). The consent sentence's keyless inline literal, and the `login.urlPrompt` reference with no referent, are recorded on the card and the record rather than silently assumed ([[Stable Keys]], [[Record Accuracy]]).
+
 ## Related
-[[Spec Correction Governance]], [[Notify Sink]], [[Twin-Row Delivery Hazard]], [[FLLWUP-47 Run]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Run Workspace Isolation]], [[Real-Surface Verification]], [[Emission-Semantics Fidelity]], [[Record Accuracy]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], FLLWUP-11
+[[Spec Correction Governance]], [[Notify Sink]], [[Twin-Row Delivery Hazard]], [[FLLWUP-47 Run]], [[Stable Keys]], [[Cause-Distinguished Expiry]], [[Run Workspace Isolation]], [[Real-Surface Verification]], [[Real-Host TUI Observation]], [[Emission-Semantics Fidelity]], [[Record Accuracy]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-8 Decision Record]], [[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], FLLWUP-11
 
 ## Sources
-[[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]], [[FLLWUP-47 Run]]
+[[FLLWUP-5 Ruling]], [[FLLWUP-4 Ruling]], [[Device-Flow Polish Run (BUG-1, FLLWUP-24, FLLWUP-25)]], [[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]], [[FLLWUP-47 Run]], [[EPIC-8 Run (EV-18, EV-19)]]

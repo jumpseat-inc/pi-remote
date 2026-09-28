@@ -4,9 +4,9 @@ type: concept
 summary: The step-12 direct-to-main record commit is a privileged write the authority map does not re-home; it needs a run-scoped Phase-1 authorization recorded before the first push, and an unauthorized push is a HALT.
 aliases: [record push, step-12 push, admin bypass, record-push authorization]
 tags: [concept/process, merge, security]
-sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]"]
+sources: ["[[EPIC-3 Run (FLLWUP-27..30)]]", "[[EPIC-4 Run (FLLWUP-11..12)]]", "[[EPIC-6 Run (FLLWUP-39..40)]]", "[[BUG-2 Run]]", "[[EPIC-8 Run (EV-18, EV-19)]]"]
 created: 2026-09-23
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 The autonomous run's durable state is the board and the card files. Step 12 commits the reconciliation and pushes it **directly to `main`** — the "push records as they happen" recipe that keeps a run recoverable ([[Run Workspace Isolation]]). The authority map re-homes exactly one merge-time power (the human merge gate → the [[Deterministic Merge Check]]) and says nothing about this push. Under a `main` ruleset that forbids direct updates, that push is a **second privileged write**.
 
@@ -18,8 +18,10 @@ The autonomous run's durable state is the board and the card files. Step 12 comm
 
 **Exception, flagged — not a rewrite of the rule (BUG-2).** The [[BUG-2 Run]] was a single-card facilitator run, not a features-deliver run. `council/phase1-authorizations.json` still names run `EPIC-7` only, and that grant does not extend. The facilitator halted the step-12 push and said so. The human then said "push to remote", and a normal fast-forward landed (`112ed22..2e13a89`). That instruction came before the push, so it is not a silent bypass and not a retroactive grant after the fact. It is also **not** a Phase-1 record. The rule above still requires that record before the first push of an autonomous features-deliver run. This chat override is an exception the human made for this run; it does not authorize the next one.
 
+**Stale record, fresh authorization (EPIC-8).** The [[EPIC-8 Run (EV-18, EV-19)]] found `council/phase1-authorizations.json` and `phase1-rulings.json` still scoped to **EPIC-7** — an earlier run's record names another run, so it grants nothing to this one. The orchestrator wrote fresh EPIC-8 class rulings + **R-PUSH-1**/**R-ADMIN-1** before the run's first record push (`dff261c`), then landed Phase-1 and step-12 record commits directly. `main` again had **no ruleset** (rulesets API `[]`), so `--admin` was authorized but unused.
+
 ## Related
-[[Deterministic Merge Check]], [[Run Workspace Isolation]], [[Council Seats]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[BUG-2 Run]]
+[[Deterministic Merge Check]], [[Run Workspace Isolation]], [[Council Seats]], [[Batched Card Delivery]], [[EPIC-3 Decision Record]], [[EPIC-4 Decision Record]], [[EPIC-6 Decision Record]], [[EPIC-8 Decision Record]], [[BUG-2 Run]]
 
 ## Sources
-[[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]]
+[[EPIC-3 Run (FLLWUP-27..30)]], [[EPIC-4 Run (FLLWUP-11..12)]], [[EPIC-6 Run (FLLWUP-39..40)]], [[BUG-2 Run]], [[EPIC-8 Run (EV-18, EV-19)]]

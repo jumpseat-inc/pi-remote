@@ -10,10 +10,11 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[EPIC-3 Decision Record]] — synthesis of the four-card run that closed the device-flow residuals: run-hygiene conventions, two fixture pins, and the mode/record-push/workspace doctrine.
 - [[EPIC-4 Decision Record]] — synthesis of the two-card run that closed the installability gap: real-surface verification, emission-semantics fidelity, record accuracy, and runner stall recovery; its seven follow-ups now group under EPIC-5.
 - [[EPIC-6 Decision Record]] — synthesis of the two-card single-runner run: batched card delivery, declare-or-annotate-with-reason for vendored fields, and the comment-level record-accuracy variant; EPIC-5's announced residuals now delivered (EPIC-5 run not yet ingested).
+- [[EPIC-8 Decision Record]] — synthesis of the two-card run that shipped the /rc:login placeholder pass-through and recorded the installed pi 0.87.1 host's placeholder-discard residual; the first real-host rendered-TUI observation, a capture-redaction incident, and a flagged dispatch-discipline overshoot.
 
 ## Entities
 
-- [[pi-remote]] — the pi-side extension exposing a live session over AG-UI; the product every ruling governs. Suite 332 after FLLWUP-47; BUG-2's notify residual closed.
+- [[pi-remote]] — the pi-side extension exposing a live session over AG-UI; the product every ruling governs. Suite 340 after EPIC-8; BUG-2's notify residual closed and the /rc:login placeholder pass-through shipped.
 - [[Server-Side Spec]] — docs/SERVER-SIDE-SPEC.md: the self-contained relay/control-plane implementation spec (§1-§5); its four defects (FLLWUP-18/21/22/23) resolved; FLLWUP-26 the one remaining open item.
 - [[Seven Footer States]] — off, not enrolled, authorizing, dialing, resyncing, live, error — the authoritative lifecycle-ordered set.
 - [[Reason Taxonomy]] — the transport's closed five-value reason set; honest metadata, never terminal.
@@ -49,6 +50,8 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[Emission-Semantics Fidelity]] — fixture the constructing layer's per-emission semantics (fresh spread-copies), not the pass-through emitter; systematized by FLLWUP-36 as a scripted probe (test/construction-grounding.test.ts) plus documented procedure (docs/construction-grounding.md).
 - [[Record Accuracy]] — a run record's counts and claims must match the audit they cite; its own honesty axis.
 - [[Runner Stall Recovery]] — size the stall window above the longest child dispatch; cancel plus one re-dispatch with a resumption note.
+- [[Real-Host TUI Observation]] — drive the installed interactive host (tmux/pty), capture the rendered pane, prove a signed negative over the exact span; one resolution tier (anti-splice).
+- [[Capture Redaction]] — real-host captures echo the typed launch line; verify key-free, redact before committing, treat the raw capture as sensitive.
 - [[Cheapest To Reverse]] — the standing tiebreaker when no test can decide; sometimes the pricier-to-write option wins.
 - [[Verify Cycle Cap]] — three verify-fix cycles per card; closed-red at the cap exits to the orchestrator; bounded extensions by ruling.
 - [[Footer Merge Policy]] — kind-first mergeTransport; live clears error on verified open; N=10 consecutive error-severity dialing.
@@ -91,3 +94,4 @@ relevant pages. Each entry: link + one-line summary (+ optional metadata).
 - [[EPIC-6 Run (FLLWUP-39..40)]] — the two-card single-runner run (one owner/one Skeptic/one judge, PR #47) declaring the vendored thinking/tool-call signature fields and correcting the pairing-test comment; no vault/raw — deviation stated.
 - [[BUG-2 Run]] — single-card run that moved /rc:login user lines off stdout onto ctx.ui.notify (PR #52, merge 112ed22); no vault/raw — deviation stated. Its residual FLLWUP-47 was later delivered.
 - [[FLLWUP-47 Run]] — mechanical single-card run that pinned shutdown.closed's delivery to the notify sink with a path-specific whole-transcript test (PR #53, merge 8ade4fb); no vault/raw — deviation stated.
+- [[EPIC-8 Run (EV-18, EV-19)]] — the two-card run that shipped the /rc:login placeholder pass-through (PR #54, merge `0fdf1d9`) and recorded the installed-host placeholder-discard residual via a real rendered-TUI observation and a mock-control-plane enrollment (PR #55, merge `b848464`); raw record archived.
